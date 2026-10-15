@@ -1,0 +1,53 @@
+<x-acceso titulo="Iniciar sesión">
+    <h2>Bienvenido</h2>
+    <p class="bajada">Ingrese con su correo y contraseña para acceder al sistema.</p>
+
+    @session('status')
+        <div class="aviso exito"><i class="bi bi-check-circle-fill"></i><span>{{ $value }}</span></div>
+    @endsession
+
+    @if ($errors->any() && ! $errors->hasAny(['email', 'password']))
+        <div class="aviso peligro"><i class="bi bi-exclamation-triangle-fill"></i><span>{{ $errors->first() }}</span></div>
+    @endif
+
+    <form method="POST" action="{{ route('login') }}" data-un-envio novalidate>
+        @csrf
+
+        <div class="campo">
+            <label for="correo">Correo electrónico</label>
+            <div class="caja-campo">
+                <i class="bi bi-envelope icono-campo"></i>
+                <input id="correo" type="email" name="email" value="{{ old('email') }}" required autofocus
+                    autocomplete="username" placeholder="usuario@municipalidad.gob.pe" @class(['invalido' => $errors->has('email')])>
+            </div>
+            @error('email')
+                <div class="error-campo"><i class="bi bi-exclamation-circle"></i><span>{{ $message }}</span></div>
+            @enderror
+        </div>
+
+        <div class="campo">
+            <label for="clave">Contraseña</label>
+            <div class="caja-campo">
+                <i class="bi bi-lock icono-campo"></i>
+                <input id="clave" type="password" name="password" required autocomplete="current-password"
+                    placeholder="Ingrese su contraseña" @class(['invalido' => $errors->has('password')])>
+                <button type="button" class="ver-clave" data-ver-clave="clave" aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
+            </div>
+            @error('password')
+                <div class="error-campo"><i class="bi bi-exclamation-circle"></i><span>{{ $message }}</span></div>
+            @enderror
+        </div>
+
+        <div class="fila-opciones">
+            <label class="casilla" for="recordarme">
+                <input type="checkbox" id="recordarme" name="remember" value="1" @checked(old('remember'))>
+                Mantener sesión activa
+            </label>
+            @if (Route::has('password.request'))
+                <a class="enlace" href="{{ route('password.request') }}">¿Olvidó su contraseña?</a>
+            @endif
+        </div>
+
+        <button type="submit" class="boton-acceso">Iniciar sesión</button>
+    </form>
+</x-acceso>

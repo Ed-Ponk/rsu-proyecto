@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sistema de residuos sólidos urbanos">
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16a34a"/>
+      <stop offset="1" stop-color="#0b5cad"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#fondo)"/>
+  <!-- tres flechas que giran: reciclaje -->
+  <g fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 20l8-8 8 8"/>
+    <path d="M32 12v14"/>
+    <path d="M18 40l-6 10h14"/>
+    <path d="M22 36l-8 14"/>
+    <path d="M46 40l6 10H38"/>
+    <path d="M42 36l8 14"/>
+  </g>
+</svg>

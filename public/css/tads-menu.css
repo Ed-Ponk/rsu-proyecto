@@ -1,0 +1,47 @@
+/* Menú lateral y barra superior del panel, con los colores de la maqueta del Avance 01:
+   cabecera blanca con el logo de la Municipalidad, menú azul marino y barra superior azul. */
+
+:root {
+    --menu-fondo: #001a38;
+    --menu-texto: #e3ecf5;
+    --menu-activo: #0a5c9e;
+    --barra-superior: #00305f;
+}
+
+.app-sidebar {
+    --lte-sidebar-bg: var(--menu-fondo) !important;
+    background: var(--menu-fondo) !important;
+    border-right: 0;
+}
+
+/* Cabecera del menú: fondo blanco con el logo institucional */
+.app-sidebar .sidebar-brand { background: #fff; border-bottom: 0; }
+.app-sidebar .brand-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    background: #fff;
+}
+.app-sidebar .brand-link .brand-image { display: block; float: none; height: 46px !important; max-height: none; width: auto !important; margin: 0 !important; opacity: 1; }
+.app-sidebar .brand-link .brand-text { display: none; }
+
+/* Opciones del menú */
+.app-sidebar .sidebar-menu .nav-link {
+    margin: 2px 8px;
+    padding: .6rem .8rem;
+    border-radius: 4px;
+    color: var(--menu-texto);
+}
+.app-sidebar .sidebar-menu .nav-link:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.app-sidebar .sidebar-menu .nav-link.active { background: var(--menu-activo) !important; color: #fff !important; box-shadow: none; }
+.app-sidebar .sidebar-menu .nav-treeview > .nav-item > .nav-link { padding-left: 1.4rem; }
+.app-sidebar .nav-header { padding-inline: 16px; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #8fb2d4 !important; }
+
+/* Barra superior azul con el nombre del usuario */
+.app-header.navbar { background: var(--barra-superior) !important; border-bottom: 0; }
+.app-header.navbar .nav-link,
+.app-header.navbar .navbar-nav .nav-link,
+.app-header.navbar .dropdown-toggle { color: #fff !important; }
+
+.app-main { background: #eef1f5; }

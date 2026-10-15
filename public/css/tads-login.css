@@ -1,0 +1,99 @@
+/* Pantallas de acceso (login, recuperar contraseña, verificación en dos pasos).
+   Panel institucional a la izquierda y formulario a la derecha. No depende de Vite ni de Tailwind. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+    --marino: #003366;
+    --marino-oscuro: #00213f;
+    --verde-agua: #0f9d84;
+    --celeste: #0a84d6;
+    --tinta: #1f2933;
+    --gris: #6b7785;
+    --campo: #f1f5f9;
+}
+
+html, body { min-height: 100%; }
+
+body.acceso {
+    margin: 0;
+    font-family: 'Source Sans 3', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+    color: var(--tinta);
+    background: #fff;
+}
+
+.acceso-contenedor { display: grid; grid-template-columns: minmax(360px, 1.05fr) minmax(380px, 1fr); min-height: 100vh; }
+
+/* ------------------------------ lado del formulario (derecha) ------------------------------ */
+.acceso-formulario { order: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 36px 28px; }
+.acceso-bloque { width: 100%; max-width: 390px; }
+.acceso-bloque .logo-tarjeta { margin-bottom: 26px; text-align: center; }
+.acceso-bloque .logo-tarjeta img { height: 92px; width: auto; max-width: 100%; }
+.acceso-bloque h2 { margin: 0 0 4px; font-size: 1.7rem; font-weight: 800; color: var(--marino); }
+.acceso-bloque .bajada { margin: 0 0 26px; color: var(--gris); }
+.pie-tarjeta { margin-top: 26px; font-size: .8rem; color: var(--gris); text-align: center; }
+
+/* Campos: fondo suave y línea inferior que se enciende al enfocar */
+.campo { margin-bottom: 18px; }
+.campo label { display: block; margin-bottom: 6px; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--marino); }
+.caja-campo { position: relative; }
+.caja-campo .icono-campo { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--verde-agua); font-size: 1.05rem; }
+.caja-campo input {
+    width: 100%; height: 50px; padding: 0 46px 0 42px; font-size: 1rem; color: var(--tinta);
+    background: var(--campo); border: 0; border-bottom: 3px solid #d5dde6; border-radius: 10px 10px 4px 4px; outline: none;
+    transition: border-color .2s, background .2s;
+}
+.caja-campo input:focus { background: #e8f1fa; border-bottom-color: var(--celeste); }
+.caja-campo input.invalido { background: #fff1f1; border-bottom-color: #dc3545; }
+.caja-campo .ver-clave { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: var(--gris); cursor: pointer; }
+.caja-campo .ver-clave:hover { background: #dde5ee; }
+.error-campo { display: flex; gap: 6px; margin-top: 6px; color: #c62828; font-size: .83rem; }
+
+.aviso { display: flex; gap: 10px; margin-bottom: 18px; padding: 11px 14px; border-radius: 10px; font-size: .9rem; }
+.aviso.exito { background: #e3f6ec; color: #17653f; }
+.aviso.peligro { background: #fdecea; color: #8e1b1b; }
+
+.fila-opciones { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 2px 0 22px; }
+.casilla { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; cursor: pointer; user-select: none; }
+.casilla input { width: 17px; height: 17px; accent-color: var(--verde-agua); }
+.enlace { color: var(--celeste); font-weight: 600; font-size: .9rem; text-decoration: none; }
+.enlace:hover { text-decoration: underline; }
+
+.boton-acceso {
+    width: 100%; height: 52px; border: 0; border-radius: 999px; cursor: pointer; color: #fff;
+    font-size: .95rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    background: linear-gradient(90deg, var(--marino), var(--celeste) 60%, var(--verde-agua));
+    box-shadow: 0 14px 24px -14px rgba(0, 51, 102, .9); transition: transform .15s, filter .15s;
+}
+.boton-acceso:hover { transform: translateY(-1px); filter: brightness(1.07); }
+.boton-acceso:disabled { opacity: .7; cursor: wait; transform: none; }
+
+/* ------------------------------ panel institucional ------------------------------ */
+.acceso-lateral {
+    order: 1; position: relative; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding: 56px 60px; color: #fff; overflow: hidden;
+    background:
+        linear-gradient(155deg, rgba(0, 51, 102, .94) 0%, rgba(0, 33, 63, .93) 55%, rgba(15, 157, 132, .88) 130%),
+        url('../images/municipalidad.jpg') center / cover;
+    clip-path: polygon(0 0, 100% 0, 93% 100%, 0 100%);
+    padding-right: 110px;
+}
+.acceso-lateral::before { content: ''; position: absolute; left: -90px; top: -90px; width: 300px; height: 300px; border-radius: 50%; border: 44px solid rgba(255, 255, 255, .07); }
+.acceso-lateral > * { position: relative; z-index: 1; }
+.acceso-lateral .etiqueta { display: inline-block; align-self: flex-start; padding: 5px 14px; border-radius: 999px; background: rgba(255, 255, 255, .16); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.acceso-lateral h1 { margin: 0; max-width: 520px; font-size: clamp(1.9rem, 3vw, 2.7rem); line-height: 1.12; font-weight: 800; }
+.acceso-lateral .bajada-lateral { margin: 0; max-width: 460px; font-size: 1.05rem; opacity: .9; }
+.acceso-pasos { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.acceso-pasos li { display: flex; align-items: center; gap: 14px; font-weight: 600; }
+.acceso-pasos i { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(255, 255, 255, .15); }
+.acceso-sellos { display: flex; flex-wrap: wrap; gap: 8px; }
+.acceso-sellos span { padding: 5px 14px; border-radius: 999px; font-size: .8rem; font-weight: 700; }
+.acceso-sellos .eco { background: #28a745; }
+.acceso-sellos .sostenible { background: #17a2b8; }
+.acceso-sellos .responsable { background: #ffc107; color: #212529; }
+.acceso-derechos { margin: 0; font-size: .8rem; opacity: .75; }
+
+@media (max-width: 900px) {
+    .acceso-contenedor { grid-template-columns: 1fr; }
+    .acceso-lateral { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
