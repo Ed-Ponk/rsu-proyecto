@@ -1,5 +1,5 @@
 /* Sidebar comprimido: mostrar solo el escudo del logo (los primeros 85 de 260 unidades del SVG). */
-body.sidebar-mini.sidebar-collapse .app-sidebar:not(:hover) .brand-link .brand-image {
+body.sidebar-mini.sidebar-collapse .app-sidebar .brand-link .brand-image {
     height: 33px;
     width: 24px;              /* 33px * 340/468: misma proporción del escudo */
     max-width: none;

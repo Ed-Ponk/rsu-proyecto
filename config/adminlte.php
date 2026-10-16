@@ -573,7 +573,7 @@ return [
 
     'sidebar_mini' => true,
     'sidebar_collapse' => false,
-    'sidebar_without_hover' => false,
+    'sidebar_without_hover' => true,
 
     // Persist the collapsed state of the sidebar on the browser, so it
     // survives a page load (the AdminLTE push menu plugin takes care of it).
