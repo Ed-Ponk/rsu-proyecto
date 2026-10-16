@@ -835,6 +835,7 @@ return [
             'files' => [
                 ['type' => 'css', 'asset' => true, 'location' => 'css/tads-menu.css'],
                 ['type' => 'css', 'asset' => true, 'location' => 'css/tads.css'],
+                ['type' => 'css', 'asset' => true, 'location' => 'css/sidebar-colapsado.css'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/gestor.js'],
             ],
         ],
