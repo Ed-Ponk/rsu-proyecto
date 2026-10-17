@@ -1,47 +1,142 @@
-/* Menú lateral y barra superior del panel, con los colores de la maqueta del Avance 01:
-   cabecera blanca con el logo de la Municipalidad, menú azul marino y barra superior azul. */
+/* ==========================================================================
+   Menú lateral y barra superior del panel administrativo (RSU).
+   Identidad visual municipal auténtica: Pizarra profunda (#0f172a, #1e293b),
+   Verde Esmeralda institucional (#166534, #10b981) y contrastes nítidos.
+   ========================================================================== */
 
 :root {
-    --menu-fondo: #001a38;
-    --menu-texto: #e3ecf5;
-    --menu-activo: #0a5c9e;
-    --barra-superior: #00305f;
+    --menu-fondo: #0f172a;        /* Deep Slate 900 */
+    --menu-fondo-alt: #1e293b;    /* Deep Slate 800 */
+    --menu-texto: #cbd5e1;        /* Slate 300 */
+    --menu-texto-hover: #f8fafc;  /* Slate 50 */
+    --menu-activo: #166534;       /* Forest Emerald 800 */
+    --menu-activo-borde: #10b981; /* Emerald 500 */
+    --barra-superior: #0f172a;    /* Deep Slate 900 */
+    --barra-borde: #1e293b;       /* Slate 800 border */
+    --menu-categoria: #94a3b8;    /* Slate 400 */
 }
 
 .app-sidebar {
     --lte-sidebar-bg: var(--menu-fondo) !important;
     background: var(--menu-fondo) !important;
-    border-right: 0;
+    border-right: 1px solid var(--barra-borde);
+    box-shadow: 2px 0 8px rgba(15, 23, 42, 0.35);
 }
 
-/* Cabecera del menú: fondo blanco con el logo institucional */
-.app-sidebar .sidebar-brand { background: #fff; border-bottom: 0; }
+/* Cabecera del menú: fondo blanco nítido con el logo institucional */
+.app-sidebar .sidebar-brand {
+    background: #ffffff;
+    border-bottom: 1px solid var(--barra-borde);
+}
+
 .app-sidebar .brand-link {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 12px;
-    background: #fff;
+    padding: 8px 14px;
+    background: #ffffff;
+    transition: background 0.2s ease;
 }
-.app-sidebar .brand-link .brand-image { display: block; float: none; height: 46px !important; max-height: none; width: auto !important; margin: 0 !important; opacity: 1; }
-.app-sidebar .brand-link .brand-text { display: none; }
+
+.app-sidebar .brand-link .brand-image {
+    display: block;
+    float: none;
+    height: 44px !important;
+    max-height: none;
+    width: auto !important;
+    margin: 0 !important;
+    opacity: 1;
+}
+
+.app-sidebar .brand-link .brand-text {
+    display: none;
+}
 
 /* Opciones del menú */
-.app-sidebar .sidebar-menu .nav-link {
-    margin: 2px 8px;
-    padding: .6rem .8rem;
-    border-radius: 4px;
-    color: var(--menu-texto);
+.app-sidebar .sidebar-menu {
+    padding-top: 0.5rem;
 }
-.app-sidebar .sidebar-menu .nav-link:hover { background: rgba(255, 255, 255, .08); color: #fff; }
-.app-sidebar .sidebar-menu .nav-link.active { background: var(--menu-activo) !important; color: #fff !important; box-shadow: none; }
-.app-sidebar .sidebar-menu .nav-treeview > .nav-item > .nav-link { padding-left: 1.4rem; }
-.app-sidebar .nav-header { padding-inline: 16px; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #8fb2d4 !important; }
 
-/* Barra superior azul con el nombre del usuario */
-.app-header.navbar { background: var(--barra-superior) !important; border-bottom: 0; }
+.app-sidebar .sidebar-menu .nav-link {
+    margin: 3px 10px;
+    padding: 0.55rem 0.85rem;
+    border-radius: 6px;
+    color: var(--menu-texto);
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.app-sidebar .sidebar-menu .nav-link i,
+.app-sidebar .sidebar-menu .nav-link .nav-icon {
+    font-size: 1.05rem;
+    color: var(--menu-texto);
+    transition: color 0.15s ease-in-out;
+}
+
+.app-sidebar .sidebar-menu .nav-link:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--menu-texto-hover);
+}
+
+.app-sidebar .sidebar-menu .nav-link:hover i,
+.app-sidebar .sidebar-menu .nav-link:hover .nav-icon {
+    color: var(--menu-activo-borde);
+}
+
+.app-sidebar .sidebar-menu .nav-link.active {
+    background: var(--menu-activo) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    border-left: 3px solid var(--menu-activo-borde);
+}
+
+.app-sidebar .sidebar-menu .nav-link.active i,
+.app-sidebar .sidebar-menu .nav-link.active .nav-icon {
+    color: #ffffff !important;
+}
+
+.app-sidebar .sidebar-menu .nav-treeview > .nav-item > .nav-link {
+    padding-left: 1.5rem;
+    font-size: 0.86rem;
+}
+
+.app-sidebar .nav-header {
+    padding-inline: 18px;
+    padding-top: 14px;
+    padding-bottom: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--menu-categoria) !important;
+}
+
+/* Barra superior en Pizarra Profunda con contraste limpio */
+.app-header.navbar {
+    background: var(--barra-superior) !important;
+    border-bottom: 1px solid var(--barra-borde);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.15);
+}
+
 .app-header.navbar .nav-link,
 .app-header.navbar .navbar-nav .nav-link,
-.app-header.navbar .dropdown-toggle { color: #fff !important; }
+.app-header.navbar .dropdown-toggle {
+    color: #f8fafc !important;
+    font-weight: 500;
+}
 
-.app-main { background: #eef1f5; }
+.app-header.navbar .nav-link:hover,
+.app-header.navbar .navbar-nav .nav-link:hover {
+    color: var(--menu-activo-borde) !important;
+}
+
+/* Fondo principal de trabajo: Slate 50 limpio que reduce la fatiga visual */
+.app-main {
+    background: #f8fafc;
+    min-height: calc(100vh - 57px);
+}

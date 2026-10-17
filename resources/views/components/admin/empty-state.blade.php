@@ -35,17 +35,20 @@
     'accionId' => null,
     'accionIcono' => 'bi-plus-lg',
     'svg' => true,
+    'compacto' => false,
 ])
 
 @php
     $textoBoton = $accion ?? $accionTexto;
+    $paddingClase = $compacto ? 'py-4 px-3 my-2' : 'py-5 px-3 my-3';
+    $svgMaxHeight = $compacto ? '64px' : '90px';
 @endphp
 
-<div {{ $attributes->merge(['class' => 'text-center py-5 px-3 rounded-3 bg-white border border-dashed my-3']) }} style="border-color: #cbd5e1 !important; border-width: 2px !important;">
+<div {{ $attributes->merge(['class' => "text-center rounded-3 bg-white border border-dashed {$paddingClase}"]) }} style="border-color: #cbd5e1 !important; border-width: 2px !important;">
     <div class="mx-auto mb-3" style="max-width: 120px;">
         @if($svg)
             {{-- Ilustración SVG sobria y artesanal de gestión municipal ambiental --}}
-            <svg class="w-100 h-auto" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-height: 90px;">
+            <svg class="w-100 h-auto" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-height: {{ $svgMaxHeight }};">
                 <circle cx="60" cy="60" r="50" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="2"/>
                 <path d="M40 70C40 58.9543 48.9543 50 60 50C71.0457 50 80 58.9543 80 70H40Z" fill="#10b981" fill-opacity="0.15"/>
                 <rect x="44" y="58" width="32" height="24" rx="4" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
