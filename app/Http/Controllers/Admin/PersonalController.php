@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Http\Controllers\admin;
+namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\admin\Concerns\RespondeAjax;
+use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Personal;
 use App\Models\TipoPersonal;

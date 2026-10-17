@@ -1,15 +1,15 @@
 <?php
 
-use App\Http\Controllers\admin\AsistenciaController;
-use App\Http\Controllers\admin\ColorController;
-use App\Http\Controllers\admin\ContratoController;
-use App\Http\Controllers\admin\InicioController;
-use App\Http\Controllers\admin\MarcaController;
-use App\Http\Controllers\admin\ModeloController;
-use App\Http\Controllers\admin\PersonalController;
-use App\Http\Controllers\admin\TipoPersonalController;
-use App\Http\Controllers\admin\TipoVehiculoController;
-use App\Http\Controllers\admin\VehiculoController;
+use App\Http\Controllers\Admin\AsistenciaController;
+use App\Http\Controllers\Admin\ColorController;
+use App\Http\Controllers\Admin\ContratoController;
+use App\Http\Controllers\Admin\InicioController;
+use App\Http\Controllers\Admin\MarcaController;
+use App\Http\Controllers\Admin\ModeloController;
+use App\Http\Controllers\Admin\PersonalController;
+use App\Http\Controllers\Admin\TipoPersonalController;
+use App\Http\Controllers\Admin\TipoVehiculoController;
+use App\Http\Controllers\Admin\VehiculoController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');

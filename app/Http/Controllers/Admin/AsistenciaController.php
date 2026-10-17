@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Http\Controllers\admin;
+namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\admin\Concerns\RespondeAjax;
+use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Asistencia;
 use App\Models\Personal;
@@ -38,7 +38,8 @@ class AsistenciaController extends Controller
         $texto = trim((string) $request->input('buscar'));
 
         $filas = Asistencia::with(['personal.tipo', 'turno'])
-            ->whereBetween('date', [$desde->toDateString(), $hasta->toDateString()])
+            ->whereDate('date', '>=', $desde->toDateString())
+            ->whereDate('date', '<=', $hasta->toDateString())
             ->when($texto !== '', fn ($q) => $q->whereHas('personal', fn ($p) => $p
                 ->where('dni', 'like', "%{$texto}%")
                 ->orWhere('name', 'like', "%{$texto}%")

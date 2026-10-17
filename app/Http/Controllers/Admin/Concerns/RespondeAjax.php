@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\admin\Concerns;
+namespace App\Http\Controllers\Admin\Concerns;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
