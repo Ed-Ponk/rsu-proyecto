@@ -264,7 +264,7 @@ class AsistenciaController extends Controller
 
         return response()->json([
             'mensaje' => $esEntrada
-                ? ($asistencia->late_minutes ? "Entrada registrada con {$asistencia->late_minutes} min de tardanza" : 'Entrada registrada a tiempo')
+                ? ($asistencia->late_minutes ? "Entrada registrada con ".Asistencia::textoDeDuracion($asistencia->late_minutes)." de tardanza" : 'Entrada registrada a tiempo')
                 : 'Salida registrada',
             'marcacion' => [
                 'tipo' => $asistencia->type,
