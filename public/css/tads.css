@@ -1652,3 +1652,427 @@ a.t-funcion:hover .t-funcion-flecha {
         justify-content: center;
     }
 }
+
+/* ---------- Botón secundario (acciones de carga masiva) ---------- */
+.t-boton.t-boton-secundario {
+    --bs-btn-bg: var(--rsu-steel-600);
+    --bs-btn-border-color: var(--rsu-steel-600);
+    --bs-btn-hover-bg: var(--rsu-steel-700);
+    --bs-btn-hover-border-color: var(--rsu-steel-700);
+}
+
+/* ---------- Zonas: mapas, editor de coordenadas y fichas ---------- */
+.t-mapa {
+    height: 360px;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio);
+    overflow: hidden;
+    z-index: 0;
+}
+
+.t-mapa.t-mapa-grande {
+    height: 540px;
+}
+
+.t-coord-fila {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px;
+}
+
+.t-buscador-direccion {
+    position: relative;
+}
+
+.t-direcciones {
+    position: absolute;
+    inset: 100% 0 auto 0;
+    z-index: 1100;
+    margin: 4px 0 0;
+    padding: 4px;
+    list-style: none;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #ffffff;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio);
+    box-shadow: var(--t-sombra);
+    font-size: 0.85rem;
+}
+
+.t-direcciones li {
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.t-direcciones li[data-indice]:hover {
+    background: var(--rsu-slate-100);
+}
+
+.t-zona-ficha {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--rsu-steel-600), #7c3aed);
+    border-radius: var(--t-radio);
+}
+
+.t-zona-ficha strong,
+.t-zona-ficha small {
+    display: block;
+}
+
+.t-zona-ficha small {
+    opacity: 0.85;
+}
+
+.t-zona-ficha-icono {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    font-size: 1.3rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+}
+
+.t-dato {
+    padding: 10px 14px;
+    color: #ffffff;
+    border-radius: var(--t-radio);
+}
+
+.t-dato small {
+    display: block;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+.t-dato strong {
+    font-size: 1.1rem;
+}
+
+.t-dato-azul { background: #1d4ed8; }
+.t-dato-verde { background: #16a34a; }
+.t-dato-ambar { background: #d97706; }
+.t-dato-celeste { background: #0284c7; }
+
+.t-coord-tabla {
+    max-height: 190px;
+    overflow-y: auto;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio);
+    font-size: 0.8rem;
+}
+
+.t-leyenda {
+    display: inline-block;
+    width: 28px;
+    height: 12px;
+    margin-right: 6px;
+    border-radius: 3px;
+    vertical-align: middle;
+}
+
+/* ---------- Muestra de color dentro del buscador ---------- */
+.t-avatar.t-avatar-color {
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 0 1px var(--rsu-slate-300);
+}
+
+/* ---------- Notas de los formularios (misma caja que .t-ficha-persona, con variantes) ---------- */
+.t-nota {
+    padding: 12px 16px;
+    border: 1px solid var(--rsu-slate-300);
+    border-radius: var(--t-radio);
+    background: var(--rsu-slate-50);
+    font-size: 0.86rem;
+}
+
+.t-nota ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+}
+
+.t-nota-ambar {
+    background: var(--rsu-amber-50);
+    border-color: rgba(217, 119, 6, 0.3);
+}
+
+.t-nota-ambar > strong:first-child {
+    color: var(--rsu-amber-800);
+}
+
+.t-nota-roja {
+    color: var(--rsu-red-700);
+    background: var(--rsu-red-50);
+    border-color: rgba(220, 38, 38, 0.3);
+    font-weight: 600;
+}
+
+
+/* ---------- Barra de herramientas del mapa de zonas ---------- */
+.t-mapa-barra {
+    margin-bottom: 8px;
+}
+
+.t-mapa-grupo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.t-mapa-grupo[hidden] {
+    display: none;
+}
+
+.t-mapa-guia {
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    color: var(--rsu-slate-700);
+    background: var(--rsu-slate-50);
+    border: 1px dashed var(--rsu-slate-300);
+    border-radius: var(--t-radio);
+    font-size: 0.82rem;
+}
+
+.t-mapa-guia i {
+    color: var(--rsu-amber-500);
+}
+
+.leaflet-editing-icon.t-punto-edicion {
+    margin-top: -8px !important;
+    margin-left: -8px !important;
+    border: 3px solid #2563eb;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.4);
+    cursor: grab;
+}
+
+.leaflet-tooltip.t-etiqueta-centro {
+    padding: 2px 8px;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: #dc2626;
+    border: 0;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
+}
+
+.leaflet-tooltip-top.t-etiqueta-centro::before {
+    border-top-color: #dc2626;
+}
+
+/* ---------- Perfil de usuario (secciones de Jetstream con la apariencia del panel) ---------- */
+.t-seccion-perfil {
+    overflow: hidden;
+}
+
+.t-perfil-cabecera {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--rsu-slate-200);
+    background: var(--rsu-slate-50);
+}
+
+.t-perfil-icono {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    color: var(--rsu-emerald-700);
+    font-size: 1.25rem;
+    background: var(--rsu-emerald-50);
+    border-radius: 12px;
+}
+
+.t-perfil-titulo {
+    margin: 0;
+    color: var(--rsu-slate-800);
+    font-size: 1.02rem;
+    font-weight: 700;
+}
+
+.t-perfil-descripcion {
+    margin: 2px 0 0;
+    color: var(--rsu-slate-500);
+    font-size: 0.85rem;
+}
+
+.t-perfil-subtitulo {
+    margin: 0;
+    color: var(--rsu-slate-800);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.t-pie-perfil {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 12px 22px;
+    background: var(--rsu-slate-50);
+    border-top: 1px solid var(--rsu-slate-200);
+}
+
+.t-seccion-peligro .t-perfil-cabecera {
+    background: var(--rsu-red-50);
+}
+
+.t-seccion-peligro .t-perfil-icono {
+    color: var(--rsu-red-600);
+    background: #ffffff;
+}
+
+.t-perfil-resumen {
+    overflow: hidden;
+}
+
+.t-perfil-portada {
+    height: 84px;
+    background: linear-gradient(135deg, var(--rsu-slate-900), var(--rsu-emerald-700));
+}
+
+.t-perfil-avatar {
+    width: 84px;
+    height: 84px;
+    margin: -62px auto 10px;
+    font-size: 1.6rem;
+    border: 4px solid #ffffff;
+    box-shadow: var(--t-sombra);
+}
+
+.t-perfil-nombre {
+    margin: 0;
+    color: var(--rsu-slate-800);
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.t-perfil-correo {
+    margin: 2px 0 12px;
+    color: var(--rsu-slate-500);
+    font-size: 0.86rem;
+    word-break: break-all;
+}
+
+.t-perfil-datos {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+}
+
+.t-perfil-datos li {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 2px 8px;
+    padding: 10px 0;
+    border-top: 1px solid var(--rsu-slate-200);
+    font-size: 0.84rem;
+}
+
+.t-perfil-datos li i {
+    grid-row: span 2;
+    color: var(--rsu-emerald-700);
+    font-size: 1.05rem;
+}
+
+.t-perfil-datos li span {
+    color: var(--rsu-slate-500);
+    font-size: 0.76rem;
+}
+
+.t-perfil-datos li strong {
+    color: var(--rsu-slate-800);
+}
+
+.t-perfil-qr {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 8px;
+    background: #ffffff;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio);
+}
+
+.t-perfil-codigos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 6px 16px;
+    margin-top: 10px;
+    padding: 14px 16px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    background: var(--rsu-slate-100);
+    border-radius: var(--t-radio);
+}
+
+.t-perfil-sesiones {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.t-perfil-sesiones li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio);
+}
+
+.t-perfil-sesiones strong,
+.t-perfil-sesiones small {
+    display: block;
+}
+
+.t-perfil-sesiones small {
+    color: var(--rsu-slate-500);
+}
+
+.t-perfil-sesion-icono {
+    display: inline-grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    color: var(--rsu-slate-600);
+    font-size: 1.2rem;
+    background: var(--rsu-slate-100);
+    border-radius: 50%;
+}
+
+/* ---------- Ventanas emergentes de Jetstream (Alpine) con la apariencia de las del panel ---------- */
+.t-ventana-flotante {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.t-ventana-fondo {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.t-ventana-caja {
+    position: relative;
+    width: 100%;
+}

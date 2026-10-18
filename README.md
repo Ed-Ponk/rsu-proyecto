@@ -162,6 +162,27 @@ Los assets estáticos de AdminLTE y sus dependencias (bootstrap, fonts, overlays
 php artisan adminlte:install --only=assets --only=vendor_assets
 ```
 
+### Avance 02: vacaciones, turnos, zonas y feriados
+
+Nuevas pantallas en el menú lateral:
+
+- **Gestión de personal → Vacaciones**: solicitudes con aprobar / rechazar / editar / eliminar. Solo el personal con contrato **nombrado** o **permanente** puede pedirlas, las fechas no pueden cruzarse con otras solicitudes pendientes o aprobadas, y solo las aprobadas descuentan días del cupo anual (30 por defecto, `config/proyecto.php` → `vacaciones.dias_por_anio`). El personal con vacaciones aprobadas deja de estar disponible para las programaciones (`Personal::disponibles($fecha)`).
+- **Programación → Turnos**: CRUD de turnos (los nocturnos terminan al día siguiente). Dos turnos no pueden ocupar las mismas horas.
+- **Programación → Zonas**: CRUD con perímetro dibujado en un mapa de **OpenStreetMap** (Leaflet + Leaflet.draw, sin costo ni clave). Incluye el visor del perímetro de cada zona y el botón **Ver mapa de zonas**. Departamentos, provincias y distritos salen de `config/ubigeo.php` (hoy Lambayeque; para agregar otro departamento se copia la misma estructura). Un perímetro necesita mínimo 3 coordenadas dentro de Perú y no puede cruzarse consigo mismo.
+- **Programación → Feriados**: CRUD con tarjetas de resumen y filtros. El botón **Cargar Feriados Perú** consulta la API pública [Nager.Date](https://date.nager.at) (sin clave) y, si no hay internet, usa el calendario propio del sistema (`App\Services\CargadorFeriados`); no duplica los que ya existen.
+
+Restricciones principales (todas se validan en el servidor y tienen pruebas en `tests/Feature/Avance02RestriccionesTest.php`):
+
+- **Vacaciones:** datos obligatorios; solo personal activo con contrato nombrado o permanente vigente; fecha de inicio no pasada; no se cruzan con solicitudes pendientes/aprobadas de la misma persona (las rechazadas liberan las fechas); máximo el cupo anual restante; solo las pendientes se editan o eliminan (al editar se vuelven a aplicar todas las reglas); no se aprueba un periodo ya terminado ni a quien perdió el derecho; quien está de vacaciones aprobadas no puede registrar asistencia (manual ni con DNI); el personal con vacaciones no se puede eliminar (se marca inactivo).
+- **Turnos:** nombre único, horas distintas, duración entre 1 y 12 horas, sin cruces con otros turnos, no se elimina si tiene asistencias.
+- **Feriados:** fecha única entre 2020 y 10 años adelante, descripción mínima de 3 caracteres, filtros con rango válido; los inactivos no cuentan en las validaciones.
+- **Zonas:** nombre único; mínimo 3 coordenadas dentro de Perú y del departamento elegido; sin puntos repetidos ni lados que se crucen; superficie entre 100 m² y 150 km²; no puede invadir otra zona (activa o inactiva); el distrito debe pertenecer a la provincia y esta al departamento.
+
+Notas:
+
+- Leaflet y Leaflet.draw están en `public/vendor/leaflet` y `public/vendor/leaflet-draw` (no hace falta instalarlos). Los mosaicos del mapa y el buscador de direcciones necesitan conexión a internet.
+- Tras actualizar la rama ejecuta `php artisan migrate` (o `migrate:fresh --seed` para recargar los datos de ejemplo: 3 vacaciones, 16 feriados del año y 5 zonas en José Leonardo Ortiz).
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

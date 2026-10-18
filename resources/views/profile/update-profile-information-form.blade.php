@@ -1,18 +1,13 @@
-<x-form-section submit="updateProfileInformation">
-    <x-slot name="title">
-        {{ __('Profile Information') }}
-    </x-slot>
+<x-form-section submit="updateProfileInformation" icono="bi-person-vcard">
+    <x-slot name="title">Información del perfil</x-slot>
 
-    <x-slot name="description">
-        {{ __('Update your account\'s profile information and email address.') }}
-    </x-slot>
+    <x-slot name="description">Actualice el nombre y el correo electrónico de su cuenta.</x-slot>
 
     <x-slot name="form">
-        <!-- Profile Photo -->
+        <!-- Foto de perfil -->
         @if (Laravel\Jetstream\Jetstream::managesProfilePhotos())
-            <div x-data="{photoName: null, photoPreview: null}" class="col-span-6 sm:col-span-4">
-                <!-- Profile Photo File Input -->
-                <input type="file" id="photo" class="hidden"
+            <div x-data="{photoName: null, photoPreview: null}" class="col-12">
+                <input type="file" id="photo" class="d-none"
                             wire:model.live="photo"
                             x-ref="photo"
                             x-on:change="
@@ -24,27 +19,23 @@
                                     reader.readAsDataURL($refs.photo.files[0]);
                             " />
 
-                <x-label for="photo" value="{{ __('Photo') }}" />
+                <x-label for="photo" value="Foto" />
 
-                <!-- Current Profile Photo -->
                 <div class="mt-2" x-show="! photoPreview">
-                    <img src="{{ $this->user->profile_photo_url }}" alt="{{ $this->user->name }}" class="rounded-full size-20 object-cover">
+                    <img src="{{ $this->user->profile_photo_url }}" alt="{{ $this->user->name }}" class="t-avatar t-avatar-lg">
                 </div>
 
-                <!-- New Profile Photo Preview -->
                 <div class="mt-2" x-show="photoPreview" style="display: none;">
-                    <span class="block rounded-full size-20 bg-cover bg-no-repeat bg-center"
-                          x-bind:style="'background-image: url(\'' + photoPreview + '\');'">
-                    </span>
+                    <span class="t-avatar t-avatar-lg d-inline-block" x-bind:style="'background-size: cover; background-position: center; background-image: url(\'' + photoPreview + '\');'"></span>
                 </div>
 
                 <x-secondary-button class="mt-2 me-2" type="button" x-on:click.prevent="$refs.photo.click()">
-                    {{ __('Select A New Photo') }}
+                    <i class="bi bi-image me-1"></i> Elegir otra foto
                 </x-secondary-button>
 
                 @if ($this->user->profile_photo_path)
                     <x-secondary-button type="button" class="mt-2" wire:click="deleteProfilePhoto">
-                        {{ __('Remove Photo') }}
+                        <i class="bi bi-trash3 me-1"></i> Quitar foto
                     </x-secondary-button>
                 @endif
 
@@ -52,44 +43,40 @@
             </div>
         @endif
 
-        <!-- Name -->
-        <div class="col-span-6 sm:col-span-4">
-            <x-label for="name" value="{{ __('Name') }}" />
-            <x-input id="name" type="text" class="mt-1 block w-full" wire:model="state.name" required autocomplete="name" />
-            <x-input-error for="name" class="mt-2" />
+        <!-- Nombre -->
+        <div class="col-12 col-md-8">
+            <x-label for="name" value="Nombre" class="t-obligatorio" />
+            <x-input id="name" type="text" wire:model="state.name" required autocomplete="name" />
+            <x-input-error for="name" />
         </div>
 
-        <!-- Email -->
-        <div class="col-span-6 sm:col-span-4">
-            <x-label for="email" value="{{ __('Email') }}" />
-            <x-input id="email" type="email" class="mt-1 block w-full" wire:model="state.email" required autocomplete="username" />
-            <x-input-error for="email" class="mt-2" />
+        <!-- Correo -->
+        <div class="col-12 col-md-8">
+            <x-label for="email" value="Correo electrónico" class="t-obligatorio" />
+            <x-input id="email" type="email" wire:model="state.email" required autocomplete="username" />
+            <x-input-error for="email" />
 
             @if (Laravel\Fortify\Features::enabled(Laravel\Fortify\Features::emailVerification()) && ! $this->user->hasVerifiedEmail())
-                <p class="text-sm mt-2">
-                    {{ __('Your email address is unverified.') }}
+                <div class="t-nota t-nota-ambar mt-2">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Su correo todavía no está verificado.
 
-                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" wire:click.prevent="sendEmailVerification">
-                        {{ __('Click here to re-send the verification email.') }}
+                    <button type="button" class="btn btn-link p-0 align-baseline fw-semibold" wire:click.prevent="sendEmailVerification">
+                        Reenviar el correo de verificación
                     </button>
-                </p>
+                </div>
 
                 @if ($this->verificationLinkSent)
-                    <p class="mt-2 font-medium text-sm text-green-600">
-                        {{ __('A new verification link has been sent to your email address.') }}
-                    </p>
+                    <p class="mt-2 mb-0 small fw-semibold text-success"><i class="bi bi-check-circle-fill me-1"></i>Se envió un nuevo enlace de verificación a su correo.</p>
                 @endif
             @endif
         </div>
     </x-slot>
 
     <x-slot name="actions">
-        <x-action-message class="me-3" on="saved">
-            {{ __('Saved.') }}
-        </x-action-message>
+        <x-action-message class="me-3" on="saved">Cambios guardados.</x-action-message>
 
         <x-button wire:loading.attr="disabled" wire:target="photo">
-            {{ __('Save') }}
+            <i class="bi bi-floppy-fill me-1"></i> Guardar
         </x-button>
     </x-slot>
 </x-form-section>

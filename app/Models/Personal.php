@@ -58,6 +58,11 @@ class Personal extends Model
         return $this->hasOne(Contrato::class, 'user_id')->vigente();
     }
 
+    public function vacaciones(): HasMany
+    {
+        return $this->hasMany(Vacacion::class, 'user_id')->latest('start_date');
+    }
+
     public function asistencias(): HasMany
     {
         return $this->hasMany(Asistencia::class, 'user_id');
@@ -84,12 +89,16 @@ class Personal extends Model
         return $consulta->where('users.status', true);
     }
 
-    /** Quién puede entrar en una programación: activo y con un contrato vigente en la fecha. */
+    /** Quién puede entrar en una programación: activo, con contrato vigente y sin vacaciones aprobadas en la fecha. */
     public function scopeDisponibles(Builder $consulta, ?Carbon $fecha = null): Builder
     {
         $fecha ??= today();
 
-        return $consulta->activos()->whereHas('contratos', fn (Builder $c) => $c->vigente($fecha));
+        return $consulta->activos()
+            ->whereHas('contratos', fn (Builder $c) => $c->vigente($fecha))
+            ->whereDoesntHave('vacaciones', fn (Builder $v) => $v
+                ->where('status', Vacacion::APROBADA)
+                ->queSeCruzaCon($fecha, $fecha));
     }
 
     public function scopeAsistioEl(Builder $consulta, Carbon|string $fecha): Builder

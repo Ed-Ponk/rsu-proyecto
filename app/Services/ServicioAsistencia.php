@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Asistencia;
 use App\Models\Personal;
 use App\Models\Turno;
+use App\Models\Vacacion;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -122,6 +123,7 @@ class ServicioAsistencia
                 'telefono' => $persona->phone,
                 'funcion' => $persona->tipo?->name,
                 'tiene_contrato' => $persona->contratos()->vigente(Carbon::parse($dia))->exists(),
+                'de_vacaciones' => Vacacion::estaDeVacaciones($persona->id, $dia),
             ],
             'tipo' => $prevista['tipo'],
             'tardanza' => $prevista['tardanza'],
@@ -225,6 +227,7 @@ class ServicioAsistencia
             ! $persona->status => 'La persona está inactiva y no puede registrar asistencia.',
             $momento->greaterThan(now()->addMinute()) => 'No se puede registrar asistencia en una fecha u hora futura.',
             ! $persona->contratos()->vigente($momento->copy()->startOfDay())->exists() => 'La persona no tiene un contrato vigente en esa fecha.',
+            Vacacion::estaDeVacaciones($persona->id, $momento) => 'La persona está de vacaciones aprobadas en esa fecha y no puede registrar asistencia.',
             default => null,
         };
 

@@ -72,7 +72,9 @@
 
                     // Lo que se registraría lo decide el backend (turno, entrada/salida, tardanza o por qué no se puede).
                     let aviso = '';
-                    if (!p.tiene_contrato) {
+                    if (p.de_vacaciones) {
+                        aviso = '<div class="t-aviso t-aviso-alerta"><i class="bi bi-umbrella-fill me-1"></i>Está de vacaciones aprobadas en esa fecha: no se podrá registrar.</div>';
+                    } else if (!p.tiene_contrato) {
                         aviso = '<div class="t-aviso t-aviso-alerta"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sin contrato vigente en esa fecha: no se podrá registrar.</div>';
                     } else if (!esAusencia && datos.problema) {
                         aviso = `<div class="t-aviso t-aviso-alerta"><i class="bi bi-x-octagon-fill me-1"></i>${Tads.escapar(datos.problema)}</div>`;

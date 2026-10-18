@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\BuscaEnCatalogo;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\TipoVehiculo;
@@ -10,6 +11,7 @@ use Illuminate\Validation\Rule;
 
 class TipoVehiculoController extends Controller
 {
+    use BuscaEnCatalogo;
     use RespondeAjax;
 
     public function index()
@@ -24,6 +26,31 @@ class TipoVehiculoController extends Controller
             ->map(fn (TipoVehiculo $tipo) => $this->fila($tipo));
 
         return response()->json(['data' => $filas]);
+    }
+
+    /** Buscador del formulario de vehículos. */
+    public function buscar(Request $request)
+    {
+        return $this->respuestaDeBusqueda(
+            $request,
+            TipoVehiculo::withCount('vehiculos')->orderBy('name')->get(),
+            fn (TipoVehiculo $t) => $t->name,
+            fn (TipoVehiculo $t) => self::itemDeBuscador($t),
+        );
+    }
+
+    /** Forma que espera Tads.buscador; también se usa para precargar el valor al editar. */
+    public static function itemDeBuscador(TipoVehiculo $tipo): array
+    {
+        $cantidad = $tipo->vehiculos_count ?? $tipo->vehiculos()->count();
+
+        return [
+            'id' => $tipo->id,
+            'titulo' => $tipo->name,
+            'detalle' => $cantidad === 1 ? '1 vehículo' : "{$cantidad} vehículos",
+            'iniciales' => mb_strtoupper(mb_substr($tipo->name, 0, 2)),
+            'insignia' => null,
+        ];
     }
 
     public function create()

@@ -3,12 +3,16 @@
 use App\Http\Controllers\Admin\AsistenciaController;
 use App\Http\Controllers\Admin\ColorController;
 use App\Http\Controllers\Admin\ContratoController;
+use App\Http\Controllers\Admin\FeriadoController;
 use App\Http\Controllers\Admin\InicioController;
 use App\Http\Controllers\Admin\MarcaController;
 use App\Http\Controllers\Admin\ModeloController;
 use App\Http\Controllers\Admin\PersonalController;
 use App\Http\Controllers\Admin\TipoPersonalController;
 use App\Http\Controllers\Admin\TipoVehiculoController;
+use App\Http\Controllers\Admin\TurnoController;
+use App\Http\Controllers\Admin\VacacionController;
+use App\Http\Controllers\Admin\ZonaController;
 use App\Http\Controllers\Admin\VehiculoController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,12 +26,15 @@ Route::middleware($protegidas)->prefix('admin')->group(function () {
     Route::get('/', [InicioController::class, 'index'])->name('admin.inicio');
 
     // ---- Gestión de vehículos
+    Route::get('colores/buscar', [ColorController::class, 'buscar'])->name('admin.colores.buscar');
     Route::resource('colores', ColorController::class)->names('admin.colores')->parameters(['colores' => 'color']);
     // Rutas fijas antes de cada resource para que no las capture {marca} / {modelo}.
     Route::get('marcas/buscar', [MarcaController::class, 'buscar'])->name('admin.marcas.buscar');
     Route::resource('marcas', MarcaController::class)->names('admin.marcas');
     Route::get('modelos/verificar', [ModeloController::class, 'verificar'])->name('admin.modelos.verificar');
+    Route::get('modelos/buscar', [ModeloController::class, 'buscar'])->name('admin.modelos.buscar');
     Route::resource('modelos', ModeloController::class)->names('admin.modelos');
+    Route::get('tipos-vehiculo/buscar', [TipoVehiculoController::class, 'buscar'])->name('admin.tiposvehiculo.buscar');
     Route::resource('tipos-vehiculo', TipoVehiculoController::class)->names('admin.tiposvehiculo')->parameters(['tipos-vehiculo' => 'tipo']);
 
     Route::get('vehiculos/{vehiculo}/imagenes', [VehiculoController::class, 'imagenes'])->name('admin.vehiculos.imagenes');
@@ -35,6 +42,7 @@ Route::middleware($protegidas)->prefix('admin')->group(function () {
     Route::resource('vehiculos', VehiculoController::class)->names('admin.vehiculos');
 
     // ---- Gestión de personal
+    Route::get('tipos-personal/buscar', [TipoPersonalController::class, 'buscar'])->name('admin.tipospersonal.buscar');
     Route::resource('tipos-personal', TipoPersonalController::class)->names('admin.tipospersonal')->parameters(['tipos-personal' => 'tipo']);
     // Rutas fijas antes del resource para que no las capture {persona}.
     Route::get('personal/buscar', [PersonalController::class, 'buscar'])->name('admin.personal.buscar');
@@ -50,4 +58,21 @@ Route::middleware($protegidas)->prefix('admin')->group(function () {
     Route::get('asistencias/marcacion/estado', [AsistenciaController::class, 'estadoMarcacion'])->name('admin.asistencias.marcacion.estado');
     Route::post('asistencias/marcacion', [AsistenciaController::class, 'marcar'])->name('admin.asistencias.marcar');
     Route::resource('asistencias', AsistenciaController::class)->except('show')->names('admin.asistencias');
+
+    // Las rutas de aprobar/rechazar van antes del resource para que no las capture {vacacione}.
+    Route::patch('vacaciones/{vacacion}/aprobar', [VacacionController::class, 'aprobar'])->name('admin.vacaciones.aprobar');
+    Route::patch('vacaciones/{vacacion}/rechazar', [VacacionController::class, 'rechazar'])->name('admin.vacaciones.rechazar');
+    Route::resource('vacaciones', VacacionController::class)->names('admin.vacaciones')->parameters(['vacaciones' => 'vacacion']);
+
+    // ---- Programación
+    Route::resource('turnos', TurnoController::class)->names('admin.turnos')->parameters(['turnos' => 'turno']);
+    // La ruta fija va antes del resource para que no la capture {zona}.
+    Route::get('zonas/direccion', [ZonaController::class, 'buscarDireccion'])->name('admin.zonas.direccion');
+    Route::post('zonas/verificar', [ZonaController::class, 'verificar'])->name('admin.zonas.verificar');
+    Route::get('zonas/mapa', [ZonaController::class, 'mapa'])->name('admin.zonas.mapa');
+    Route::resource('zonas', ZonaController::class)->names('admin.zonas');
+    // La ruta fija va antes del resource para que no la capture {feriado}.
+    Route::get('feriados/cargar/consultar', [FeriadoController::class, 'consultar'])->name('admin.feriados.consultar');
+    Route::post('feriados/cargar', [FeriadoController::class, 'cargar'])->name('admin.feriados.cargar');
+    Route::resource('feriados', FeriadoController::class)->names('admin.feriados');
 });

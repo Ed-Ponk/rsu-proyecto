@@ -8,12 +8,12 @@
     </div>
     <div class="col-md-6">
         <label for="vehiculoTipo" class="form-label t-obligatorio">Tipo de vehículo</label>
-        <select name="type_id" id="vehiculoTipo" class="form-select" required>
-            <option value="">Seleccione un tipo</option>
-            @foreach ($tipos as $tipo)
-                <option value="{{ $tipo->id }}" @selected((int) old('type_id', $vehiculo->type_id ?? 0) === $tipo->id)>{{ $tipo->name }}</option>
-            @endforeach
-        </select>
+        @include('admin.partials.buscador', [
+            'id' => 'vehiculoTipo', 'nombre' => 'type_id', 'url' => route('admin.tiposvehiculo.buscar'),
+            'placeholder' => 'Escriba el tipo de vehículo...', 'elegido' => $elegidos['tipo'],
+            'mensaje' => 'Seleccione un tipo de vehículo de la lista.', 'cambiar' => 'Cambiar tipo',
+            'vacio' => 'No hay tipos de vehículo registrados.', 'sinCoincidencias' => 'No hay tipos que coincidan con «:texto».',
+        ])
     </div>
 
     <div class="col-md-6">
@@ -38,32 +38,33 @@
     </div>
     <div class="col-md-6">
         <label for="vehiculoColor" class="form-label t-obligatorio">Color</label>
-        <select name="color_id" id="vehiculoColor" class="form-select" required>
-            <option value="">Seleccione un color</option>
-            @foreach ($colores as $color)
-                <option value="{{ $color->id }}" @selected((int) old('color_id', $vehiculo->color_id ?? 0) === $color->id)>{{ $color->name }} ({{ $color->code }})</option>
-            @endforeach
-        </select>
+        @include('admin.partials.buscador', [
+            'id' => 'vehiculoColor', 'nombre' => 'color_id', 'url' => route('admin.colores.buscar'),
+            'placeholder' => 'Escriba el nombre del color...', 'elegido' => $elegidos['color'],
+            'mensaje' => 'Seleccione un color de la lista.', 'cambiar' => 'Cambiar color',
+            'vacio' => 'No hay colores registrados.', 'sinCoincidencias' => 'No hay colores que coincidan con «:texto».',
+        ])
     </div>
 
     <div class="col-md-6">
         <label for="vehiculoMarca" class="form-label t-obligatorio">Marca</label>
-        <select name="brand_id" id="vehiculoMarca" class="form-select" required>
-            <option value="">Seleccione una marca</option>
-            @foreach ($marcas as $marca)
-                <option value="{{ $marca->id }}" @selected((int) old('brand_id', $vehiculo->brand_id ?? 0) === $marca->id)>{{ $marca->name }}</option>
-            @endforeach
-        </select>
+        @include('admin.partials.buscador', [
+            'id' => 'vehiculoMarca', 'nombre' => 'brand_id', 'url' => route('admin.marcas.buscar'), 'forma' => 'logo',
+            'placeholder' => 'Escriba el nombre de la marca...', 'elegido' => $elegidos['marca'],
+            'mensaje' => 'Seleccione una marca de la lista.', 'cambiar' => 'Cambiar marca',
+            'vacio' => 'No hay marcas registradas.', 'sinCoincidencias' => 'No hay marcas que coincidan con «:texto».',
+        ])
     </div>
     <div class="col-md-6">
         <label for="vehiculoModelo" class="form-label t-obligatorio">Modelo</label>
-        <select name="model_id" id="vehiculoModelo" class="form-select" required data-elegido="{{ old('model_id', $vehiculo->model_id ?? '') }}">
-            <option value="">Seleccione un modelo</option>
-            @foreach ($modelos as $modelo)
-                <option value="{{ $modelo->id }}" data-marca="{{ $modelo->brand_id }}">{{ $modelo->name }}</option>
-            @endforeach
-        </select>
-        <div class="form-text">Solo se muestran los modelos de la marca elegida.</div>
+        @include('admin.partials.buscador', [
+            'id' => 'vehiculoModelo', 'nombre' => 'model_id', 'url' => route('admin.modelos.buscar'),
+            'placeholder' => 'Escriba el nombre del modelo...', 'elegido' => $elegidos['modelo'],
+            'mensaje' => 'Seleccione un modelo de la lista.', 'cambiar' => 'Cambiar modelo',
+            'vacio' => 'Esta marca no tiene modelos registrados.', 'sinCoincidencias' => 'No hay modelos que coincidan con «:texto».',
+            'depende' => '#vehiculoMarcaId', 'parametro' => 'marca', 'sinDependencia' => 'Primero elija la marca...',
+        ])
+        <div class="form-text">Solo se buscan los modelos de la marca elegida.</div>
     </div>
 
     <div class="col-md-6">

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\BuscaEnCatalogo;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\ColorVehiculo;
@@ -10,6 +11,7 @@ use Illuminate\Validation\Rule;
 
 class ColorController extends Controller
 {
+    use BuscaEnCatalogo;
     use RespondeAjax;
 
     public function index()
@@ -24,6 +26,30 @@ class ColorController extends Controller
             ->map(fn (ColorVehiculo $color) => $this->fila($color));
 
         return response()->json(['data' => $filas]);
+    }
+
+    /** Buscador del formulario de vehículos. */
+    public function buscar(Request $request)
+    {
+        return $this->respuestaDeBusqueda(
+            $request,
+            ColorVehiculo::orderBy('name')->get(),
+            fn (ColorVehiculo $c) => "{$c->name} {$c->code}",
+            fn (ColorVehiculo $c) => self::itemDeBuscador($c),
+        );
+    }
+
+    /** Forma que espera Tads.buscador; "color" pinta la muestra en lugar de una foto. */
+    public static function itemDeBuscador(ColorVehiculo $color): array
+    {
+        return [
+            'id' => $color->id,
+            'titulo' => $color->name,
+            'detalle' => $color->code,
+            'color' => $color->code,
+            'iniciales' => mb_strtoupper(mb_substr($color->name, 0, 2)),
+            'insignia' => null,
+        ];
     }
 
     public function create()

@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Contrato;
 use App\Models\Personal;
 use App\Models\TipoPersonal;
+use App\Models\Vacacion;
+use App\Services\ReglasVacacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -65,19 +67,25 @@ class PersonalController extends Controller
     {
         $datos = $request->validate([
             'q' => ['nullable', 'string', 'max:60'],
-            'contexto' => ['required', Rule::in(['contrato', 'asistencia'])],
+            'contexto' => ['required', Rule::in(['contrato', 'asistencia', 'vacaciones'])],
         ]);
 
         // Sin tildes ni mayúsculas: "perez" encuentra a "Pérez" (LIKE de SQLite no ignora las tildes).
         $normalizar = fn (?string $texto) => Str::lower(Str::ascii((string) $texto));
         $palabras = array_filter(preg_split('/\s+/', $normalizar(trim((string) ($datos['q'] ?? '')))));
         $paraAsistencia = $datos['contexto'] === 'asistencia';
+        $paraVacaciones = $datos['contexto'] === 'vacaciones';
+        $anio = today()->year;
 
         // El personal activo es un conjunto acotado: se filtra en PHP para poder comparar sin tildes.
         $personas = Personal::with('tipo')
             ->activos()
             ->withExists([
-                'contratos as con_contrato' => fn ($c) => $paraAsistencia ? $c->vigente() : $c->where('is_active', true),
+                'contratos as con_contrato' => fn ($c) => match (true) {
+                    $paraVacaciones => $c->vigente()->whereIn('type', ReglasVacacion::CONTRATOS_CON_DERECHO),
+                    $paraAsistencia => $c->vigente(),
+                    default => $c->where('is_active', true),
+                },
             ])
             ->orderBy('last_name')->orderBy('name')
             ->get()
@@ -95,15 +103,12 @@ class PersonalController extends Controller
             ->take(8)
             ->values();
 
-        return response()->json(['data' => $personas->map(function (Personal $p) use ($paraAsistencia) {
+        return response()->json(['data' => $personas->map(function (Personal $p) use ($paraAsistencia, $paraVacaciones, $anio) {
             // En la lista solo se marca lo relevante; en la tarjeta elegida siempre se informa el estado.
-            [$enLista, $elegido] = $paraAsistencia
-                ? ($p->con_contrato
-                    ? [null, ['texto' => 'Contrato vigente', 'color' => 'verde']]
-                    : [['texto' => 'Sin contrato vigente', 'color' => 'rojo'], ['texto' => 'Sin contrato vigente', 'color' => 'rojo']])
-                : ($p->con_contrato
-                    ? [['texto' => 'Contrato activo', 'color' => 'ambar'], ['texto' => 'Contrato activo', 'color' => 'ambar']]
-                    : [null, ['texto' => 'Sin contrato activo', 'color' => 'verde']]);
+            [$enLista, $elegido] = match (true) {
+                $paraVacaciones => $this->insigniasDeVacaciones($p, $anio),
+                default => $this->insigniasDeContrato($p, $paraAsistencia),
+            };
 
             return [
                 'id' => $p->id,
@@ -115,6 +120,33 @@ class PersonalController extends Controller
                 'insignia_elegido' => $elegido,
             ];
         })]);
+    }
+
+    /** @return array{0: ?array, 1: array} insignia de la lista y de la tarjeta elegida */
+    private function insigniasDeContrato(Personal $p, bool $paraAsistencia): array
+    {
+        return $paraAsistencia
+                ? ($p->con_contrato
+                    ? [null, ['texto' => 'Contrato vigente', 'color' => 'verde']]
+                    : [['texto' => 'Sin contrato vigente', 'color' => 'rojo'], ['texto' => 'Sin contrato vigente', 'color' => 'rojo']])
+                : ($p->con_contrato
+                    ? [['texto' => 'Contrato activo', 'color' => 'ambar'], ['texto' => 'Contrato activo', 'color' => 'ambar']]
+                    : [null, ['texto' => 'Sin contrato activo', 'color' => 'verde']]);
+    }
+
+    /** Vacaciones: solo el personal nombrado o permanente puede pedirlas; se informa cuántos días le quedan. */
+    private function insigniasDeVacaciones(Personal $p, int $anio): array
+    {
+        if (! $p->con_contrato) {
+            $sin = ['texto' => 'Sin contrato nombrado/permanente', 'color' => 'rojo'];
+
+            return [$sin, $sin];
+        }
+
+        $dias = Vacacion::diasDisponibles($p->id, $anio);
+        $elegido = ['texto' => "{$dias} día(s) disponibles en {$anio}", 'color' => $dias > 0 ? 'verde' : 'ambar'];
+
+        return [null, $elegido];
     }
 
     /** Historial de contratos de una persona (se abre en la ventana emergente del listado). */
@@ -133,7 +165,13 @@ class PersonalController extends Controller
 
     public function edit(string $id)
     {
-        return view('admin.personal.edit', $this->catalogos() + ['persona' => Personal::findOrFail($id)]);
+        $persona = Personal::findOrFail($id);
+        $tipo = TipoPersonal::withCount('personal')->find((int) old('usertype_id', $persona->usertype_id));
+
+        return view('admin.personal.edit', [
+            'persona' => $persona,
+            'tipoElegido' => $tipo ? TipoPersonalController::itemDeBuscador($tipo) : null,
+        ] + $this->catalogos());
     }
 
     public function update(Request $request, string $id)
@@ -161,10 +199,10 @@ class PersonalController extends Controller
 
     public function destroy(string $id)
     {
-        $persona = Personal::withCount(['contratos', 'asistencias'])->findOrFail($id);
+        $persona = Personal::withCount(['contratos', 'asistencias', 'vacaciones'])->findOrFail($id);
 
-        if ($persona->contratos_count > 0 || $persona->asistencias_count > 0) {
-            return $this->rechazo('No se puede eliminar: tiene contratos o asistencias. Márquelo como inactivo.', 'admin.personal.index');
+        if ($persona->contratos_count > 0 || $persona->asistencias_count > 0 || $persona->vacaciones_count > 0) {
+            return $this->rechazo('No se puede eliminar: tiene contratos, asistencias o vacaciones registradas. Márquelo como inactivo.', 'admin.personal.index');
         }
 
         $this->borrarArchivo($persona->profile_photo_path);
@@ -176,8 +214,8 @@ class PersonalController extends Controller
     private function catalogos(): array
     {
         return [
-            'tipos' => TipoPersonal::orderByDesc('is_system')->orderBy('name')->get(['id', 'name']),
             'idConductor' => TipoPersonal::conductor()?->id,
+            'tipoElegido' => null,
         ];
     }
 

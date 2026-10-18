@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\BuscaEnCatalogo;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\TipoPersonal;
@@ -10,6 +11,7 @@ use Illuminate\Validation\Rule;
 
 class TipoPersonalController extends Controller
 {
+    use BuscaEnCatalogo;
     use RespondeAjax;
 
     public function index()
@@ -25,6 +27,31 @@ class TipoPersonalController extends Controller
             ->map(fn (TipoPersonal $tipo) => $this->fila($tipo));
 
         return response()->json(['data' => $filas]);
+    }
+
+    /** Buscador del formulario de personal. */
+    public function buscar(Request $request)
+    {
+        return $this->respuestaDeBusqueda(
+            $request,
+            TipoPersonal::withCount('personal')->orderByDesc('is_system')->orderBy('name')->get(),
+            fn (TipoPersonal $t) => $t->name,
+            fn (TipoPersonal $t) => self::itemDeBuscador($t),
+        );
+    }
+
+    /** Forma que espera Tads.buscador; también se usa para precargar el valor al editar. */
+    public static function itemDeBuscador(TipoPersonal $tipo): array
+    {
+        $cantidad = $tipo->personal_count ?? $tipo->personal()->count();
+
+        return [
+            'id' => $tipo->id,
+            'titulo' => $tipo->name,
+            'detalle' => $cantidad === 1 ? '1 persona' : "{$cantidad} personas",
+            'iniciales' => mb_strtoupper(mb_substr($tipo->name, 0, 2)),
+            'insignia' => null,
+        ];
     }
 
     public function create()
