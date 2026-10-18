@@ -65,7 +65,7 @@
                     const marcas = (datos.marcaciones && datos.marcaciones.length)
                         ? datos.marcaciones.map((m) => {
                             const color = m.estado === 'ausente' ? 'rojo' : (m.tipo === 'entrada' ? 'verde' : 'ambar');
-                            const tarde = m.tipo === 'entrada' && m.tardanza > 0 ? ` · ${m.tardanza} min tarde` : '';
+                            const tarde = m.tipo === 'entrada' && m.tardanza > 0 ? ` · ${Tads.duracion(m.tardanza)} tarde` : '';
                             return `<span class="t-insignia t-${color} me-1">${Tads.escapar(m.hora)} ${Tads.escapar(m.tipo || 'ausente')}${tarde}</span>`;
                         }).join('')
                         : '<span class="text-muted">No hay registros para este día.</span>';
@@ -79,7 +79,7 @@
                     } else if (!esAusencia && datos.problema) {
                         aviso = `<div class="t-aviso t-aviso-alerta"><i class="bi bi-x-octagon-fill me-1"></i>${Tads.escapar(datos.problema)}</div>`;
                     } else if (!esAusencia) {
-                        const tarde = datos.tardanza > 0 ? ` con <strong>${datos.tardanza} min de tardanza</strong>` : ' a tiempo';
+                        const tarde = datos.tardanza > 0 ? ` con <strong>${Tads.duracion(datos.tardanza)} de tardanza</strong>` : ' a tiempo';
                         aviso = datos.tipo === 'entrada'
                             ? `<div class="t-aviso ${datos.tardanza > 0 ? 't-aviso-alerta' : 't-aviso-entrada'}"><i class="bi bi-box-arrow-in-right me-1"></i>Se registrará como ENTRADA${tarde}.</div>`
                             : '<div class="t-aviso t-aviso-salida"><i class="bi bi-box-arrow-right me-1"></i>Se registrará como SALIDA.</div>';

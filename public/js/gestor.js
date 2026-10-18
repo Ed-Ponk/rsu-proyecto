@@ -134,9 +134,19 @@
 
     Tads.insignia = (texto, color = 'gris') => `<span class="t-insignia t-${color}">${Tads.escapar(texto)}</span>`;
 
-    /** Etiqueta de puntualidad de una ENTRADA: minutos de tardanza (los calcula el backend) o "A tiempo". */
+    /** Duración legible: 45 → "45 min", 60 → "1 h", 90 → "1 h 30 min", 120 → "2 h". */
+    Tads.duracion = function (minutos) {
+        const total = Math.max(0, Math.round(Number(minutos) || 0));
+        if (total < 60) return `${total} min`;
+
+        const horas = Math.floor(total / 60);
+        const resto = total % 60;
+        return resto ? `${horas} h ${resto} min` : `${horas} h`;
+    };
+
+    /** Etiqueta de puntualidad de una ENTRADA: tiempo de tardanza (lo calcula el backend) o "A tiempo". */
     Tads.insigniaTardanza = (minutos) => (minutos > 0
-        ? Tads.insignia(`Tardanza ${minutos} min`, 'rojo')
+        ? Tads.insignia(`Tardanza ${Tads.duracion(minutos)}`, 'rojo')
         : Tads.insignia('A tiempo', 'verde'));
 
     Tads.celdaFecha = function (valor) {

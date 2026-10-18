@@ -64,6 +64,19 @@ class Avance02RestriccionesTest extends TestCase
         ]);
     }
 
+    /* ------------------------------- tardanza ------------------------------- */
+
+    public function test_la_tardanza_se_expresa_en_horas_a_partir_de_los_60_minutos(): void
+    {
+        $this->assertSame('1 min', Asistencia::textoDeDuracion(1));
+        $this->assertSame('59 min', Asistencia::textoDeDuracion(59));
+        $this->assertSame('1 h', Asistencia::textoDeDuracion(60));
+        $this->assertSame('1 h 1 min', Asistencia::textoDeDuracion(61));
+        $this->assertSame('1 h 30 min', Asistencia::textoDeDuracion(90));
+        $this->assertSame('2 h', Asistencia::textoDeDuracion(120));
+        $this->assertSame('3 h 5 min', Asistencia::textoDeDuracion(185));
+    }
+
     /* ------------------------------ vacaciones ------------------------------ */
 
     public function test_los_datos_de_la_solicitud_son_obligatorios_y_validos(): void

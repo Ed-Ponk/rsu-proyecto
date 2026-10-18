@@ -41,7 +41,7 @@
                     <li>
                         ${m.tipo === 'entrada' ? Tads.insignia('Entrada', 'verde') : Tads.insignia('Salida', 'ambar')}
                         <span class="t-ultimas-persona">${Tads.escapar(m.persona)}<small>${Tads.escapar(m.funcion ?? '')}${m.origen === 'marcacion' ? ' · DNI' : ' · Manual'}</small></span>
-                        ${m.tipo === 'entrada' && m.tardanza > 0 ? Tads.insignia(`${m.tardanza} min tarde`, 'rojo') : ''}
+                        ${m.tipo === 'entrada' && m.tardanza > 0 ? Tads.insignia(`${Tads.duracion(m.tardanza)} tarde`, 'rojo') : ''}
                         <span class="t-hora">${Tads.escapar(m.hora)}</span>
                     </li>`).join('');
             }

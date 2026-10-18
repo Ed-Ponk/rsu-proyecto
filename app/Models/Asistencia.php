@@ -28,6 +28,19 @@ class Asistencia extends Model
         return ['date' => 'date', 'shift_date' => 'date', 'late_minutes' => 'integer'];
     }
 
+    /** Duración legible de una tardanza: 45 → "45 min", 60 → "1 h", 90 → "1 h 30 min", 120 → "2 h". */
+    public static function textoDeDuracion(int $minutos): string
+    {
+        if ($minutos < 60) {
+            return "{$minutos} min";
+        }
+
+        $horas = intdiv($minutos, 60);
+        $resto = $minutos % 60;
+
+        return $resto ? "{$horas} h {$resto} min" : "{$horas} h";
+    }
+
     /** Momento real de la marcación (fecha calendario + hora). */
     public function momento(): Carbon
     {
