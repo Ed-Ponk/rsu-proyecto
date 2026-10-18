@@ -22,7 +22,9 @@ return new class extends Migration
         });
 
         // Registros previos: su turno empezó el mismo día de la marcación.
-        DB::table('attendances')->whereNull('shift_date')->update(['shift_date' => DB::raw('date')]);
+        // "date" se envuelve con la gramática del motor (`date` en MySQL, "date" en SQLite): es palabra clave en MySQL.
+        DB::table('attendances')->whereNull('shift_date')
+            ->update(['shift_date' => DB::raw(DB::getQueryGrammar()->wrap('date'))]);
     }
 
     public function down(): void

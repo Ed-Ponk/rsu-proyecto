@@ -82,8 +82,10 @@ class PersonalSeeder extends Seeder
 
                 if (! $yaExiste) {
                     Asistencia::create([
-                        'user_id' => $porDni[$dni]->id, 'date' => $ayer, 'time' => $hora, 'schedule_id' => $turnoManana?->id,
+                        'user_id' => $porDni[$dni]->id, 'date' => $ayer, 'time' => $hora,
+                        'schedule_id' => $turnoManana?->id, 'shift_date' => $ayer,   // turno Mañana de ayer
                         'type' => $tipo, 'status' => Asistencia::PRESENTE, 'source' => 'admin',
+                        'late_minutes' => $tipo === Asistencia::ENTRADA ? 0 : null,  // 06:02: dentro de la tolerancia
                     ]);
                 }
             }

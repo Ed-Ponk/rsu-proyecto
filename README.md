@@ -7,48 +7,85 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## Instalación local
+## Instalación local (rama `ramirez-alternativa`)
+
+Esta rama usa **MySQL** (o MariaDB) como base de datos.
 
 ### Requisitos
 
-- PHP 8.2 o superior
+- PHP 8.2 o superior, con la extensión `pdo_mysql` activa (XAMPP y Laragon ya la traen)
 - Composer
 - Node.js 20 o superior
+- MySQL 8 o MariaDB 10.4 o superior (por ejemplo, el de XAMPP o Laragon)
+- Git
 
 ### Pasos
 
-1. Instalar las dependencias de PHP y de JavaScript:
+1. Clonar el repositorio en esta rama:
+
+   ```bash
+   git clone -b ramirez-alternativa https://github.com/Ed-Ponk/rsu-proyecto.git
+   cd rsu-proyecto
+   ```
+
+   Si ya tienes el repositorio clonado, cambia a la rama:
+
+   ```bash
+   git fetch origin
+   git checkout ramirez-alternativa
+   ```
+
+2. Instalar las dependencias de PHP y de JavaScript:
 
    ```bash
    composer install
    npm install
    ```
 
-2. Crear el archivo de entorno y generar la clave de la aplicación:
+3. Crear el archivo de entorno y generar la clave de la aplicación:
 
    ```bash
    cp .env.example .env
    php artisan key:generate
    ```
 
-3. Crear la base de datos SQLite:
+   En Windows (CMD) usa `copy .env.example .env` en lugar de `cp`.
 
-   ```bash
-   touch database/database.sqlite
+4. Crear la base de datos vacía en MySQL (desde phpMyAdmin, MySQL Workbench o la consola):
+
+   ```sql
+   CREATE DATABASE rsu_proyecto CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
 
-4. Ejecutar migraciones y datos iniciales:
+5. Configurar la conexión en tu `.env` con los datos de **tu** MySQL:
+
+   ```env
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=rsu_proyecto
+   DB_USERNAME=root
+   DB_PASSWORD=
+   ```
+
+   - XAMPP y Laragon usan por defecto el puerto `3306`, el usuario `root` y la contraseña vacía.
+   - Si tu MySQL usa otro puerto o tiene contraseña, cámbialos aquí.
+   - El `.env` es personal y **no se sube a GitHub**.
+
+6. Ejecutar las migraciones y los datos iniciales:
 
    ```bash
    php artisan migrate --seed
    ```
 
-5. Compilar los assets en modo desarrollo y levantar el servidor:
+7. Compilar los assets y levantar el servidor:
 
    ```bash
    npm run dev
    php artisan serve
    ```
+
+   Abre <http://127.0.0.1:8000> en el navegador.
 
 ### Configuración local del .env
 
@@ -59,7 +96,7 @@ APP_ENV=local
 APP_DEBUG=true
 ```
 
-### Usuario administrador (solo desarrollo)
+### Usuarios de prueba (solo desarrollo)
 
 El seeder crea un usuario administrador inicial:
 
@@ -67,6 +104,55 @@ El seeder crea un usuario administrador inicial:
 - Contraseña: `Admin12345`
 
 **Es solo para entorno de desarrollo.** No usar en producción: cambia la contraseña apenas inicia sesión (o elimina el usuario) antes de desplegar.
+
+Para probar la **Marcación DNI** (menú *Gestión de personal → Marcación DNI*), todo el personal del seeder tiene la clave `secret123`:
+
+| DNI | Persona | Contrato vigente |
+|---|---|---|
+| `12345678` | Carlos Guerrero (Conductor) | Sí |
+| `70000008` | Fernando Ramírez (Conductor) | Sí |
+| `80000019` | Miguel Gómez (Ayudante) | Sí |
+| `70000007` | Juan Pérez (Ayudante) | No: el sistema rechaza la marcación |
+
+Reglas de la marcación:
+
+- Una entrada y una salida por turno.
+- La entrada registra la tardanza si se pasa de la tolerancia.
+- La espera mínima entre marcaciones, la tolerancia y los demás parámetros se ajustan en `config/proyecto.php`.
+
+### Después de actualizar la rama (`git pull`)
+
+Si llegaron cambios nuevos, aplica las migraciones pendientes:
+
+```bash
+composer install
+php artisan migrate
+```
+
+Para empezar de cero con los datos de prueba (**borra todo lo que tengas en la base**):
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+### Pruebas automáticas (opcional)
+
+```bash
+php artisan test
+```
+
+Usan SQLite en memoria, así que no tocan tu base MySQL. Las pruebas de imágenes de vehículos necesitan la extensión `gd` de PHP. Si no la tienes activa, esas 3 pruebas fallan, pero el resto funciona igual.
+
+### Problemas comunes
+
+| Error | Solución |
+|---|---|
+| `could not find driver` | Activa `extension=pdo_mysql` en tu `php.ini` y reinicia el servidor. |
+| `Access denied for user 'root'` | El usuario o la contraseña de `DB_USERNAME` / `DB_PASSWORD` no coinciden con tu MySQL. |
+| `Unknown database 'rsu_proyecto'` | Falta el paso 4: crear la base de datos. |
+| `SQLSTATE[HY000] [2002]` (conexión rechazada) | MySQL no está encendido, o el puerto de `DB_PORT` no es el correcto. |
+| Los cambios de configuración no se aplican | Ejecuta `php artisan config:clear`. |
+| La página se ve sin estilos nuevos | Recarga con <kbd>Ctrl</kbd> + <kbd>F5</kbd>. |
 
 ### Assets de AdminLTE (`public/vendor`)
 
