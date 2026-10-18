@@ -11,34 +11,6 @@
     const Tads = (global.Tads = global.Tads || {});
     Tads.Modulos = Tads.Modulos || {};
 
-    /* ---------- Formulario: los modelos que se ofrecen dependen de la marca elegida ---------- */
-    function activarModelosPorMarca(cuerpo) {
-        const marca = cuerpo.querySelector('#vehiculoMarca');
-        const modelo = cuerpo.querySelector('#vehiculoModelo');
-        if (!marca || !modelo) return;
-
-        const todos = [...modelo.querySelectorAll('option[data-marca]')].map((op) => op.cloneNode(true));
-        const elegido = String(modelo.dataset.elegido || '');
-
-        function ofrecerModelos(seleccionar) {
-            modelo.querySelectorAll('option[data-marca]').forEach((op) => op.remove());
-
-            if (!marca.value) {
-                modelo.disabled = true;
-                modelo.value = '';
-                return;
-            }
-
-            todos.filter((op) => op.dataset.marca === marca.value).forEach((op) => modelo.appendChild(op.cloneNode(true)));
-            modelo.disabled = false;
-            modelo.value = seleccionar || '';
-        }
-
-        marca.addEventListener('change', () => ofrecerModelos(''));
-        ofrecerModelos(elegido);
-    }
-
-    /* ---------- Gestor de Galería Multi-Imagen ---------- */
     function iniciarGestorImagenes(contenedor, gestorVehiculos) {
         const MAX_BYTES = 2 * 1024 * 1024;
         const FORMATOS = ['image/jpeg', 'image/png', 'image/gif'];
@@ -238,7 +210,6 @@
                 urlRecurso: urlRecurso,
                 urlCrear: urlCrear,
                 orden: [[2, 'asc']],
-                alCargarFormulario: activarModelosPorMarca,
                 columnas: [
                     { data: 'imagen', orderable: false, searchable: false,
                         render: (url) => `<img class="t-miniatura" src="${Tads.escapar(url)}" alt="Vehículo">` },

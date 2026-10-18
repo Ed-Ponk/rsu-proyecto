@@ -23,6 +23,32 @@ return [
         'imagen_formatos' => ['jpeg', 'jpg', 'png', 'gif'],
     ],
 
+    'vacaciones' => [
+        // Cupo de días de vacaciones por persona y año (solo las solicitudes aprobadas lo descuentan).
+        'dias_por_anio' => 30,
+    ],
+
+    'turnos' => [
+        // Duración permitida de un turno (los que cruzan la medianoche se miden hasta el día siguiente).
+        'duracion_minima_horas' => 1,
+        'duracion_maxima_horas' => 12,
+    ],
+
+    'feriados' => [
+        // Años permitidos al registrar un feriado a mano.
+        'anio_minimo' => 2020,
+        'anios_hacia_adelante' => 10,
+    ],
+
+    'zonas' => [
+        // Superficie permitida de una zona (km²): evita figuras diminutas por error o zonas que abarcan media provincia.
+        'area_minima_km2' => 0.0001,
+        'area_maxima_km2' => 150,
+        // Cuánto puede invadir una zona a otra, como fracción de la más pequeña de las dos (0.01 = 1 %).
+        // Una tolerancia mínima permite que dos zonas vecinas compartan un borde dibujado a mano.
+        'solape_maximo' => 0.01,
+    ],
+
     'personal' => [
         'edad_minima' => 18,
     ],

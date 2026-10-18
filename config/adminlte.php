@@ -797,7 +797,17 @@ return [
                 ['text' => 'Personal', 'route' => 'admin.personal.index', 'icon' => 'bi bi-person-lines-fill'],
                 ['text' => 'Contratos', 'route' => 'admin.contratos.index', 'icon' => 'bi bi-file-earmark-text'],
                 ['text' => 'Asistencias', 'route' => 'admin.asistencias.index', 'icon' => 'bi bi-calendar-check'],
+                ['text' => 'Vacaciones', 'route' => 'admin.vacaciones.index', 'icon' => 'bi bi-umbrella-fill'],
                 ['text' => 'Marcación DNI', 'route' => 'admin.asistencias.marcacion', 'icon' => 'bi bi-fingerprint'],
+            ],
+        ],
+        [
+            'text' => 'Programación',
+            'icon' => 'bi bi-calendar3',
+            'submenu' => [
+                ['text' => 'Turnos', 'route' => 'admin.turnos.index', 'icon' => 'bi bi-clock-fill'],
+                ['text' => 'Zonas', 'route' => 'admin.zonas.index', 'icon' => 'bi bi-geo-alt-fill'],
+                ['text' => 'Feriados', 'route' => 'admin.feriados.index', 'icon' => 'bi bi-flag-fill'],
             ],
         ],
         ['header' => 'CUENTA'],
@@ -832,6 +842,15 @@ return [
 
     'plugins' => [
         // Estilos y script propios del proyecto (carpeta public/).
+        'Leaflet' => [
+            'active' => false,   // solo se carga en las pantallas que lo piden con @section('plugins.Leaflet', true)
+            'files' => [
+                ['type' => 'css', 'asset' => true, 'location' => 'vendor/leaflet/leaflet.css'],
+                ['type' => 'css', 'asset' => true, 'location' => 'vendor/leaflet-draw/leaflet.draw.css'],
+                ['type' => 'js', 'asset' => true, 'location' => 'vendor/leaflet/leaflet.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'vendor/leaflet-draw/leaflet.draw.js'],
+            ],
+        ],
         'EstilosTads' => [
             'active' => true,
             'files' => [
@@ -846,6 +865,9 @@ return [
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/personal.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/colores.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/catalogos.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/programacion.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/vacaciones.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/zonas.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/app-admin.js'],
             ],
         ],

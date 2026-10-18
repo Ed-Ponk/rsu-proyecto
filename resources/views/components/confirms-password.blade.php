@@ -1,4 +1,4 @@
-@props(['title' => __('Confirm Password'), 'content' => __('For your security, please confirm your password to continue.'), 'button' => __('Confirm')])
+@props(['title' => 'Confirme su contraseña', 'content' => 'Por su seguridad, confirme su contraseña para continuar.', 'button' => 'Confirmar'])
 
 @php
     $confirmableId = md5($attributes->wire('then'));
@@ -17,29 +17,29 @@
 @once
 <x-dialog-modal wire:model.live="confirmingPassword">
     <x-slot name="title">
-        {{ $title }}
+        <i class="bi bi-shield-lock-fill me-2"></i>{{ $title }}
     </x-slot>
 
     <x-slot name="content">
-        {{ $content }}
+        <p class="mb-3">{{ $content }}</p>
 
-        <div class="mt-4" x-data="{}" x-on:confirming-password.window="setTimeout(() => $refs.confirmable_password.focus(), 250)">
-            <x-input type="password" class="mt-1 block w-3/4" placeholder="{{ __('Password') }}" autocomplete="current-password"
+        <div x-data="{}" x-on:confirming-password.window="setTimeout(() => $refs.confirmable_password.focus(), 250)">
+            <x-input type="password" placeholder="Contraseña" autocomplete="current-password"
                         x-ref="confirmable_password"
                         wire:model="confirmablePassword"
                         wire:keydown.enter="confirmPassword" />
 
-            <x-input-error for="confirmable_password" class="mt-2" />
+            <x-input-error for="confirmable_password" class="mt-1" />
         </div>
     </x-slot>
 
     <x-slot name="footer">
         <x-secondary-button wire:click="stopConfirmingPassword" wire:loading.attr="disabled">
-            {{ __('Cancel') }}
+            <i class="bi bi-x-lg me-1"></i> Cancelar
         </x-secondary-button>
 
-        <x-button class="ms-3" dusk="confirm-password-button" wire:click="confirmPassword" wire:loading.attr="disabled">
-            {{ $button }}
+        <x-button class="ms-2" dusk="confirm-password-button" wire:click="confirmPassword" wire:loading.attr="disabled">
+            <i class="bi bi-check2-circle me-1"></i> {{ $button }}
         </x-button>
     </x-slot>
 </x-dialog-modal>

@@ -186,6 +186,9 @@
 
     /** forma "avatar" (foto circular de persona) o "logo" (imagen completa en un recuadro, p. ej. marcas). */
     function avatarDe(item, forma = 'avatar') {
+        // Un color se muestra como muestra de su código hexadecimal, no como foto ni iniciales.
+        if (item.color) return `<span class="t-avatar t-avatar-color" style="background:${Tads.escapar(item.color)}"></span>`;
+
         const clase = forma === 'logo' ? 't-avatar t-avatar-logo' : 't-avatar';
         return item.foto
             ? `<img class="${clase}" src="${Tads.escapar(item.foto)}" alt="">`
@@ -222,6 +225,16 @@
             cambiar: raiz.dataset.cambiar || 'Cambiar',
         };
         const forma = raiz.dataset.forma || 'avatar';
+
+        // Buscador dependiente (ej. modelo según la marca): envía el valor de otro buscador y se reinicia si este cambia.
+        const dependencia = raiz.dataset.depende ? raiz.closest('form')?.querySelector(raiz.dataset.depende) : null;
+        const textoLibre = campo.placeholder;
+        const revisarDependencia = () => {
+            if (!dependencia) return;
+            const lista = !!dependencia.value;
+            campo.disabled = !lista;
+            campo.placeholder = lista ? textoLibre : (raiz.dataset.sinDependencia || textoLibre);
+        };
 
         let resultados = [];
         let activo = -1;
@@ -271,6 +284,7 @@
 
             const url = new URL(raiz.dataset.url, window.location.href);
             url.searchParams.set('q', texto);
+            if (dependencia) url.searchParams.set(raiz.dataset.parametro, dependencia.value);
             const { ok, estado, json } = await Tads.peticion(url.toString());
             if (miTurno !== turno) return;   // llegó tarde: ya hay una búsqueda más nueva
 
@@ -359,6 +373,22 @@
         // Valor ya elegido (al editar): llega como JSON con la misma forma que los resultados.
         if (raiz.dataset.inicial) {
             try { elegir(JSON.parse(raiz.dataset.inicial), true); } catch (e) { /* JSON inválido: se ignora */ }
+        }
+
+        if (dependencia) {
+            // Si se cambia la marca, el modelo elegido ya no corresponde: se limpia y se vuelve a habilitar.
+            dependencia.addEventListener('change', () => {
+                if (oculto.value) {
+                    oculto.value = '';
+                    campo.value = '';
+                    elegido.hidden = true;
+                    entrada.hidden = false;
+                    avisarCambio();
+                }
+                revisarDependencia();
+                marcarValidez();
+            });
+            revisarDependencia();
         }
 
         marcarValidez();
@@ -550,6 +580,7 @@
                 return devolver({ data: [] });
             }
 
+            c.alCargarListado?.(json);
             devolver({ data: json.data });
         }
 

@@ -57,7 +57,9 @@ class VehiculoController extends Controller
 
     public function edit(string $id)
     {
-        return view('admin.vehiculos.edit', $this->catalogos() + ['vehiculo' => Vehiculo::findOrFail($id)]);
+        $vehiculo = Vehiculo::findOrFail($id);
+
+        return view('admin.vehiculos.edit', ['vehiculo' => $vehiculo, 'elegidos' => $this->elegidos($vehiculo)]);
     }
 
     public function update(Request $request, string $id)
@@ -177,11 +179,27 @@ class VehiculoController extends Controller
 
     private function catalogos(): array
     {
+        return ['elegidos' => $this->elegidos()];
+    }
+
+    /**
+     * Valores ya elegidos para precargar los buscadores (al editar o al volver con errores).
+     * Cada uno tiene la misma estructura que devuelve su buscador, o null si todavía no hay nada elegido.
+     */
+    private function elegidos(?Vehiculo $vehiculo = null): array
+    {
+        $id = fn (string $campo) => (int) old($campo, $vehiculo?->{$campo});
+
+        $marca = Marca::withCount('modelos')->find($id('brand_id'));
+        $modelo = Modelo::find($id('model_id'));
+        $tipo = TipoVehiculo::withCount('vehiculos')->find($id('type_id'));
+        $color = ColorVehiculo::find($id('color_id'));
+
         return [
-            'marcas' => Marca::orderBy('name')->get(['id', 'name']),
-            'modelos' => Modelo::orderBy('name')->get(['id', 'name', 'brand_id']),
-            'tipos' => TipoVehiculo::orderBy('name')->get(['id', 'name']),
-            'colores' => ColorVehiculo::orderBy('name')->get(['id', 'name', 'code']),
+            'marca' => $marca ? MarcaController::itemDeBuscador($marca) : null,
+            'modelo' => $modelo ? ModeloController::itemDeBuscador($modelo) : null,
+            'tipo' => $tipo ? TipoVehiculoController::itemDeBuscador($tipo) : null,
+            'color' => $color ? ColorController::itemDeBuscador($color) : null,
         ];
     }
 

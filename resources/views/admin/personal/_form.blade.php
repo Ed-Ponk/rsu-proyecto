@@ -16,13 +16,14 @@
                 <div class="form-text">8 dígitos, único por persona.</div>
             </div>
             <div class="col-md-6">
-                <label for="personalTipo" class="form-label t-obligatorio">Tipo de personal</label>
-                <select name="usertype_id" id="personalTipo" class="form-select" required data-conductor="{{ $idConductor }}">
-                    <option value="">Seleccione un tipo</option>
-                    @foreach ($tipos as $tipo)
-                        <option value="{{ $tipo->id }}" @selected((int) old('usertype_id', $persona->usertype_id ?? 0) === $tipo->id)>{{ $tipo->name }}</option>
-                    @endforeach
-                </select>
+                <label for="personalTipoTexto" class="form-label t-obligatorio">Tipo de personal</label>
+                @include('admin.partials.buscador', [
+                    'id' => 'personalTipoTexto', 'nombre' => 'usertype_id', 'url' => route('admin.tipospersonal.buscar'),
+                    'placeholder' => 'Escriba el tipo de personal...', 'elegido' => $tipoElegido,
+                    'mensaje' => 'Seleccione un tipo de personal de la lista.', 'cambiar' => 'Cambiar tipo',
+                    'vacio' => 'No hay tipos de personal registrados.', 'sinCoincidencias' => 'No hay tipos que coincidan con «:texto».',
+                ])
+                <input type="hidden" id="personalTipo" value="{{ old('usertype_id', $persona->usertype_id ?? '') }}" data-conductor="{{ $idConductor }}">
             </div>
 
             <div class="col-md-6">

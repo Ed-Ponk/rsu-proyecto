@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\BuscaEnCatalogo;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Marca;
@@ -12,6 +13,7 @@ use Illuminate\Validation\Rule;
 
 class ModeloController extends Controller
 {
+    use BuscaEnCatalogo;
     use RespondeAjax;
 
     public function index()
@@ -27,6 +29,31 @@ class ModeloController extends Controller
             ->map(fn (Modelo $modelo) => $this->fila($modelo));
 
         return response()->json(['data' => $filas]);
+    }
+
+    /** Buscador de modelos del formulario de vehículos: solo los de la marca indicada en ?marca=. */
+    public function buscar(Request $request)
+    {
+        $marca = (int) $request->input('marca');
+
+        return $this->respuestaDeBusqueda(
+            $request,
+            $marca ? Modelo::where('brand_id', $marca)->orderBy('name')->get() : collect(),
+            fn (Modelo $m) => "{$m->name} {$m->code}",
+            fn (Modelo $m) => self::itemDeBuscador($m),
+        );
+    }
+
+    /** Forma que espera Tads.buscador; también se usa para precargar el valor al editar. */
+    public static function itemDeBuscador(Modelo $modelo): array
+    {
+        return [
+            'id' => $modelo->id,
+            'titulo' => $modelo->name,
+            'detalle' => "Código {$modelo->code}",
+            'iniciales' => mb_strtoupper(mb_substr($modelo->name, 0, 2)),
+            'insignia' => null,
+        ];
     }
 
     public function create()

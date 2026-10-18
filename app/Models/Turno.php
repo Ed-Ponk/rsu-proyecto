@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /** Turno de trabajo (Mañana, Tarde, Noche). Si la hora de fin es menor o igual a la de inicio, cruza la medianoche. */
@@ -11,6 +12,11 @@ class Turno extends Model
     protected $table = 'schedules';
 
     protected $fillable = ['name', 'time_start', 'time_end', 'description'];
+
+    public function asistencias(): HasMany
+    {
+        return $this->hasMany(Asistencia::class, 'schedule_id');
+    }
 
     public function getRangoAttribute(): string
     {

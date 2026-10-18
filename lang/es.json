@@ -1,0 +1,7 @@
+{
+    "The provided password does not match your current password.": "La contraseña indicada no coincide con su contraseña actual.",
+    "The provided password was incorrect.": "La contraseña indicada es incorrecta.",
+    "This password does not match our records.": "Esta contraseña no coincide con nuestros registros.",
+    "The provided two factor authentication code was invalid.": "El código de verificación en dos pasos no es válido.",
+    "The provided two factor recovery code was invalid.": "El código de recuperación no es válido."
+}

@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             TipoPersonalSeeder::class,
             TurnoSeeder::class,
+            FeriadoSeeder::class,
+            ZonaSeeder::class,
             MarcaSeeder::class,
             ModeloSeeder::class,
             TipoVehiculoSeeder::class,
@@ -29,6 +31,7 @@ class DatabaseSeeder extends Seeder
             VehiculoSeeder::class,
             ImagenVehiculoSeeder::class,
             PersonalSeeder::class,
+            VacacionSeeder::class,
         ]);
     }
 }
