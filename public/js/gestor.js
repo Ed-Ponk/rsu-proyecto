@@ -102,13 +102,16 @@
 
         Object.entries(errores).forEach(([clave, mensajes]) => {
             const base = clave.split('.')[0];
-            const campo = [...formulario.querySelectorAll(`[name="${clave}"], [name="${base}"], [name="${base}[]"]`)]
-                .find((el) => el.type !== 'hidden');
+            const candidatos = [...formulario.querySelectorAll(`[name="${clave}"], [name="${base}"], [name="${base}[]"]`)];
+            // En un buscador el valor viaja en un campo oculto: el error se marca en su caja de texto.
+            const oculto = candidatos.find((el) => el.type === 'hidden' && el.closest('.t-buscador'));
+            const campo = candidatos.find((el) => el.type !== 'hidden')
+                ?? oculto?.closest('.t-buscador').querySelector('input[type="search"]');
 
             if (!campo) { sueltos.push(mensajes[0]); return; }
 
             campo.classList.add('is-invalid');
-            const referencia = campo.closest('.input-group') ?? campo;
+            const referencia = campo.closest('.t-buscador') ?? campo.closest('.input-group') ?? campo;
             const aviso = document.createElement('div');
             aviso.className = 'invalid-feedback t-error d-block';
             aviso.textContent = mensajes[0];
@@ -130,6 +133,11 @@
     /* ---------- piezas de HTML que se repiten en las columnas ---------- */
 
     Tads.insignia = (texto, color = 'gris') => `<span class="t-insignia t-${color}">${Tads.escapar(texto)}</span>`;
+
+    /** Etiqueta de puntualidad de una ENTRADA: minutos de tardanza (los calcula el backend) o "A tiempo". */
+    Tads.insigniaTardanza = (minutos) => (minutos > 0
+        ? Tads.insignia(`Tardanza ${minutos} min`, 'rojo')
+        : Tads.insignia('A tiempo', 'verde'));
 
     Tads.celdaFecha = function (valor) {
         if (!valor) return '<span class="text-muted">—</span>';
@@ -163,6 +171,326 @@
             lector.readAsDataURL(archivo);
         });
     };
+
+    /* ------------------------------------------------------------------ Buscador */
+
+    /** Resalta en el texto (ya escapado) las palabras buscadas. */
+    function resaltar(texto, palabras) {
+        let html = Tads.escapar(texto);
+        palabras.forEach((palabra) => {
+            const patron = Tads.escapar(palabra).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            html = html.replace(new RegExp(`(${patron})`, 'gi'), '<mark>$1</mark>');
+        });
+        return html;
+    }
+
+    /** forma "avatar" (foto circular de persona) o "logo" (imagen completa en un recuadro, p. ej. marcas). */
+    function avatarDe(item, forma = 'avatar') {
+        const clase = forma === 'logo' ? 't-avatar t-avatar-logo' : 't-avatar';
+        return item.foto
+            ? `<img class="${clase}" src="${Tads.escapar(item.foto)}" alt="">`
+            : `<span class="${clase}">${Tads.escapar(item.iniciales ?? '')}</span>`;
+    }
+
+    /**
+     * Convierte un .t-buscador[data-tads-buscador] en un campo de búsqueda con sugerencias del servidor.
+     * El controlador responde { data: [{ id, titulo, detalle, foto, iniciales, insignia, insignia_elegido }] }
+     * (insignia = { texto, color } o null). El id elegido viaja en el input oculto, así que el backend sigue
+     * validando como con un combo; al elegir o limpiar, el oculto emite "change" para quien lo escuche.
+     *
+     * Atributos opcionales del contenedor: data-mensaje, data-sin-coincidencias (":texto" = lo buscado),
+     * data-vacio, data-cambiar (ayuda del botón), data-forma ("avatar" | "logo") y data-inicial (JSON del valor elegido).
+     */
+    Tads.buscador = function (raiz) {
+        if (raiz._tadsBuscador) return;
+        raiz._tadsBuscador = true;
+
+        const oculto = raiz.querySelector('input[type="hidden"]');
+        const entrada = raiz.querySelector('.t-buscador-entrada');
+        const campo = entrada.querySelector('input');
+        const lista = raiz.querySelector('.t-buscador-lista');
+        const elegido = document.createElement('div');
+        elegido.className = 't-buscador-elegido';
+        elegido.hidden = true;
+        raiz.appendChild(elegido);
+
+        // Textos propios de cada buscador (personal, marcas...), declarados en el HTML.
+        const textos = {
+            requerido: raiz.dataset.mensaje || 'Seleccione una opción de la lista.',
+            sinCoincidencias: raiz.dataset.sinCoincidencias || 'No hay resultados que coincidan con «:texto».',
+            vacio: raiz.dataset.vacio || 'No hay registros.',
+            cambiar: raiz.dataset.cambiar || 'Cambiar',
+        };
+        const forma = raiz.dataset.forma || 'avatar';
+
+        let resultados = [];
+        let activo = -1;
+        let espera = null;
+        let turno = 0;
+
+        const marcarValidez = () => campo.setCustomValidity(oculto.value ? '' : textos.requerido);
+        const avisarCambio = () => oculto.dispatchEvent(new Event('change', { bubbles: true }));
+        const insigniaDe = (i) => (i ? Tads.insignia(i.texto, i.color) : '');
+
+        const ficha = (item, palabras = []) => `
+            ${avatarDe(item, forma)}
+            <span class="t-buscador-texto">
+                <strong>${resaltar(item.titulo, palabras)}</strong>
+                ${item.detalle ? `<small>${resaltar(item.detalle, palabras)}</small>` : ''}
+            </span>`;
+
+        function abrir(abierta) {
+            lista.hidden = !abierta;
+            campo.setAttribute('aria-expanded', String(abierta));
+        }
+
+        function pintar(texto) {
+            const palabras = texto.split(/\s+/).filter(Boolean);
+            activo = resultados.length ? 0 : -1;
+
+            lista.innerHTML = resultados.length
+                ? resultados.map((item, i) => `
+                    <li class="t-buscador-opcion${i === activo ? ' activa' : ''}" role="option" id="${lista.id}-${i}" data-indice="${i}" aria-selected="${i === activo}">
+                        ${ficha(item, palabras)}
+                        ${insigniaDe(item.insignia)}
+                    </li>`).join('')
+                : `<li class="t-buscador-vacio"><i class="bi bi-search"></i>${texto
+                    ? Tads.escapar(textos.sinCoincidencias.replace(':texto', texto))
+                    : Tads.escapar(textos.vacio)}</li>`;
+
+            campo.setAttribute('aria-activedescendant', activo >= 0 ? `${lista.id}-${activo}` : '');
+            abrir(true);
+        }
+
+        async function buscar() {
+            const texto = campo.value.trim();
+            const miTurno = ++turno;
+
+            lista.innerHTML = '<li class="t-buscador-vacio"><span class="spinner-border spinner-border-sm"></span>Buscando...</li>';
+            abrir(true);
+
+            const url = new URL(raiz.dataset.url, window.location.href);
+            url.searchParams.set('q', texto);
+            const { ok, estado, json } = await Tads.peticion(url.toString());
+            if (miTurno !== turno) return;   // llegó tarde: ya hay una búsqueda más nueva
+
+            if (!ok) {
+                abrir(false);
+                return Tads.alertaDeError(estado, json, 'No se pudo buscar');
+            }
+
+            resultados = json.data ?? [];
+            pintar(texto);
+        }
+
+        function moverA(indice) {
+            if (!resultados.length) return;
+            activo = (indice + resultados.length) % resultados.length;
+            lista.querySelectorAll('.t-buscador-opcion').forEach((op, i) => {
+                op.classList.toggle('activa', i === activo);
+                op.setAttribute('aria-selected', String(i === activo));
+            });
+            lista.querySelector('.activa')?.scrollIntoView({ block: 'nearest' });
+            campo.setAttribute('aria-activedescendant', `${lista.id}-${activo}`);
+        }
+
+        /** silencioso: al precargar un valor (formulario de edición) no se emite "change". */
+        function elegir(item, silencioso = false) {
+            oculto.value = item.id;
+            campo.value = item.titulo;
+            campo.classList.remove('is-invalid');
+            raiz.parentElement.querySelectorAll('.t-error').forEach((el) => el.remove());
+            marcarValidez();
+
+            elegido.innerHTML = `
+                ${ficha(item)}
+                ${insigniaDe(item.insignia_elegido ?? item.insignia)}
+                <button type="button" class="btn t-boton-icono t-neutro" data-cambiar-eleccion data-bs-toggle="tooltip" title="${Tads.escapar(textos.cambiar)}"><i class="bi bi-arrow-repeat"></i></button>`;
+            elegido.hidden = false;
+            entrada.hidden = true;
+            bootstrap.Tooltip.getOrCreateInstance(elegido.querySelector('[data-cambiar-eleccion]'));
+            abrir(false);
+            if (!silencioso) avisarCambio();
+        }
+
+        function limpiar() {
+            oculto.value = '';
+            campo.value = '';
+            elegido.hidden = true;
+            entrada.hidden = false;
+            marcarValidez();
+            avisarCambio();
+            campo.focus();
+        }
+
+        campo.addEventListener('input', () => {
+            if (oculto.value) { oculto.value = ''; avisarCambio(); }
+            marcarValidez();
+            clearTimeout(espera);
+            espera = setTimeout(buscar, 250);
+        });
+
+        campo.addEventListener('focus', () => { if (!oculto.value) buscar(); });
+
+        campo.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); lista.hidden ? buscar() : moverA(activo + 1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); moverA(activo - 1); }
+            else if (e.key === 'Enter' && !lista.hidden) { e.preventDefault(); if (resultados[activo]) elegir(resultados[activo]); }
+            else if (e.key === 'Escape' && !lista.hidden) { e.stopPropagation(); abrir(false); }
+        });
+
+        // mousedown en lugar de click: se adelanta al blur del campo.
+        lista.addEventListener('mousedown', (e) => {
+            const opcion = e.target.closest('.t-buscador-opcion');
+            if (!opcion) return;
+            e.preventDefault();
+            elegir(resultados[Number(opcion.dataset.indice)]);
+        });
+
+        elegido.addEventListener('click', (e) => {
+            const boton = e.target.closest('[data-cambiar-eleccion]');
+            if (!boton) return;
+            bootstrap.Tooltip.getInstance(boton)?.dispose();
+            limpiar();
+        });
+
+        campo.addEventListener('blur', () => setTimeout(() => abrir(false), 120));
+
+        // Valor ya elegido (al editar): llega como JSON con la misma forma que los resultados.
+        if (raiz.dataset.inicial) {
+            try { elegir(JSON.parse(raiz.dataset.inicial), true); } catch (e) { /* JSON inválido: se ignora */ }
+        }
+
+        marcarValidez();
+    };
+
+    Tads.iniciarBuscadores = (raiz) => raiz.querySelectorAll('[data-tads-buscador]').forEach(Tads.buscador);
+
+    /* ------------------------------------------------------------------ Reloj del servidor */
+
+    /**
+     * Reloj que muestra la hora del SERVIDOR (la que se guarda en las marcaciones), no la de la PC.
+     * Consulta { servidor, zona, turno, ... } cada cierto tiempo, mide el desfase y avanza solo cada segundo.
+     *   Tads.relojDelServidor({ url, hora, fecha, turno, formatoFecha, alEstado(json) })
+     * hora/fecha/turno son elementos (opcionales) donde se pinta; alEstado recibe la respuesta completa.
+     */
+    Tads.relojDelServidor = function ({ url, hora, fecha, turno, formatoFecha = 'larga', cadaMs = 30000, alEstado }) {
+        let desfase = 0;
+        let fmtHora = null;
+        let fmtFecha = null;
+
+        function tic() {
+            if (!fmtHora) return;
+            const ahora = new Date(Date.now() + desfase);
+            if (hora) hora.textContent = fmtHora.format(ahora);
+            if (fecha) {
+                const texto = fmtFecha.format(ahora);
+                fecha.textContent = texto.charAt(0).toUpperCase() + texto.slice(1);
+            }
+        }
+
+        async function consultar() {
+            const enviado = Date.now();
+            const { ok, json } = await Tads.peticion(url);
+            if (!ok || !json) return;
+
+            // Se descuenta la mitad del viaje de ida y vuelta para no adelantar ni atrasar el reloj.
+            desfase = new Date(json.servidor).getTime() + (Date.now() - enviado) / 2 - Date.now();
+
+            if (!fmtHora) {
+                fmtHora = new Intl.DateTimeFormat('es-PE', { timeZone: json.zona, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                fmtFecha = new Intl.DateTimeFormat('es-PE', formatoFecha === 'corta'
+                    ? { timeZone: json.zona, weekday: 'long', day: 'numeric', month: 'long' }
+                    : { timeZone: json.zona, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            }
+            tic();
+
+            if (turno) {
+                turno.innerHTML = json.turno
+                    ? `<i class="bi bi-clock me-1"></i> Turno ${Tads.escapar(json.turno)}`
+                    : '<i class="bi bi-moon-stars me-1"></i> Fuera de turno';
+            }
+            alEstado?.(json);
+        }
+
+        consultar();
+        setInterval(tic, 1000);
+        setInterval(consultar, cadaMs);
+
+        return { consultar };
+    };
+
+    /* ------------------------------------------------------------------ Verificación en vivo */
+
+    /**
+     * Valida contra el servidor mientras se escribe. El contenedor [data-tads-verificar="url"] agrupa los campos
+     * marcados con data-verificar; con cada cambio se envían sus valores y el controlador responde
+     * { errores: { campo: mensaje } } usando las mismas reglas que al guardar. El botón Guardar sigue validando igual.
+     */
+    Tads.verificacionEnVivo = function (contenedor) {
+        if (contenedor._tadsVerificar) return;
+        contenedor._tadsVerificar = true;
+
+        const campos = [...contenedor.querySelectorAll('[data-verificar]')];
+        let espera = null;
+        let turno = 0;
+
+        // El error se pinta en la caja visible: en un buscador es su campo de texto, no el oculto.
+        const visibleDe = (campo) => (campo.type === 'hidden'
+            ? campo.closest('.t-buscador')?.querySelector('input[type="search"]')
+            : campo);
+
+        function pintar(campo, mensaje, completo) {
+            const visible = visibleDe(campo);
+            if (!visible) return;
+            const referencia = visible.closest('.t-buscador') ?? visible.closest('.input-group') ?? visible;
+
+            // Quita lo que haya dejado una verificación anterior o el último intento de guardar.
+            let siguiente = referencia.nextElementSibling;
+            while (siguiente?.classList.contains('t-error')) {
+                const borrar = siguiente;
+                siguiente = siguiente.nextElementSibling;
+                borrar.remove();
+            }
+            visible.classList.remove('is-invalid', 'is-valid');
+
+            if (mensaje) {
+                visible.classList.add('is-invalid');
+                const aviso = document.createElement('div');
+                aviso.className = 'invalid-feedback t-error d-block';
+                aviso.innerHTML = `<i class="bi bi-exclamation-circle me-1"></i>${Tads.escapar(mensaje)}`;
+                referencia.after(aviso);
+            } else if (completo && campo.type !== 'hidden' && campo.value.trim()) {
+                // Solo se confirma en verde cuando hay contexto completo (p. ej. ya hay marca elegida).
+                visible.classList.add('is-valid');
+            }
+        }
+
+        async function verificar() {
+            const miTurno = ++turno;
+            const url = new URL(contenedor.dataset.tadsVerificar, window.location.href);
+            campos.forEach((c) => url.searchParams.set(c.name, c.value));
+
+            const { ok, json } = await Tads.peticion(url.toString());
+            if (!ok || miTurno !== turno) return;   // error de red o respuesta vieja: no se toca nada
+
+            const errores = json?.errores ?? {};
+            const completo = campos.every((c) => c.type !== 'hidden' || c.value);
+            campos.forEach((c) => pintar(c, errores[c.name], completo));
+        }
+
+        const programar = () => { clearTimeout(espera); espera = setTimeout(verificar, 350); };
+
+        campos.forEach((campo) => {
+            campo.addEventListener('input', programar);
+            campo.addEventListener('change', programar);   // el buscador avisa así al elegir una marca
+        });
+
+        // Al editar ya hay valores: se marcan desde el inicio.
+        if (campos.some((c) => c.value.trim())) verificar();
+    };
+
+    Tads.iniciarVerificaciones = (raiz) => raiz.querySelectorAll('[data-tads-verificar]').forEach(Tads.verificacionEnVivo);
 
     /* ------------------------------------------------------------------ Gestor */
 
@@ -229,7 +557,8 @@
             const c = this.config;
 
             document.querySelector(c.botonNuevo ?? '#botonNuevo')?.addEventListener('click', () => {
-                this.abrirFormulario(c.urlCrear, `<i class="bi ${c.icono ?? 'bi-plus-circle'} me-2"></i>Nuevo ${c.entidad}`);
+                // femenino: true → "Nueva marca", "Nueva asistencia".
+                this.abrirFormulario(c.urlCrear, `<i class="bi ${c.icono ?? 'bi-plus-circle'} me-2"></i>${c.femenino ? 'Nueva' : 'Nuevo'} ${c.entidad}`);
             });
 
             this.tablaEl.addEventListener('click', (evento) => {
@@ -264,6 +593,9 @@
             this.tituloEl.innerHTML = titulo;
             this.cuerpoEl.innerHTML = texto;
             Tads.ventana(this.selectorVentana).show();
+            Tads.iniciarBuscadores(this.cuerpoEl);
+            Tads.iniciarVerificaciones(this.cuerpoEl);
+            this.cuerpoEl.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => bootstrap.Tooltip.getOrCreateInstance(el));
             this.config.alCargarFormulario?.(this.cuerpoEl, this);
         }
 

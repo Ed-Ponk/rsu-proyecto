@@ -48,25 +48,7 @@
         </aside>
     </main>
 
-    <script>
-        // Botón del "ojo": muestra u oculta la contraseña del campo indicado en data-ver-clave.
-        document.querySelectorAll('[data-ver-clave]').forEach((boton) => {
-            boton.addEventListener('click', () => {
-                const campo = document.getElementById(boton.dataset.verClave);
-                const mostrar = campo.type === 'password';
-                campo.type = mostrar ? 'text' : 'password';
-                boton.innerHTML = `<i class="bi ${mostrar ? 'bi-eye-slash' : 'bi-eye'}"></i>`;
-            });
-        });
-
-        // Evita enviar dos veces el mismo formulario.
-        document.querySelectorAll('form[data-un-envio]').forEach((formulario) => {
-            formulario.addEventListener('submit', () => {
-                const boton = formulario.querySelector('button[type=submit]');
-                if (boton) { boton.disabled = true; boton.textContent = 'Procesando...'; }
-            });
-        });
-    </script>
+    <script src="{{ asset('js/tads/auth.js') }}" defer></script>
     @stack('scripts')
 </body>
 </html>

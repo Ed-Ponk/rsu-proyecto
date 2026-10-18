@@ -1,4 +1,4 @@
 <form method="POST" action="{{ route('admin.marcas.store') }}" class="t-formulario" enctype="multipart/form-data">
     @csrf
-    @include('admin.marcas.plantilla.formulario')
+    @include('admin.marcas._form')
 </form>

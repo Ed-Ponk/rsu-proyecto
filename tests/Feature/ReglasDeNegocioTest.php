@@ -78,14 +78,25 @@ class ReglasDeNegocioTest extends TestCase
 
     /* ------------------------- tipos de personal ------------------------- */
 
-    public function test_conductor_y_ayudante_existen_y_no_se_pueden_eliminar(): void
+    public function test_conductor_se_puede_renombrar_y_conserva_su_regla_de_licencia(): void
     {
-        $this->assertNotNull(TipoPersonal::conductor());
+        $conductor = TipoPersonal::conductor();
+
+        $this->putJson(route('admin.tipospersonal.update', $conductor->id), ['name' => 'Chofer'])->assertOk();
+
+        // Se reconoce por su clave interna, no por el nombre: sigue siendo "el conductor".
+        $this->assertSame('Chofer', TipoPersonal::conductor()->name);
+    }
+
+    public function test_un_tipo_de_personal_solo_se_elimina_si_no_tiene_personal(): void
+    {
+        $this->crearPersona(['usertype_id' => TipoPersonal::ayudante()->id]);
+
+        $this->deleteJson(route('admin.tipospersonal.destroy', TipoPersonal::ayudante()->id))->assertStatus(422);
+        $this->deleteJson(route('admin.tipospersonal.destroy', TipoPersonal::conductor()->id))->assertOk();
+
+        $this->assertNull(TipoPersonal::conductor());
         $this->assertNotNull(TipoPersonal::ayudante());
-
-        $this->deleteJson(route('admin.tipospersonal.destroy', TipoPersonal::conductor()->id))->assertStatus(422);
-
-        $this->assertNotNull(TipoPersonal::conductor()->fresh());
     }
 
     /* ------------------------------ contratos ------------------------------ */
@@ -194,22 +205,86 @@ class ReglasDeNegocioTest extends TestCase
         $this->assertSame(['Mañana', 'Mañana', 'Tarde', 'Tarde'], $marcaciones->map(fn ($m) => $m->turno?->name)->all());
     }
 
-    public function test_al_eliminar_una_marcacion_se_renumeran_entradas_y_salidas(): void
+    /** Registra una marcación manual "presente" para ayer a la hora indicada. */
+    private function marcarAyer(Personal $persona, string $hora)
+    {
+        return $this->postJson(route('admin.asistencias.store'), [
+            'user_id' => $persona->id, 'date' => today()->subDay()->toDateString(), 'time' => $hora, 'status' => 'presente',
+        ]);
+    }
+
+    public function test_al_eliminar_la_entrada_su_turno_se_reordena_y_recalcula_la_tardanza(): void
     {
         $persona = $this->crearPersona();
         $this->crearContrato($persona);
-        $ayer = today()->subDay()->toDateString();
 
-        foreach (['06:10', '10:00', '14:30'] as $hora) {
-            $this->postJson(route('admin.asistencias.store'), [
-                'user_id' => $persona->id, 'date' => $ayer, 'time' => $hora, 'status' => 'presente',
-            ])->assertOk();
+        foreach (['06:05', '10:00'] as $hora) {
+            $this->marcarAyer($persona, $hora)->assertOk();
         }
 
-        $primera = Asistencia::where('user_id', $persona->id)->orderBy('time')->first();
-        $this->deleteJson(route('admin.asistencias.destroy', $primera->id))->assertOk();
+        $entrada = Asistencia::where('user_id', $persona->id)->orderBy('time')->first();
+        $this->deleteJson(route('admin.asistencias.destroy', $entrada->id))->assertOk();
 
-        $this->assertSame(['entrada', 'salida'], Asistencia::where('user_id', $persona->id)->orderBy('time')->pluck('type')->all());
+        // La salida que quedó sola pasa a ser la entrada del turno Mañana: 10:00 son 240 min de tardanza.
+        $restante = Asistencia::where('user_id', $persona->id)->sole();
+        $this->assertSame('entrada', $restante->type);
+        $this->assertSame(240, $restante->late_minutes);
+    }
+
+    public function test_solo_una_entrada_y_una_salida_por_turno(): void
+    {
+        $persona = $this->crearPersona();
+        $this->crearContrato($persona);
+
+        $this->marcarAyer($persona, '14:05')->assertOk();
+        $this->marcarAyer($persona, '18:00')->assertOk();
+        $this->marcarAyer($persona, '18:30')->assertStatus(422)->assertJsonValidationErrors('user_id');
+
+        $this->assertSame(2, Asistencia::where('user_id', $persona->id)->count());
+    }
+
+    public function test_tardanza_respeta_la_tolerancia_y_se_cuenta_desde_el_inicio_del_turno(): void
+    {
+        $persona = $this->crearPersona();
+        $this->crearContrato($persona);
+        config(['proyecto.asistencia.minutos_tolerancia' => 10]);
+
+        $this->marcarAyer($persona, '06:08')->assertOk();   // Mañana, dentro de la tolerancia
+        $this->marcarAyer($persona, '13:00')->assertOk();   // salida
+        $this->marcarAyer($persona, '14:25')->assertOk();   // Tarde, 25 min tarde
+
+        $entradas = Asistencia::where('user_id', $persona->id)->where('type', 'entrada')->orderBy('time')->pluck('late_minutes')->all();
+        $this->assertSame([0, 25], $entradas);
+    }
+
+    public function test_llegar_temprano_cuenta_para_el_turno_que_empieza_y_salir_tarde_para_el_propio(): void
+    {
+        $persona = $this->crearPersona();
+        $this->crearContrato($persona);
+
+        $this->marcarAyer($persona, '13:45')->assertOk();   // 15 min antes de la Tarde
+        $this->marcarAyer($persona, '22:15')->assertOk();   // horas extra: salida de la Tarde, no entrada de la Noche
+
+        $marcaciones = Asistencia::with('turno')->where('user_id', $persona->id)->orderBy('time')->get();
+        $this->assertSame(['entrada', 'salida'], $marcaciones->pluck('type')->all());
+        $this->assertSame(['Tarde', 'Tarde'], $marcaciones->map(fn ($m) => $m->turno->name)->all());
+        $this->assertSame(0, $marcaciones->first()->late_minutes);
+    }
+
+    public function test_marcacion_con_dni_registra_y_bloquea_credenciales_invalidas(): void
+    {
+        $persona = $this->crearPersona();
+        $this->crearContrato($persona);
+
+        $this->postJson(route('admin.asistencias.marcar'), ['dni' => $persona->dni, 'password' => 'incorrecta'])
+            ->assertStatus(422)->assertJsonValidationErrors('password');
+
+        $this->postJson(route('admin.asistencias.marcar'), ['dni' => $persona->dni, 'password' => 'secret123'])
+            ->assertOk()->assertJsonPath('marcacion.tipo', 'entrada');
+
+        // Doble clic: la segunda marcación inmediata se rechaza por la espera mínima.
+        $this->postJson(route('admin.asistencias.marcar'), ['dni' => $persona->dni, 'password' => 'secret123'])
+            ->assertStatus(422)->assertJsonValidationErrors('dni');
     }
 
     public function test_no_se_registra_asistencia_en_el_futuro(): void

@@ -27,4 +27,18 @@ return [
         'edad_minima' => 18,
     ],
 
+    'asistencia' => [
+        // Marcación con DNI: espera mínima entre dos marcaciones de la misma persona (evita el doble clic).
+        'segundos_entre_marcaciones' => 60,
+        // Intentos fallidos de DNI/contraseña permitidos por minuto antes de bloquear temporalmente.
+        'intentos_marcacion' => 5,
+
+        // Minutos después del inicio del turno en que la entrada aún NO cuenta como tardanza.
+        'minutos_tolerancia' => 10,
+        // Minutos antes del inicio de un turno desde los que se puede marcar su entrada (llegar temprano).
+        'minutos_anticipacion_entrada' => 30,
+        // Minutos después del fin del turno en que todavía se acepta su salida (horas extra).
+        'minutos_gracia_salida' => 180,
+    ],
+
 ];

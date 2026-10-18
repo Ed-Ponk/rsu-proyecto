@@ -78,10 +78,11 @@ return [
     */
 
     'logo' => '',   // el logo de la Municipalidad ya incluye el nombre
-    'logo_img' => 'images/logo-municipalidad.svg',
+    // Con el menú colapsado se ve el isotipo cuadrado; abierto, el logo completo de la Municipalidad.
+    'logo_img' => 'images/logo-sistema.svg',
     'logo_img_class' => 'brand-image',
-    'logo_img_xl' => null,
-    'logo_img_xl_class' => 'brand-image-xs opacity-75',
+    'logo_img_xl' => 'images/logo-municipalidad.svg',
+    'logo_img_xl_class' => 'brand-image-xs',
     'logo_img_alt' => 'Logo RSU',
 
     /*
@@ -796,6 +797,7 @@ return [
                 ['text' => 'Personal', 'route' => 'admin.personal.index', 'icon' => 'bi bi-person-lines-fill'],
                 ['text' => 'Contratos', 'route' => 'admin.contratos.index', 'icon' => 'bi bi-file-earmark-text'],
                 ['text' => 'Asistencias', 'route' => 'admin.asistencias.index', 'icon' => 'bi bi-calendar-check'],
+                ['text' => 'Marcación DNI', 'route' => 'admin.asistencias.marcacion', 'icon' => 'bi bi-fingerprint'],
             ],
         ],
         ['header' => 'CUENTA'],
@@ -836,6 +838,15 @@ return [
                 ['type' => 'css', 'asset' => true, 'location' => 'css/tads-menu.css'],
                 ['type' => 'css', 'asset' => true, 'location' => 'css/tads.css'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/gestor.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/vehiculos.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/asistencias.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/marcacion.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/inicio.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/contratos.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/personal.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/colores.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/catalogos.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/app-admin.js'],
             ],
         ],
         'Jquery' => [

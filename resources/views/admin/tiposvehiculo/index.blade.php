@@ -10,7 +10,12 @@
         'boton' => 'Nuevo tipo',
     ])
 
-    <div class="t-tarjeta">
+    <div class="t-tarjeta"
+         id="moduloTiposVehiculo"
+         data-tads-modulo="tiposvehiculo"
+         data-url-listado="{{ route('admin.tiposvehiculo.index') }}"
+         data-url-recurso="{{ url('admin/tipos-vehiculo') }}"
+         data-url-crear="{{ route('admin.tiposvehiculo.create') }}">
         <div class="t-tarjeta-cuerpo">
             <div class="table-responsive">
                 <table class="table t-tabla" id="tabla">
@@ -31,29 +36,4 @@
     </div>
 
     @include('admin.partials.ventana-formulario', ['tamano' => 'modal-md'])
-@stop
-
-@section('js')
-    <script>
-        new Tads.Gestor({
-            entidad: 'tipo de vehículo',
-            icono: 'bi-truck-flatbed',
-            urlListado: "{{ route('admin.tiposvehiculo.index') }}",
-            urlRecurso: "{{ url('admin/tipos-vehiculo') }}",
-            urlCrear: "{{ route('admin.tiposvehiculo.create') }}",
-            orden: [[0, 'asc']],
-            columnas: [
-                { data: 'nombre', render: (v) => Tads.insignia(v, 'azul') },
-                { data: 'descripcion', defaultContent: '', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">—</span>' },
-                { data: 'vehiculos', render: (v) => Tads.insignia(v, v > 0 ? 'azul' : 'gris') },
-                { data: 'creado', render: Tads.celdaFecha },
-                { data: 'actualizado', render: Tads.celdaFecha },
-                { data: null, orderable: false, searchable: false, className: 'text-center',
-                    render: (fila) => Tads.acciones(
-                        Tads.botonEditar(fila.id),
-                        Tads.botonEliminar(fila.id, fila.nombre, fila.vehiculos > 0 ? `No se puede eliminar: el tipo tiene ${fila.vehiculos} vehículo(s) asignado(s)` : ''),
-                    ) },
-            ],
-        });
-    </script>
 @stop
