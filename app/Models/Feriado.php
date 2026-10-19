@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -9,6 +10,8 @@ use Illuminate\Support\Carbon;
 /** Día feriado. Solo los activos cuentan para la programación de rutas. */
 class Feriado extends Model
 {
+    use Auditable;
+
     protected $table = 'holidays';
 
     protected $fillable = ['date', 'description', 'status'];
@@ -29,7 +32,7 @@ class Feriado extends Model
     /** ¿La fecha es un feriado activo? */
     public static function esFeriado(Carbon|string $fecha): bool
     {
-        return static::activo()->whereDate('date', Carbon::parse($fecha)->toDateString())->exists();
+        return static::activo()->where('date', Carbon::parse($fecha)->toDateString())->exists();
     }
 
     /** Nombre del día de la semana en español (lunes, martes...). */

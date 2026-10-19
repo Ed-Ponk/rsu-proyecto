@@ -6,6 +6,7 @@ use App\Models\Asistencia;
 use App\Models\Personal;
 use App\Models\Turno;
 use App\Models\Vacacion;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -30,8 +31,8 @@ class ServicioAsistencia
             ->where('status', Asistencia::PRESENTE)
             ->whereNotNull('schedule_id')->whereNotNull('shift_date')
             ->when($ignorarId, fn ($q) => $q->whereKeyNot($ignorarId))
-            ->where(fn ($q) => $q->whereDate('date', '<', $momento->toDateString())
-                ->orWhere(fn ($h) => $h->whereDate('date', $momento->toDateString())->where('time', '<=', $momento->format('H:i:s'))))
+            ->where(fn ($q) => $q->where('date', '<', $momento->toDateString())
+                ->orWhere(fn ($h) => $h->where('date', $momento->toDateString())->where('time', '<=', $momento->format('H:i:s'))))
             ->orderByDesc('date')->orderByDesc('time')->orderByDesc('id')
             ->first();
 
@@ -103,9 +104,10 @@ class ServicioAsistencia
     {
         $prevista = $this->resolverMarcacion($persona, Carbon::parse("{$dia} {$hora}"), $ignorarId);
         $turno = $prevista['turno'];
+        $fechaDeVigencia = $this->fechaDeVigencia($prevista['tipo'], $prevista['jornada'], Carbon::parse($dia));
 
         $marcaciones = Asistencia::where('user_id', $persona->id)
-            ->whereDate('date', $dia)
+            ->where('date', $dia)
             ->orderBy('time')->orderBy('id')
             ->get()
             ->map(fn (Asistencia $a) => [
@@ -122,8 +124,8 @@ class ServicioAsistencia
                 'correo' => $persona->email,
                 'telefono' => $persona->phone,
                 'funcion' => $persona->tipo?->name,
-                'tiene_contrato' => $persona->contratos()->vigente(Carbon::parse($dia))->exists(),
-                'de_vacaciones' => Vacacion::estaDeVacaciones($persona->id, $dia),
+                'tiene_contrato' => $persona->contratos()->vigente($fechaDeVigencia)->exists(),
+                'de_vacaciones' => Vacacion::estaDeVacaciones($persona->id, $fechaDeVigencia),
             ],
             'tipo' => $prevista['tipo'],
             'tardanza' => $prevista['tardanza'],
@@ -137,6 +139,10 @@ class ServicioAsistencia
     /**
      * Registra una asistencia o una ausencia aplicando todas las reglas.
      *
+     * Toda la operación ocurre dentro de una transacción que primero BLOQUEA la fila de la persona: si dos marcaciones
+     * de la misma persona llegan a la vez (doble toque, dos quioscos) se atienden una detrás de otra y la segunda ya
+     * ve la primera. Sin ese bloqueo las dos leían "no hay marcaciones" y creaban dos entradas.
+     *
      * @throws ValidationException
      */
     public function registrar(
@@ -148,24 +154,54 @@ class ServicioAsistencia
         ?int $registradoPor = null,
         string $campoError = 'user_id',
     ): Asistencia {
-        $this->verificarPuedeMarcar($persona, $momento, $campoError);
+        $this->verificarEstadoYMomento($persona, $momento, $campoError);
 
-        return DB::transaction(function () use ($persona, $momento, $estado, $notas, $origen, $registradoPor, $campoError) {
-            $dia = $momento->toDateString();
-            $esAusencia = $estado === Asistencia::AUSENTE;
+        try {
+            return DB::transaction(function () use ($persona, $momento, $estado, $notas, $origen, $registradoPor, $campoError) {
+                Personal::whereKey($persona->id)->lockForUpdate()->first();
 
-            $this->verificarCoherenciaDelDia($persona, $dia, $esAusencia, $campoError);
+                $dia = $momento->toDateString();
+                $esAusencia = $estado === Asistencia::AUSENTE;
 
-            // Una ausencia no tiene entrada/salida: se asocia al turno de la hora y al mismo día.
-            if ($esAusencia) {
-                $turno = ResolverTurno::paraHora($momento);
+                $this->verificarCoherenciaDelDia($persona, $dia, $esAusencia, $campoError);
 
-                return Asistencia::create([
+                // Una ausencia no tiene entrada/salida: se asocia al turno de la hora y al mismo día.
+                if ($esAusencia) {
+                    $this->verificarVigencia($persona, $momento->copy()->startOfDay(), $campoError);
+                    $turno = ResolverTurno::paraHora($momento);
+
+                    return Asistencia::create([
+                        'user_id' => $persona->id,
+                        'date' => $dia,
+                        'time' => $momento->format('H:i:s'),
+                        'schedule_id' => $turno?->id,
+                        'shift_date' => $dia,
+                        'type' => null,
+                        'late_minutes' => null,
+                        'status' => $estado,
+                        'source' => $origen,
+                        'notes' => $notas,
+                        'registered_by' => $registradoPor,
+                    ]);
+                }
+
+                $marcacion = $this->resolverMarcacion($persona, $momento);
+
+                if ($marcacion['problema']) {
+                    throw ValidationException::withMessages([$campoError => $marcacion['problema']]);
+                }
+
+                // Contrato y vacaciones se miden el día en que EMPEZÓ el turno: la salida de la madrugada pertenece a la
+                // jornada anterior, aunque el contrato haya vencido o las vacaciones hayan empezado a medianoche.
+                $this->verificarVigencia($persona, $this->fechaDeVigencia($marcacion['tipo'], $marcacion['jornada'], $momento->copy()->startOfDay()), $campoError);
+
+                // Se crea sin tipo y renumerarTurno lo asigna (y calcula la tardanza) según el orden de las marcaciones.
+                $asistencia = Asistencia::create([
                     'user_id' => $persona->id,
                     'date' => $dia,
                     'time' => $momento->format('H:i:s'),
-                    'schedule_id' => $turno?->id,
-                    'shift_date' => $dia,
+                    'schedule_id' => $marcacion['turno']->id,
+                    'shift_date' => $marcacion['jornada'],
                     'type' => null,
                     'late_minutes' => null,
                     'status' => $estado,
@@ -173,33 +209,15 @@ class ServicioAsistencia
                     'notes' => $notas,
                     'registered_by' => $registradoPor,
                 ]);
-            }
 
-            $marcacion = $this->resolverMarcacion($persona, $momento);
+                Asistencia::renumerarTurno($persona->id, $marcacion['turno']->id, $marcacion['jornada']);
 
-            if ($marcacion['problema']) {
-                throw ValidationException::withMessages([$campoError => $marcacion['problema']]);
-            }
-
-            $asistencia = Asistencia::create([
-                'user_id' => $persona->id,
-                'date' => $dia,
-                'time' => $momento->format('H:i:s'),
-                'schedule_id' => $marcacion['turno']->id,
-                'shift_date' => $marcacion['jornada'],
-                'type' => $marcacion['tipo'],
-                'late_minutes' => $marcacion['tardanza'],
-                'status' => $estado,
-                'source' => $origen,
-                'notes' => $notas,
-                'registered_by' => $registradoPor,
-            ]);
-
-            // Si se registró una hora pasada entre otras marcaciones, el turno se reordena.
-            Asistencia::renumerarTurno($persona->id, $marcacion['turno']->id, $marcacion['jornada']);
-
-            return $asistencia->fresh();
-        });
+                return $asistencia->fresh();
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Última defensa: el índice único (usuario, turno, jornada, tipo) impidió una marcación repetida.
+            throw ValidationException::withMessages([$campoError => 'Esa marcación ya fue registrada. Actualice la pantalla.']);
+        }
     }
 
     /** Segundos que faltan para que la persona pueda volver a marcar con su DNI (0 si ya puede). */
@@ -223,11 +241,16 @@ class ServicioAsistencia
     /** Solo marca quien está activo, tiene contrato vigente y no intenta registrar el futuro. */
     public function verificarPuedeMarcar(Personal $persona, Carbon $momento, string $campoError = 'user_id'): void
     {
+        $this->verificarEstadoYMomento($persona, $momento, $campoError);
+        $this->verificarVigencia($persona, $momento->copy()->startOfDay(), $campoError);
+    }
+
+    /** La persona debe estar activa y la marcación no puede ser del futuro. */
+    public function verificarEstadoYMomento(Personal $persona, Carbon $momento, string $campoError = 'user_id'): void
+    {
         $problema = match (true) {
             ! $persona->status => 'La persona está inactiva y no puede registrar asistencia.',
             $momento->greaterThan(now()->addMinute()) => 'No se puede registrar asistencia en una fecha u hora futura.',
-            ! $persona->contratos()->vigente($momento->copy()->startOfDay())->exists() => 'La persona no tiene un contrato vigente en esa fecha.',
-            Vacacion::estaDeVacaciones($persona->id, $momento) => 'La persona está de vacaciones aprobadas en esa fecha y no puede registrar asistencia.',
             default => null,
         };
 
@@ -236,10 +259,30 @@ class ServicioAsistencia
         }
     }
 
+    /** Contrato vigente y sin vacaciones aprobadas en la fecha indicada. */
+    public function verificarVigencia(Personal $persona, Carbon $fecha, string $campoError = 'user_id'): void
+    {
+        $problema = match (true) {
+            ! $persona->contratos()->vigente($fecha->copy()->startOfDay())->exists() => 'La persona no tiene un contrato vigente en esa fecha.',
+            Vacacion::estaDeVacaciones($persona->id, $fecha) => 'La persona está de vacaciones aprobadas en esa fecha y no puede registrar asistencia.',
+            default => null,
+        };
+
+        if ($problema) {
+            throw ValidationException::withMessages([$campoError => $problema]);
+        }
+    }
+
+    /** Fecha con la que se mide la vigencia: el día en que empezó el turno si es una SALIDA; si no, el día de la marcación. */
+    public function fechaDeVigencia(?string $tipo, ?string $jornada, Carbon $diaDeLaMarcacion): Carbon
+    {
+        return $tipo === Asistencia::SALIDA && $jornada ? Carbon::parse($jornada)->startOfDay() : $diaDeLaMarcacion->copy()->startOfDay();
+    }
+
     /** Un mismo día no puede tener ausencia y asistencia a la vez, ni dos ausencias. */
     private function verificarCoherenciaDelDia(Personal $persona, string $dia, bool $esAusencia, string $campoError): void
     {
-        $delDia = Asistencia::where('user_id', $persona->id)->whereDate('date', $dia);
+        $delDia = Asistencia::where('user_id', $persona->id)->where('date', $dia);
         $hayPresencia = (clone $delDia)->where('status', Asistencia::PRESENTE)->exists();
         $hayAusencia = (clone $delDia)->where('status', Asistencia::AUSENTE)->exists();
 

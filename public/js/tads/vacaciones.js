@@ -38,7 +38,7 @@
             const gestor = new Tads.Gestor({
                 entidad: 'solicitud de vacaciones',
                 femenino: true,
-                icono: 'bi-umbrella-fill',
+                icono: 'bi-airplane-fill',
                 urlListado: contenedor.dataset.urlListado,
                 urlRecurso,
                 urlCrear: contenedor.dataset.urlCrear,
@@ -47,9 +47,9 @@
                 columnas: [
                     { data: 'dni', render: (v) => `<span class="t-codigo">${Tads.escapar(v)}</span>` },
                     { data: 'empleado', render: (v) => `<strong>${Tads.escapar(v)}</strong>` },
-                    { data: 'solicitud', className: 'text-nowrap' },
+                    { data: 'solicitud', className: 'text-nowrap', render: Tads.ordenFecha },
                     { data: 'orden_inicio', className: 'text-nowrap dt-left', render: (valor, modo, fila) => modo === 'display' ? Tads.escapar(fila.inicio) : valor },
-                    { data: 'fin', className: 'text-nowrap dt-left' },
+                    { data: 'fin', className: 'text-nowrap dt-left', render: Tads.ordenFecha },
                     { data: 'dias', render: (v) => Tads.insignia(v, 'azul') },
                     { data: 'estado', render: (v, t, fila) => Tads.insignia(fila.estado_texto, COLOR_ESTADO[v] ?? 'gris') },
                     { data: 'restantes', render: (v) => Tads.insignia(v, v > 0 ? 'gris' : 'rojo') },
@@ -63,8 +63,7 @@
             function acciones(fila) {
                 const quien = `${fila.empleado} · ${fila.inicio}`;
                 const ayuda = 'Solo las solicitudes pendientes se pueden modificar';
-                const bloqueado = (icono, clase) =>
-                    `<span data-bs-toggle="tooltip" title="${ayuda}"><button type="button" class="btn t-boton-icono ${clase}" disabled><i class="bi ${icono}"></i></button></span>`;
+                const bloqueado = (icono, clase) => Tads.botonBloqueado(icono, clase, ayuda);
 
                 if (!fila.pendiente) {
                     return Tads.acciones(

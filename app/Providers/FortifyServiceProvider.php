@@ -6,7 +6,9 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Http\Responses\RespuestaUniformeDeRecuperacion;
 use App\Models\User;
+use App\Support\HashFicticio;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -14,6 +16,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -23,7 +26,10 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(
+            FailedPasswordResetLinkRequestResponse::class,
+            fn ($app, array $parametros) => new RespuestaUniformeDeRecuperacion($parametros['status']),
+        );
     }
 
     /**
@@ -41,11 +47,13 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('email', $request->input(Fortify::username()))->whereNull('usertype_id')->first();
 
-            if ($user && Hash::check($request->input('password'), $user->password)) {
-                return $user;
+            if (! $user) {
+                HashFicticio::verificar((string) $request->input('password'));
+
+                return null;
             }
 
-            return null;
+            return Hash::check($request->input('password'), $user->password) && $user->status ? $user : null;
         });
 
         RateLimiter::for('login', function (Request $request) {

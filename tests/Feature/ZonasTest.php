@@ -2,9 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\ColorVehiculo;
+use App\Models\Marca;
+use App\Models\Modelo;
+use App\Models\TipoVehiculo;
 use App\Models\User;
 use App\Models\Zona;
 use App\Services\ReglasZona;
+use Database\Seeders\TipoPersonalSeeder;
 use Database\Seeders\ZonaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -253,13 +258,13 @@ class ZonasTest extends TestCase
 
     public function test_los_buscadores_de_catalogos_reemplazan_a_los_combos(): void
     {
-        $marca = \App\Models\Marca::create(['name' => 'Hino', 'description' => null]);
-        \App\Models\Modelo::create(['brand_id' => $marca->id, 'name' => 'Dutro', 'code' => 'DUTRO-H']);
-        \App\Models\Modelo::create(['brand_id' => \App\Models\Marca::create(['name' => 'Isuzu'])->id, 'name' => 'Elf', 'code' => 'ELF']);
-        \App\Models\TipoVehiculo::create(['name' => 'Compactador']);
-        \App\Models\ColorVehiculo::create(['name' => 'Verde Oliva', 'code' => '#556B2F']);
-        \Database\Seeders\TipoPersonalSeeder::class;
-        $this->seed(\Database\Seeders\TipoPersonalSeeder::class);
+        $marca = Marca::create(['name' => 'Hino', 'description' => null]);
+        Modelo::create(['brand_id' => $marca->id, 'name' => 'Dutro', 'code' => 'DUTRO-H']);
+        Modelo::create(['brand_id' => Marca::create(['name' => 'Isuzu'])->id, 'name' => 'Elf', 'code' => 'ELF']);
+        TipoVehiculo::create(['name' => 'Compactador']);
+        ColorVehiculo::create(['name' => 'Verde Oliva', 'code' => '#556B2F']);
+        TipoPersonalSeeder::class;
+        $this->seed(TipoPersonalSeeder::class);
 
         $this->ajax('get', route('admin.tiposvehiculo.buscar', ['q' => 'compac']))->assertJsonCount(1, 'data')->assertJsonPath('data.0.titulo', 'Compactador');
         $this->ajax('get', route('admin.colores.buscar', ['q' => 'oliva']))->assertJsonPath('data.0.color', '#556B2F');

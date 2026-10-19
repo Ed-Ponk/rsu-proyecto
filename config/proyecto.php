@@ -28,6 +28,12 @@ return [
         'dias_por_anio' => 30,
     ],
 
+    // Administrador inicial. En desarrollo se usa admin@rsu.test; en producción son obligatorios.
+    'admin' => [
+        'correo' => env('ADMIN_EMAIL'),
+        'clave' => env('ADMIN_PASSWORD'),
+    ],
+
     'turnos' => [
         // Duración permitida de un turno (los que cruzan la medianoche se miden hasta el día siguiente).
         'duracion_minima_horas' => 1,

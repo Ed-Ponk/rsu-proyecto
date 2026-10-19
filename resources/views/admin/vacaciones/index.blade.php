@@ -4,7 +4,7 @@
 
 @section('content')
     @include('admin.partials.cabecera', [
-        'icono' => 'bi-umbrella-fill',
+        'icono' => 'bi-airplane-fill',
         'titulo' => 'Lista de vacaciones',
         'subtitulo' => 'Al aprobar una solicitud se descuentan los días del año actual. Las vacaciones aprobadas sacan al personal de las programaciones.',
         'boton' => 'Nueva solicitud',

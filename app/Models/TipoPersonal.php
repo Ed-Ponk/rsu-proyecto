@@ -37,11 +37,11 @@ class TipoPersonal extends Model
 
     public static function conductor(): ?self
     {
-        return static::firstWhere('code', self::CODIGO_CONDUCTOR);
+        return static::firstWhere('code', self::CODIGO_CONDUCTOR) ?? static::firstWhere('name', 'Conductor');
     }
 
     public static function ayudante(): ?self
     {
-        return static::firstWhere('code', self::CODIGO_AYUDANTE);
+        return static::firstWhere('code', self::CODIGO_AYUDANTE) ?? static::firstWhere('name', 'Ayudante');
     }
 }

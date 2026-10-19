@@ -78,8 +78,9 @@ class VehiculoController extends Controller
 
         // Avance 3: aquí también se impedirá borrar vehículos que ya estén en una programación.
 
-        $vehiculo->imagenes->each(fn (ImagenVehiculo $imagen) => $this->borrarArchivo($imagen->image));
+        $rutas = $vehiculo->imagenes->pluck('image')->all();
         $vehiculo->delete();
+        array_map($this->borrarArchivo(...), $rutas);   // primero la base; los archivos solo si el borrado funcionó
 
         return $this->exito('Vehículo eliminado', 'admin.vehiculos.index');
     }
@@ -137,19 +138,32 @@ class VehiculoController extends Controller
             throw ValidationException::withMessages(['images' => "Un vehículo admite como máximo {$limite} imágenes."]);
         }
 
-        DB::transaction(function () use ($vehiculo, $nuevas, $aQuitar, $request) {
-            $vehiculo->imagenes()->whereIn('id', $aQuitar)->get()->each(function (ImagenVehiculo $imagen) {
-                $this->borrarArchivo($imagen->image);
-                $imagen->delete();
+        $rutasNuevas = [];
+        $rutasViejas = [];
+
+        try {
+            DB::transaction(function () use ($vehiculo, $nuevas, $aQuitar, $request, &$rutasNuevas, &$rutasViejas) {
+                $vehiculo->imagenes()->whereIn('id', $aQuitar)->get()->each(function (ImagenVehiculo $imagen) use (&$rutasViejas) {
+                    $rutasViejas[] = $imagen->image;
+                    $imagen->delete();
+                });
+
+                $creadas = collect($nuevas)->map(function ($archivo) use ($vehiculo, &$rutasNuevas) {
+                    $ruta = $this->guardarArchivo($archivo, "vehicle_images/{$vehiculo->id}");
+                    $rutasNuevas[] = $ruta;
+
+                    return $vehiculo->imagenes()->create(['image' => $ruta, 'profile' => false]);
+                })->all();
+
+                $this->definirPerfil($vehiculo, (string) $request->input('profile'), $creadas);
             });
+        } catch (\Throwable $error) {
+            array_map($this->borrarArchivo(...), $rutasNuevas);   // la base no cambió: no dejar archivos huérfanos
 
-            $creadas = collect($nuevas)->map(fn ($archivo) => $vehiculo->imagenes()->create([
-                'image' => $this->guardarArchivo($archivo, "vehicle_images/{$vehiculo->id}"),
-                'profile' => false,
-            ]))->all();
+            throw $error;
+        }
 
-            $this->definirPerfil($vehiculo, (string) $request->input('profile'), $creadas);
-        });
+        array_map($this->borrarArchivo(...), $rutasViejas);       // ya confirmado: ahora sí se borran los archivos quitados
 
         return response()->json([
             'mensaje' => 'Imágenes guardadas correctamente',

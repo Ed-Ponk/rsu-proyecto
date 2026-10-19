@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /** Utilidades comunes a los CRUD del panel: respuestas para AJAX y manejo de archivos subidos. */
 trait RespondeAjax
@@ -52,12 +53,47 @@ trait RespondeAjax
     protected function guardarArchivo(UploadedFile $archivo, string $carpeta): string
     {
         $carpeta = trim($carpeta, '/');
-        $extension = strtolower($archivo->getClientOriginalExtension() ?: $archivo->guessExtension() ?: 'jpg');
+        // La extensión sale del CONTENIDO del archivo, nunca del nombre que manda el cliente.
+        $extension = strtolower((string) $archivo->guessExtension());
+        $extension = $extension === 'jpeg' ? 'jpg' : $extension;
+
+        if (! in_array($extension, ['jpg', 'png', 'gif', 'webp'], true)) {
+            throw ValidationException::withMessages(['archivo' => 'El archivo no es una imagen válida (JPG, PNG, GIF o WEBP).']);
+        }
+
         $nombre = Str::uuid().'.'.$extension;
 
         $archivo->move(public_path("uploads/{$carpeta}"), $nombre);
 
         return "/uploads/{$carpeta}/{$nombre}";
+    }
+
+    /**
+     * Guarda un archivo nuevo y ejecuta $operacion (la escritura en la base de datos). Si esta falla se borra el archivo
+     * recién guardado; si funciona se borra el archivo anterior. Así nunca queda un registro apuntando a un archivo inexistente.
+     *
+     * @template T
+     *
+     * @param  callable(?string): T  $operacion  recibe la ruta del archivo nuevo (o null si no se subió ninguno)
+     * @return T
+     */
+    protected function conArchivoNuevo(?UploadedFile $archivo, string $carpeta, callable $operacion, ?string $archivoAnterior = null): mixed
+    {
+        $nueva = $archivo ? $this->guardarArchivo($archivo, $carpeta) : null;
+
+        try {
+            $resultado = $operacion($nueva);
+        } catch (\Throwable $error) {
+            $this->borrarArchivo($nueva);
+
+            throw $error;
+        }
+
+        if ($nueva) {
+            $this->borrarArchivo($archivoAnterior);
+        }
+
+        return $resultado;
     }
 
     /** Borra un archivo subido por el sistema (ignora rutas vacías y archivos que no están en /uploads). */

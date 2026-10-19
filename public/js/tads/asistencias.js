@@ -73,7 +73,7 @@
                     // Lo que se registraría lo decide el backend (turno, entrada/salida, tardanza o por qué no se puede).
                     let aviso = '';
                     if (p.de_vacaciones) {
-                        aviso = '<div class="t-aviso t-aviso-alerta"><i class="bi bi-umbrella-fill me-1"></i>Está de vacaciones aprobadas en esa fecha: no se podrá registrar.</div>';
+                        aviso = '<div class="t-aviso t-aviso-alerta"><i class="bi bi-airplane-fill me-1"></i>Está de vacaciones aprobadas en esa fecha: no se podrá registrar.</div>';
                     } else if (!p.tiene_contrato) {
                         aviso = '<div class="t-aviso t-aviso-alerta"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sin contrato vigente en esa fecha: no se podrá registrar.</div>';
                     } else if (!esAusencia && datos.problema) {
@@ -114,7 +114,8 @@
                 urlListado: urlListado,
                 urlRecurso: urlRecurso,
                 urlCrear: urlCrear,
-                orden: [],
+                orden: [[3, 'desc']],
+                servidor: true,   // el servidor pagina, ordena y busca: el rango de fechas puede ser tan largo como se quiera
                 filtros: () => ({
                     desde: campo('filtroDesde')?.value || '',
                     hasta: campo('filtroHasta')?.value || '',
@@ -124,7 +125,7 @@
                 columnas: [
                     { data: 'dni', render: (v) => `<span class="t-codigo">${Tads.escapar(v)}</span>` },
                     { data: 'persona', render: (v) => `<strong>${Tads.escapar(v)}</strong>` },
-                    { data: 'funcion', render: (v) => Tads.insignia(v, v === 'Conductor' ? 'azul' : 'turquesa') },
+                    { data: 'funcion', orderable: false, render: (v) => Tads.insignia(v, v === 'Conductor' ? 'azul' : 'turquesa') },
                     { data: 'orden', render: (valor, modo, fila) => modo === 'display'
                         ? `<span class="t-fecha">${fila.fecha}<small>${fila.hora}</small></span>` : valor },
                     { data: 'tipo', defaultContent: '', render: (v, modo, fila) => !v ? '<span class="text-muted">—</span>'
@@ -132,9 +133,9 @@
                             ? `<span class="d-inline-flex flex-wrap gap-1">${Tads.insignia('Entrada', 'verde')}${Tads.insigniaTardanza(fila.tardanza)}</span>`
                             : Tads.insignia('Salida', 'ambar')) },
                     { data: 'estado', render: (v) => v === 'presente' ? Tads.insignia('Presente', 'verde') : Tads.insignia('Ausente', 'rojo') },
-                    { data: 'turno', defaultContent: '', render: (v) => v ? Tads.insignia(v, 'azul') : '<span class="text-muted">—</span>' },
+                    { data: 'turno', orderable: false, defaultContent: '', render: (v) => v ? Tads.insignia(v, 'azul') : '<span class="text-muted">—</span>' },
                     { data: 'origen', render: (v) => v === 'marcacion' ? Tads.insignia('Marcación DNI', 'violeta') : Tads.insignia('Manual', 'gris') },
-                    { data: 'notas', defaultContent: '', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">—</span>' },
+                    { data: 'notas', orderable: false, defaultContent: '', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">—</span>' },
                     { data: null, orderable: false, searchable: false, className: 'text-center',
                         render: (fila) => Tads.acciones(Tads.botonEditar(fila.id), Tads.botonEliminar(fila.id, `${fila.persona} · ${fila.fecha} ${fila.hora}`)) },
                 ],

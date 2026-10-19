@@ -16,7 +16,7 @@ class TurnoController extends Controller
     public function index()
     {
         if (! request()->ajax()) {
-            return view('admin.turnos.index');
+            return view('admin.turnos.index', ['huecos' => Turno::huecos()]);
         }
 
         $filas = Turno::withCount('asistencias')
@@ -24,7 +24,7 @@ class TurnoController extends Controller
             ->get()
             ->map(fn (Turno $turno) => $this->fila($turno));
 
-        return response()->json(['data' => $filas]);
+        return response()->json(['data' => $filas, 'huecos' => Turno::huecos()]);
     }
 
     public function create()

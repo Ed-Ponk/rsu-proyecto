@@ -1,5 +1,13 @@
 <?php
 
+use JeroenNoten\LaravelAdminLte\Menu\Filters\ActiveFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\ClassesFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\DataFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\GateFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\HrefFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\LangFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\SearchFilter;
+
 /*
 |--------------------------------------------------------------------------
 | Laravel AdminLTE Configuration
@@ -797,7 +805,7 @@ return [
                 ['text' => 'Personal', 'route' => 'admin.personal.index', 'icon' => 'bi bi-person-lines-fill'],
                 ['text' => 'Contratos', 'route' => 'admin.contratos.index', 'icon' => 'bi bi-file-earmark-text'],
                 ['text' => 'Asistencias', 'route' => 'admin.asistencias.index', 'icon' => 'bi bi-calendar-check'],
-                ['text' => 'Vacaciones', 'route' => 'admin.vacaciones.index', 'icon' => 'bi bi-umbrella-fill'],
+                ['text' => 'Vacaciones', 'route' => 'admin.vacaciones.index', 'icon' => 'bi bi-airplane-fill'],
                 ['text' => 'Marcación DNI', 'route' => 'admin.asistencias.marcacion', 'icon' => 'bi bi-fingerprint'],
             ],
         ],
@@ -810,22 +818,38 @@ return [
                 ['text' => 'Feriados', 'route' => 'admin.feriados.index', 'icon' => 'bi bi-flag-fill'],
             ],
         ],
+        // Seguridad (Usuarios del sistema y Bitácora): implementado pero oculto, aún no se pide en los avances 01 y 02.
+        // Para mostrarlo, descomente este grupo.
+        // [
+        //     'text' => 'Seguridad',
+        //     'icon' => 'bi bi-shield-lock',
+        //     'submenu' => [
+        //         ['text' => 'Usuarios del sistema', 'route' => 'admin.usuarios.index', 'icon' => 'bi bi-person-gear'],
+        //         ['text' => 'Bitácora', 'route' => 'admin.bitacora.index', 'icon' => 'bi bi-clipboard-data'],
+        //     ],
+        // ],
         ['header' => 'CUENTA'],
         [
             'text' => 'Mi perfil',
             'url' => 'user/profile',
             'icon' => 'bi bi-person-circle',
         ],
+        // El clic lo intercepta app-admin.js y envía el formulario de cierre de sesión (POST con CSRF).
+        [
+            'text' => 'Cerrar sesión',
+            'url' => '#cerrar-sesion',
+            'icon' => 'bi bi-box-arrow-right',
+        ],
     ],
 
     'filters' => [
-        JeroenNoten\LaravelAdminLte\Menu\Filters\GateFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\HrefFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\SearchFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\ActiveFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\ClassesFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\LangFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\DataFilter::class,
+        GateFilter::class,
+        HrefFilter::class,
+        SearchFilter::class,
+        ActiveFilter::class,
+        ClassesFilter::class,
+        LangFilter::class,
+        DataFilter::class,
     ],
 
     /*

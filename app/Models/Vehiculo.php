@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Vehiculo extends Model
 {
@@ -53,10 +52,5 @@ class Vehiculo extends Model
     public function imagenes(): HasMany
     {
         return $this->hasMany(ImagenVehiculo::class, 'vehicle_id')->orderByDesc('profile')->orderBy('id');
-    }
-
-    public function imagenPerfil(): HasOne
-    {
-        return $this->hasOne(ImagenVehiculo::class, 'vehicle_id')->where('profile', true);
     }
 }

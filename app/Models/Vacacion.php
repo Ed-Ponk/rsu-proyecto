@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Support\Carbon;
 
 class Vacacion extends Model
 {
+    use Auditable;
+
     protected $table = 'vacations';
 
     public const PENDIENTE = 'pendiente';
@@ -23,14 +26,15 @@ class Vacacion extends Model
         self::RECHAZADA => 'Rechazada',
     ];
 
-    protected $fillable = ['user_id', 'start_date', 'end_date', 'days', 'status', 'notes'];
+    protected $fillable = ['user_id', 'start_date', 'end_date', 'days', 'status', 'notes', 'resolved_by', 'resolved_at'];
 
     protected function casts(): array
     {
         return [
-            'start_date' => 'date',
-            'end_date' => 'date',
+            'start_date' => 'date:Y-m-d',
+            'end_date' => 'date:Y-m-d',
             'days' => 'integer',
+            'resolved_at' => 'datetime',
         ];
     }
 
@@ -53,8 +57,8 @@ class Vacacion extends Model
     /** Solicitudes cuyo rango toca el rango indicado (los extremos cuentan). */
     public function scopeQueSeCruzaCon(Builder $consulta, Carbon $inicio, Carbon $fin): Builder
     {
-        return $consulta->whereDate('start_date', '<=', $fin->toDateString())
-            ->whereDate('end_date', '>=', $inicio->toDateString());
+        return $consulta->where('start_date', '<=', $fin->toDateString())
+            ->where('end_date', '>=', $inicio->toDateString());
     }
 
     /** Fecha de término a partir del inicio y los días pedidos (corridos: el día de inicio ya cuenta). */
@@ -71,6 +75,23 @@ class Vacacion extends Model
             ->whereYear('start_date', $anio)
             ->when($ignorarId, fn ($q) => $q->whereKeyNot($ignorarId))
             ->sum('days');
+    }
+
+    /**
+     * Días aprobados de todas las personas, agrupados por "persona-año" en UNA sola consulta (para listados).
+     *
+     * @return array<string, int> clave "idPersona-año" => días aprobados
+     */
+    public static function diasAprobadosAgrupados(): array
+    {
+        $suma = [];
+
+        foreach (static::where('status', self::APROBADA)->get(['user_id', 'start_date', 'days']) as $vacacion) {
+            $clave = $vacacion->user_id.'-'.$vacacion->start_date->year;
+            $suma[$clave] = ($suma[$clave] ?? 0) + $vacacion->days;
+        }
+
+        return $suma;
     }
 
     /** Días que le quedan a la persona en el año (el cupo anual sale de config/proyecto.php). */

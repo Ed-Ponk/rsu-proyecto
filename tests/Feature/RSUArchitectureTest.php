@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use ReflectionClass;
-use ReflectionMethod;
 use Tests\TestCase;
 
 /**
@@ -107,6 +106,7 @@ class RSUArchitectureTest extends TestCase
             $content = $file->getContents();
             if (! preg_match('/namespace\s+([^;]+);/', $content, $matches)) {
                 $nonCompliant[$file->getFilename()] = 'Missing namespace declaration';
+
                 continue;
             }
 
@@ -121,7 +121,7 @@ class RSUArchitectureTest extends TestCase
         if (! empty($nonCompliant)) {
             // Progressive notification if worker_m1 is actively refactoring remaining files
             $this->fail(
-                "The following controllers do not comply with PSR-4 'App\\Http\\Controllers\\Admin': " .
+                "The following controllers do not comply with PSR-4 'App\\Http\\Controllers\\Admin': ".
                 json_encode($nonCompliant, JSON_PRETTY_PRINT)
             );
         }
@@ -169,8 +169,8 @@ class RSUArchitectureTest extends TestCase
 
         if (! empty($pendingM2Modules)) {
             $this->markTestIncomplete(
-                "Milestone M2 (View Layer Flattening) pending on modules: " .
-                implode(', ', $pendingM2Modules) .
+                'Milestone M2 (View Layer Flattening) pending on modules: '.
+                implode(', ', $pendingM2Modules).
                 ". '_form.blade.php' and elimination of 'plantilla/' will be verified once M2 completes."
             );
         }
@@ -196,7 +196,7 @@ class RSUArchitectureTest extends TestCase
 
         if (! empty($legacyReferences)) {
             $this->markTestIncomplete(
-                "Milestone M2 pending: Legacy '@include' references to 'plantilla' found in: " .
+                "Milestone M2 pending: Legacy '@include' references to 'plantilla' found in: ".
                 json_encode($legacyReferences, JSON_PRETTY_PRINT)
             );
         }
@@ -242,8 +242,8 @@ class RSUArchitectureTest extends TestCase
         if (str_contains($webRoutesContent, 'use App\Http\Controllers\admin\\')) {
             preg_match_all('/use App\\\\Http\\\\Controllers\\\\admin\\\\([a-zA-Z0-9]+);/', $webRoutesContent, $legacyMatches);
             $this->markTestIncomplete(
-                "Milestone M1 in progress: routes/web.php contains " . count($legacyMatches[1]) .
-                " legacy imports pending conversion to 'App\\Http\\Controllers\\Admin\\': " .
+                'Milestone M1 in progress: routes/web.php contains '.count($legacyMatches[1]).
+                " legacy imports pending conversion to 'App\\Http\\Controllers\\Admin\\': ".
                 implode(', ', $legacyMatches[1])
             );
         }
@@ -298,7 +298,7 @@ class RSUArchitectureTest extends TestCase
 
         $this->assertEmpty(
             $inlineScriptViolations,
-            'Inline <script> blocks found in views: ' . json_encode($inlineScriptViolations, JSON_PRETTY_PRINT)
+            'Inline <script> blocks found in views: '.json_encode($inlineScriptViolations, JSON_PRETTY_PRINT)
         );
     }
 
@@ -316,7 +316,7 @@ class RSUArchitectureTest extends TestCase
 
             $content = File::get($indexPath);
             $this->assertMatchesRegularExpression(
-                '/data-tads-modulo=[\'"]' . preg_quote($module, '/') . '[\'"]/',
+                '/data-tads-modulo=[\'"]'.preg_quote($module, '/').'[\'"]/',
                 $content,
                 "Module [{$module}] index view must declare data-tads-modulo=\"{$module}\"."
             );
