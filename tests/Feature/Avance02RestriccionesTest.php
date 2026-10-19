@@ -7,6 +7,7 @@ use App\Models\Contrato;
 use App\Models\Feriado;
 use App\Models\Personal;
 use App\Models\TipoPersonal;
+use App\Models\Turno;
 use App\Models\User;
 use App\Models\Vacacion;
 use App\Models\Zona;
@@ -207,7 +208,7 @@ class Avance02RestriccionesTest extends TestCase
 
     public function test_la_duracion_del_turno_tiene_limites(): void
     {
-        \App\Models\Turno::query()->delete();   // sin otros turnos para probar solo la duración
+        Turno::query()->delete();   // sin otros turnos para probar solo la duración
 
         $this->ajax('post', route('admin.turnos.store'), ['name' => 'Corto', 'time_start' => '08:00', 'time_end' => '08:30'])
             ->assertStatus(422)->assertJsonValidationErrors('time_end');

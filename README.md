@@ -183,6 +183,15 @@ Notas:
 - Leaflet y Leaflet.draw están en `public/vendor/leaflet` y `public/vendor/leaflet-draw` (no hace falta instalarlos). Los mosaicos del mapa y el buscador de direcciones necesitan conexión a internet.
 - Tras actualizar la rama ejecuta `php artisan migrate` (o `migrate:fresh --seed` para recargar los datos de ejemplo: 3 vacaciones, 16 feriados del año y 5 zonas en José Leonardo Ortiz).
 
+## Producción y operación
+
+- **Entorno**: `.env.example` viene en modo `local`. En producción use `APP_ENV=production`, `APP_DEBUG=false` y cookies seguras (`SESSION_SECURE_COOKIE` se activa solo).
+- **Administrador inicial**: en `local` se crea `admin@rsu.test` / `Admin12345` junto con datos de demostración. En producción el seeder exige `ADMIN_EMAIL` y `ADMIN_PASSWORD` (contraseña fuerte) y solo carga catálogos (funciones, turnos, ubigeo).
+- **Tareas programadas**: el cierre de contratos vencidos (`contratos:cerrar-vencidos`) corre cada día a las 00:05. Agregue al cron: `* * * * * php artisan schedule:run`.
+- **Recuperar acceso**: `php artisan admin:cambiar-clave correo@dominio` restablece la contraseña desde la consola. La recuperación por correo solo se ofrece si `MAIL_MAILER` no es `log`.
+- **Seguridad → Usuarios del sistema / Bitácora**: alta, edición y baja de administradores (siempre queda uno activo) y consulta de quién cambió qué.
+- **Pruebas y estilo**: `php artisan test` y `vendor/bin/pint`; el flujo de GitHub Actions (`.github/workflows/pruebas.yml`) ejecuta ambos.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

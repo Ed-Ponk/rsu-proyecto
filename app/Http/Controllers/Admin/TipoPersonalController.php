@@ -89,7 +89,12 @@ class TipoPersonalController extends Controller
     {
         $tipo = TipoPersonal::withCount('personal')->findOrFail($id);
 
-        // La única restricción es de integridad: no dejar personal sin función.
+        // Conductor y Ayudante son funciones predefinidas: el sistema las usa (licencia, reemplazos, programaciones).
+        if ($tipo->is_system) {
+            return $this->rechazo('No se puede eliminar: es una función predefinida del sistema (sí se puede renombrar).', 'admin.tipospersonal.index');
+        }
+
+        // Integridad: no dejar personal sin función.
         if ($tipo->personal_count > 0) {
             return $this->rechazo('No se puede eliminar: hay personal registrado con este tipo.', 'admin.tipospersonal.index');
         }

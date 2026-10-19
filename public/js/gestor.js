@@ -18,10 +18,11 @@
 
     const token = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
+    /** Escapa texto para HTML, incluidas las comillas: el resultado también es seguro dentro de un atributo ("...") o ('...'). */
     Tads.escapar = function (valor) {
         const nodo = document.createElement('div');
         nodo.textContent = valor ?? '';
-        return nodo.innerHTML;
+        return nodo.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     };
 
     Tads.idioma = {
@@ -55,7 +56,21 @@
         return json?.mensaje || json?.message || 'Ocurrió un error inesperado. Intente nuevamente.';
     };
 
+    let avisoDeSesion = false;
+
+    /** La sesión caducó (401/419): se avisa una sola vez y se lleva al usuario al inicio de sesión. */
+    Tads.sesionExpirada = function () {
+        if (avisoDeSesion) return;
+        avisoDeSesion = true;
+        Swal.fire({
+            title: 'Su sesión expiró', text: 'Por seguridad debe iniciar sesión de nuevo para continuar.', icon: 'info',
+            confirmButtonText: 'Iniciar sesión', allowOutsideClick: false, allowEscapeKey: false,
+        }).then(() => { window.location.href = '/login'; });
+    };
+
     Tads.alertaDeError = function (estado, json, titulo = 'No se pudo completar la acción') {
+        if (estado === 401 || estado === 419) return Tads.sesionExpirada();
+
         Swal.fire({ title: titulo, text: Tads.textoDeError(estado, json), icon: 'error', confirmButtonText: 'Entendido' });
     };
 
@@ -69,6 +84,8 @@
             const texto = await respuesta.text();
             let json = null;
             try { json = JSON.parse(texto); } catch (e) { /* la respuesta era HTML */ }
+
+            if (respuesta.status === 401 || respuesta.status === 419) Tads.sesionExpirada();
 
             return { ok: respuesta.ok, estado: respuesta.status, json, texto };
         } catch (error) {
@@ -149,7 +166,17 @@
         ? Tads.insignia(`Tardanza ${Tads.duracion(minutos)}`, 'rojo')
         : Tads.insignia('A tiempo', 'verde'));
 
-    Tads.celdaFecha = function (valor) {
+    /** "18/10/2026 09:30" → "2026-10-18 09:30": esa forma sí se ordena como texto igual que por calendario. */
+    Tads.fechaIso = function (texto) {
+        const partes = String(texto ?? '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}:\d{2}))?/);
+        return partes ? `${partes[3]}-${partes[2]}-${partes[1]}${partes[4] ? ` ${partes[4]}` : ''}` : '';
+    };
+
+    /** Para columnas de fecha en texto plano: se muestra tal cual y se ordena por calendario. */
+    Tads.ordenFecha = (valor, modo) => (modo === 'sort' || modo === 'type' ? Tads.fechaIso(valor) : (valor ?? ''));
+
+    Tads.celdaFecha = function (valor, modo) {
+        if (modo === 'sort' || modo === 'type') return Tads.fechaIso(valor);
         if (!valor) return '<span class="text-muted">—</span>';
         const [dia, hora] = String(valor).split(' ');
         return `<span class="t-fecha">${Tads.escapar(dia)}${hora ? `<small>${Tads.escapar(hora)}</small>` : ''}</span>`;
@@ -160,11 +187,17 @@
     Tads.botonEditar = (id) =>
         `<button type="button" class="btn t-boton-icono t-editar" data-editar="${id}" data-bs-toggle="tooltip" title="Editar"><i class="bi bi-pencil-square"></i></button>`;
 
-    /** Si se pasa un motivo, el botón queda deshabilitado y el motivo se ve como ayuda. */
+    /**
+     * Botón que no se puede usar ahora. No lleva `disabled` (así sigue recibiendo foco): se marca con aria-disabled,
+     * su nombre accesible es el motivo y el motivo también sale como ayuda al pasar el mouse o con el teclado.
+     */
+    Tads.botonBloqueado = (icono, clase, motivo) =>
+        `<button type="button" class="btn t-boton-icono ${clase} t-bloqueado" aria-disabled="true" aria-label="${Tads.escapar(motivo)}" data-bs-toggle="tooltip" title="${Tads.escapar(motivo)}"><i class="bi ${icono}"></i></button>`;
+
+    /** Si se pasa un motivo, el botón queda bloqueado y el motivo se ve como ayuda. */
     Tads.botonEliminar = function (id, nombre, motivoBloqueo = '') {
-        if (motivoBloqueo) {
-            return `<span data-bs-toggle="tooltip" title="${Tads.escapar(motivoBloqueo)}"><button type="button" class="btn t-boton-icono t-eliminar" disabled><i class="bi bi-trash3-fill"></i></button></span>`;
-        }
+        if (motivoBloqueo) return Tads.botonBloqueado('bi-trash3-fill', 't-eliminar', motivoBloqueo);
+
         return `<button type="button" class="btn t-boton-icono t-eliminar" data-eliminar="${id}" data-nombre="${Tads.escapar(nombre ?? '')}" data-bs-toggle="tooltip" title="Eliminar"><i class="bi bi-trash3-fill"></i></button>`;
     };
 
@@ -564,8 +597,10 @@
 
             this.tabla = $(this.tablaEl).DataTable({
                 // DataTables llama a esta función cada vez que necesita datos. Debe devolver undefined
-                // (no una promesa), por eso el trabajo asíncrono vive en #cargarDatos.
-                ajax: (_parametros, devolver) => { this.#cargarDatos(devolver); },
+                // (no una promesa), por eso el trabajo asíncrono vive en #cargarDatos / #cargarPagina.
+                // Con config.servidor la paginación, el orden y la búsqueda las hace el servidor (para tablas enormes).
+                ...(c.servidor ? { serverSide: true, searchDelay: 400 } : {}),
+                ajax: (parametros, devolver) => { c.servidor ? this.#cargarPagina(parametros, devolver) : this.#cargarDatos(devolver); },
                 columns: c.columnas,
                 order: c.orden ?? [[0, 'asc']],
                 pageLength: c.porPagina ?? 10,
@@ -578,6 +613,28 @@
                     this.tablaEl.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => bootstrap.Tooltip.getOrCreateInstance(el));
                 },
             });
+        }
+
+        /** Modo servidor: se pide solo la página visible, ya ordenada y filtrada, con los totales. */
+        async #cargarPagina(parametros, devolver) {
+            const c = this.config;
+            const envio = new URLSearchParams(c.filtros ? c.filtros() : {});
+            envio.set('draw', parametros.draw);
+            envio.set('start', parametros.start);
+            envio.set('length', parametros.length);
+            envio.set('search[value]', parametros.search?.value ?? '');
+            envio.set('order[0][column]', parametros.order?.[0]?.column ?? 0);
+            envio.set('order[0][dir]', parametros.order?.[0]?.dir ?? 'asc');
+
+            const { ok, estado, json } = await Tads.peticion(`${c.urlListado}?${envio}`);
+
+            if (!ok) {
+                Tads.alertaDeError(estado, json, 'No se pudo cargar el listado');
+                return devolver({ draw: parametros.draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
+            }
+
+            c.alCargarListado?.(json);
+            devolver(json);
         }
 
         async #cargarDatos(devolver) {
@@ -622,6 +679,25 @@
                 this.#enviarFormulario(evento.target);
             });
 
+            // Esc o "Cancelar" con cambios sin guardar: se pregunta antes de descartarlos.
+            let hayCambios = false;
+            let descartar = false;
+            this.ventanaEl.addEventListener('show.bs.modal', () => { hayCambios = false; descartar = false; });
+            this.ventanaEl.addEventListener('input', () => { hayCambios = true; });
+            this.alConfirmarCierre = () => { descartar = true; };
+            this.ventanaEl.addEventListener('hide.bs.modal', (evento) => {
+                if (!hayCambios || descartar) return;
+                evento.preventDefault();
+                Swal.fire({
+                    title: '¿Descartar los cambios?', text: 'Lo que escribió todavía no se guardó.', icon: 'warning',
+                    showCancelButton: true, confirmButtonText: 'Sí, descartar', cancelButtonText: 'Seguir editando', reverseButtons: true,
+                }).then((decision) => {
+                    if (!decision.isConfirmed) return;
+                    descartar = true;
+                    Tads.ventana(this.selectorVentana).hide();
+                });
+            });
+
             // Al cerrar la ventana se vacía el cuerpo para no reutilizar un formulario viejo.
             this.ventanaEl.addEventListener('hidden.bs.modal', () => { this.cuerpoEl.innerHTML = ''; });
         }
@@ -656,6 +732,7 @@
             boton.innerHTML = textoOriginal;
 
             if (ok) {
+                this.alConfirmarCierre?.();   // se guardó: cerrar sin preguntar
                 Tads.ventana(this.selectorVentana).hide();
                 this.recargar();
                 this.config.alGuardar?.(json);

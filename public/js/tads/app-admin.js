@@ -23,6 +23,24 @@
         });
     };
 
+    // "Cerrar sesión" del menú lateral: el cierre de sesión es un POST con CSRF, no un enlace.
+    document.addEventListener('click', (evento) => {
+        const enlace = evento.target.closest('a[href$="#cerrar-sesion"]');
+        if (!enlace) return;
+
+        evento.preventDefault();
+        const formulario = document.createElement('form');
+        formulario.method = 'POST';
+        formulario.action = '/logout';
+        const token = document.createElement('input');
+        token.type = 'hidden';
+        token.name = '_token';
+        token.value = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+        formulario.appendChild(token);
+        document.body.appendChild(formulario);
+        formulario.submit();
+    });
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => Tads.iniciarModulos());
     } else {

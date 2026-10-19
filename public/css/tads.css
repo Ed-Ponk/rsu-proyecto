@@ -2076,3 +2076,16 @@ a.t-funcion:hover .t-funcion-flecha {
     position: relative;
     width: 100%;
 }
+
+/* ---------- Botón de acción bloqueado (sigue enfocable, a diferencia de un botón disabled) ---------- */
+.t-boton-icono.t-bloqueado {
+    color: var(--rsu-slate-400);
+    background: var(--rsu-slate-200);
+    cursor: not-allowed;
+    filter: none;
+    box-shadow: none;
+}
+
+.t-boton-icono.t-bloqueado:hover {
+    transform: none;
+}

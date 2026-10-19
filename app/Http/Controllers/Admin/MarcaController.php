@@ -36,11 +36,11 @@ class MarcaController extends Controller
     {
         $datos = $this->validado($request);
 
-        $marca = Marca::create([
+        $marca = $this->conArchivoNuevo($request->file('logo'), 'brand_logo', fn (?string $logo) => Marca::create([
             'name' => $datos['name'],
             'description' => $datos['description'] ?? null,
-            'logo' => $request->hasFile('logo') ? $this->guardarArchivo($request->file('logo'), 'brand_logo') : null,
-        ]);
+            'logo' => $logo,
+        ]));
 
         return $this->exito('Marca registrada', 'admin.marcas.index', ['marca' => $this->fila($marca)]);
     }
@@ -59,18 +59,12 @@ class MarcaController extends Controller
     {
         $marca = Marca::findOrFail($id);
         $datos = $this->validado($request, $marca->id);
-        $logo = $marca->logo;
 
-        if ($request->hasFile('logo')) {
-            $this->borrarArchivo($logo);
-            $logo = $this->guardarArchivo($request->file('logo'), 'brand_logo');
-        }
-
-        $marca->update([
+        $this->conArchivoNuevo($request->file('logo'), 'brand_logo', fn (?string $logo) => $marca->update([
             'name' => $datos['name'],
             'description' => $datos['description'] ?? null,
-            'logo' => $logo,
-        ]);
+            'logo' => $logo ?? $marca->logo,
+        ]), $marca->logo);
 
         return $this->exito('Marca actualizada', 'admin.marcas.index', ['marca' => $this->fila($marca->fresh())]);
     }
@@ -141,7 +135,7 @@ class MarcaController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('brands', 'name')->ignore($ignorarId)],
             'description' => ['nullable', 'string', 'max:500'],
-            'logo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif,svg', 'max:2048'],
+            'logo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
         ], [
             'name.unique' => 'Ya existe una marca con ese nombre.',
             'logo.mimes' => 'El logo debe ser JPG, PNG, WEBP, GIF o SVG.',

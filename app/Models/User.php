@@ -33,6 +33,16 @@ class User extends Authenticatable
         'password',
     ];
 
+    /** El personal (con usertype_id) no inicia sesión: no se le envía el enlace de recuperación de contraseña. */
+    public function sendPasswordResetNotification($token): void
+    {
+        if ($this->usertype_id !== null) {
+            return;
+        }
+
+        parent::sendPasswordResetNotification($token);
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *

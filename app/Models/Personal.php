@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,8 @@ use Illuminate\Support\Carbon;
  */
 class Personal extends Model
 {
+    use Auditable;
+
     protected $table = 'users';
 
     /** Licencia de conducir: una letra y ocho dígitos (Q12345678). */
@@ -106,7 +109,7 @@ class Personal extends Model
         $dia = Carbon::parse($fecha)->toDateString();
 
         return $consulta->whereHas('asistencias', fn (Builder $c) => $c
-            ->whereDate('date', $dia)
+            ->where('date', $dia)
             ->where('status', Asistencia::PRESENTE));
     }
 

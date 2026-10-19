@@ -14,9 +14,7 @@ class ContratoController extends Controller
 {
     use RespondeAjax;
 
-    public function __construct(private readonly ReglasContrato $reglas)
-    {
-    }
+    public function __construct(private readonly ReglasContrato $reglas) {}
 
     /** Criterios del filtro de fechas: a qué fecha del contrato se aplica el rango. */
     private const CRITERIOS = [
@@ -93,6 +91,10 @@ class ContratoController extends Controller
         $datos = $this->validado($request, $contrato);
         unset($datos['user_id']);   // un contrato no se pasa a otra persona
 
+        if ($problema = $this->reglas->revisarDependientes($contrato, $datos + ['end_date' => $datos['end_date'] ?? null])) {
+            throw ValidationException::withMessages(['type' => $problema]);
+        }
+
         $contrato->update($datos);
 
         return $this->exito('Contrato actualizado', 'admin.contratos.index', ['contrato' => $this->fila($contrato->fresh('personal.tipo'))]);
@@ -120,6 +122,14 @@ class ContratoController extends Controller
             }
         }
 
+        // Desactivarlo no puede dejar sin respaldo vacaciones ya solicitadas o aprobadas.
+        if ($contrato->is_active && ($problema = $this->reglas->revisarDependientes($contrato, [
+            'type' => $contrato->type, 'start_date' => $contrato->start_date->toDateString(),
+            'end_date' => $contrato->end_date?->toDateString(), 'is_active' => false,
+        ], revisarAsistencias: false))) {
+            return $this->rechazo($problema, 'admin.contratos.index');
+        }
+
         $contrato->update(['is_active' => ! $contrato->is_active]);
 
         return $this->exito(
@@ -134,14 +144,14 @@ class ContratoController extends Controller
     {
         return match ($criterio) {
             'inicio' => $consulta
-                ->when($desde, fn ($q) => $q->whereDate('start_date', '>=', $desde))
-                ->when($hasta, fn ($q) => $q->whereDate('start_date', '<=', $hasta)),
+                ->when($desde, fn ($q) => $q->where('start_date', '>=', $desde))
+                ->when($hasta, fn ($q) => $q->where('start_date', '<=', $hasta)),
             'fin' => $consulta->whereNotNull('end_date')
-                ->when($desde, fn ($q) => $q->whereDate('end_date', '>=', $desde))
-                ->when($hasta, fn ($q) => $q->whereDate('end_date', '<=', $hasta)),
+                ->when($desde, fn ($q) => $q->where('end_date', '>=', $desde))
+                ->when($hasta, fn ($q) => $q->where('end_date', '<=', $hasta)),
             default => $consulta
-                ->when($hasta, fn ($q) => $q->whereDate('start_date', '<=', $hasta))
-                ->when($desde, fn ($q) => $q->where(fn ($c) => $c->whereNull('end_date')->orWhereDate('end_date', '>=', $desde))),
+                ->when($hasta, fn ($q) => $q->where('start_date', '<=', $hasta))
+                ->when($desde, fn ($q) => $q->where(fn ($c) => $c->whereNull('end_date')->orWhere('end_date', '>=', $desde))),
         };
     }
 
@@ -164,8 +174,8 @@ class ContratoController extends Controller
 
         $reglas = [
             'type' => ['required', Rule::in(array_keys(Contrato::TIPOS))],
-            'start_date' => ['required', 'date', 'after:2000-01-01'],
-            'end_date' => ['nullable', 'date'],
+            'start_date' => ['required', 'date', 'after:2000-01-01', 'before_or_equal:'.today()->addYear()->toDateString()],
+            'end_date' => ['nullable', 'date', 'before_or_equal:'.today()->addYears(10)->toDateString()],
             'salary' => ['required', 'numeric', 'gt:0', 'max:99999.99'],
             'probation_months' => ['nullable', 'integer', 'between:1,12'],
             'is_active' => ['boolean'],

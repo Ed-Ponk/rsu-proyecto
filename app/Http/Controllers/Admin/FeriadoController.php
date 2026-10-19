@@ -26,8 +26,8 @@ class FeriadoController extends Controller
         ], ['hasta.after_or_equal' => 'La fecha final no puede ser anterior a la inicial.']);
 
         $filas = Feriado::query()
-            ->when($request->filled('desde'), fn ($q) => $q->whereDate('date', '>=', $request->input('desde')))
-            ->when($request->filled('hasta'), fn ($q) => $q->whereDate('date', '<=', $request->input('hasta')))
+            ->when($request->filled('desde'), fn ($q) => $q->where('date', '>=', $request->input('desde')))
+            ->when($request->filled('hasta'), fn ($q) => $q->where('date', '<=', $request->input('hasta')))
             ->when($request->input('estado') === 'activo', fn ($q) => $q->where('status', true))
             ->when($request->input('estado') === 'inactivo', fn ($q) => $q->where('status', false))
             ->orderBy('date')
@@ -97,7 +97,11 @@ class FeriadoController extends Controller
         if ($request->has('feriados')) {
             $lote = $request->validate([
                 'feriados' => ['required', 'array', 'max:60'],
-                'feriados.*.date' => ['required', 'date_format:Y-m-d'],
+                'feriados.*.date' => [
+                    'required', 'date_format:Y-m-d',
+                    'after_or_equal:'.config('proyecto.feriados.anio_minimo').'-01-01',
+                    'before_or_equal:'.(today()->year + config('proyecto.feriados.anios_hacia_adelante')).'-12-31',
+                ],
                 'feriados.*.description' => ['required', 'string', 'max:150'],
             ]);
 
@@ -149,7 +153,7 @@ class FeriadoController extends Controller
         return [
             'total' => Feriado::count(),
             'activos' => Feriado::activo()->count(),
-            'proximos' => Feriado::activo()->whereDate('date', '>=', today())->count(),
+            'proximos' => Feriado::activo()->where('date', '>=', today()->toDateString())->count(),
             'anio' => today()->year,
         ];
     }

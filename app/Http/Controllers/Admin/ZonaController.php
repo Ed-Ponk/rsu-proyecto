@@ -6,10 +6,12 @@ use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Zona;
 use App\Services\ReglasZona;
+use App\Services\Ubigeo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -18,9 +20,7 @@ class ZonaController extends Controller
 {
     use RespondeAjax;
 
-    public function __construct(private readonly ReglasZona $reglas)
-    {
-    }
+    public function __construct(private readonly ReglasZona $reglas, private readonly Ubigeo $ubigeo) {}
 
     public function index()
     {
@@ -185,6 +185,8 @@ class ZonaController extends Controller
                 ])->all();
             });
         } catch (Throwable $e) {
+            Log::warning('Falló la consulta de direcciones (Nominatim).', ['error' => $e->getMessage()]);
+
             return response()->json(['mensaje' => 'El servidor tampoco pudo consultar el buscador de direcciones.'], 502);
         }
 
@@ -214,17 +216,15 @@ class ZonaController extends Controller
 
     private function validarUbicacion(string $departamento, string $provincia, string $distrito): void
     {
-        $departamentos = config('ubigeo.departamentos');
-
-        if (! isset($departamentos[$departamento])) {
+        if (! $this->ubigeo->departamentoExiste($departamento)) {
             throw ValidationException::withMessages(['department' => 'Seleccione un departamento de la lista.']);
         }
 
-        if (! isset($departamentos[$departamento][$provincia])) {
+        if (! $this->ubigeo->provinciaExiste($departamento, $provincia)) {
             throw ValidationException::withMessages(['province' => 'La provincia no pertenece al departamento elegido.']);
         }
 
-        if (! isset($departamentos[$departamento][$provincia][$distrito])) {
+        if (! $this->ubigeo->existe($departamento, $provincia, $distrito)) {
             throw ValidationException::withMessages(['district' => 'El distrito no pertenece a la provincia elegida.']);
         }
     }
@@ -265,7 +265,7 @@ class ZonaController extends Controller
     private function ubigeo(): array
     {
         return [
-            'departamentos' => config('ubigeo.departamentos'),
+            'departamentos' => $this->ubigeo->catalogo(),
             'mapa' => config('ubigeo.mapa_inicial'),
             'por_defecto' => config('ubigeo.por_defecto'),
         ];

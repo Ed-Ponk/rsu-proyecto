@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AsistenciaController;
+use App\Http\Controllers\Admin\BitacoraController;
 use App\Http\Controllers\Admin\ColorController;
 use App\Http\Controllers\Admin\ContratoController;
 use App\Http\Controllers\Admin\FeriadoController;
@@ -11,9 +12,10 @@ use App\Http\Controllers\Admin\PersonalController;
 use App\Http\Controllers\Admin\TipoPersonalController;
 use App\Http\Controllers\Admin\TipoVehiculoController;
 use App\Http\Controllers\Admin\TurnoController;
+use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\Admin\VacacionController;
-use App\Http\Controllers\Admin\ZonaController;
 use App\Http\Controllers\Admin\VehiculoController;
+use App\Http\Controllers\Admin\ZonaController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
@@ -64,15 +66,19 @@ Route::middleware($protegidas)->prefix('admin')->group(function () {
     Route::patch('vacaciones/{vacacion}/rechazar', [VacacionController::class, 'rechazar'])->name('admin.vacaciones.rechazar');
     Route::resource('vacaciones', VacacionController::class)->names('admin.vacaciones')->parameters(['vacaciones' => 'vacacion']);
 
+    // ---- Seguridad
+    Route::resource('usuarios', UsuarioController::class)->names('admin.usuarios')->parameters(['usuarios' => 'usuario']);
+    Route::get('bitacora', [BitacoraController::class, 'index'])->name('admin.bitacora.index');
+
     // ---- Programación
     Route::resource('turnos', TurnoController::class)->names('admin.turnos')->parameters(['turnos' => 'turno']);
     // La ruta fija va antes del resource para que no la capture {zona}.
-    Route::get('zonas/direccion', [ZonaController::class, 'buscarDireccion'])->name('admin.zonas.direccion');
+    Route::get('zonas/direccion', [ZonaController::class, 'buscarDireccion'])->middleware('throttle:40,1')->name('admin.zonas.direccion');
     Route::post('zonas/verificar', [ZonaController::class, 'verificar'])->name('admin.zonas.verificar');
     Route::get('zonas/mapa', [ZonaController::class, 'mapa'])->name('admin.zonas.mapa');
     Route::resource('zonas', ZonaController::class)->names('admin.zonas');
     // La ruta fija va antes del resource para que no la capture {feriado}.
-    Route::get('feriados/cargar/consultar', [FeriadoController::class, 'consultar'])->name('admin.feriados.consultar');
+    Route::get('feriados/cargar/consultar', [FeriadoController::class, 'consultar'])->middleware('throttle:10,1')->name('admin.feriados.consultar');
     Route::post('feriados/cargar', [FeriadoController::class, 'cargar'])->name('admin.feriados.cargar');
     Route::resource('feriados', FeriadoController::class)->names('admin.feriados');
 });

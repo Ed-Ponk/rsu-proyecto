@@ -8,8 +8,10 @@ use App\Models\Asistencia;
 use App\Models\Personal;
 use App\Services\ResolverTurno;
 use App\Services\ServicioAsistencia;
+use App\Support\HashFicticio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
@@ -19,16 +21,35 @@ class AsistenciaController extends Controller
 {
     use RespondeAjax;
 
-    public function __construct(private readonly ServicioAsistencia $servicio)
-    {
-    }
+    public function __construct(private readonly ServicioAsistencia $servicio) {}
 
-    /** Por defecto muestra las asistencias de hoy; admite rango de fechas y búsqueda por DNI o nombre. */
+    /** Filas máximas que devuelve el modo sin paginar (compatibilidad); la pantalla usa el modo paginado. */
+    private const TOPE_SIN_PAGINAR = 2000;
+
+    /** Columnas por las que se puede ordenar (índice de la columna de DataTables => columna de la base). */
+    private const ORDENABLES = [0 => 'users.dni', 1 => 'users.last_name', 3 => 'attendances.date', 4 => 'attendances.type', 5 => 'attendances.status', 7 => 'attendances.source'];
+
+    /**
+     * Por defecto muestra las asistencias de hoy; admite rango de fechas y búsqueda por DNI o nombre.
+     *
+     * Con el parámetro `draw` responde en el formato de DataTables "serverSide": solo envía la página pedida y los totales,
+     * así el rango de fechas puede ser tan largo como se quiera sin agotar la memoria. Sin `draw` (uso antiguo) devuelve
+     * como máximo TOPE_SIN_PAGINAR filas.
+     */
     public function index(Request $request)
     {
         if (! $request->ajax()) {
             return view('admin.asistencias.index', ['hoy' => today()->toDateString()]);
         }
+
+        $request->validate([
+            'desde' => ['nullable', 'date'],
+            'hasta' => ['nullable', 'date'],
+            'buscar' => ['nullable', 'string', 'max:60'],
+            'draw' => ['nullable', 'integer', 'min:0'],
+            'start' => ['nullable', 'integer', 'min:0'],
+            'length' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ], ['desde.date' => 'La fecha inicial no es válida.', 'hasta.date' => 'La fecha final no es válida.']);
 
         $desde = $this->fechaOpcional($request->input('desde')) ?? today();
         $hasta = $this->fechaOpcional($request->input('hasta')) ?? $desde->copy();
@@ -37,20 +58,51 @@ class AsistenciaController extends Controller
             [$desde, $hasta] = [$hasta, $desde];
         }
 
-        $texto = trim((string) $request->input('buscar'));
+        $enRango = fn () => Asistencia::query()
+            ->where('attendances.date', '>=', $desde->toDateString())
+            ->where('attendances.date', '<=', $hasta->toDateString());
 
-        $filas = Asistencia::with(['personal.tipo', 'turno'])
-            ->whereDate('date', '>=', $desde->toDateString())
-            ->whereDate('date', '<=', $hasta->toDateString())
-            ->when($texto !== '', fn ($q) => $q->whereHas('personal', fn ($p) => $p
-                ->where('dni', 'like', "%{$texto}%")
-                ->orWhere('name', 'like', "%{$texto}%")
-                ->orWhere('last_name', 'like', "%{$texto}%")))
-            ->orderByDesc('date')->orderByDesc('time')->orderByDesc('id')
+        $texto = trim((string) $request->input('buscar'));
+        $buscador = trim((string) $request->input('search.value'));
+
+        $consulta = $enRango()->join('users', 'users.id', '=', 'attendances.user_id')->select('attendances.*');
+
+        foreach (array_filter([$texto, $buscador]) as $palabra) {
+            $patron = '%'.addcslashes($palabra, '%_\\').'%';
+            $consulta->where(fn ($q) => $q->where('users.dni', 'like', $patron)
+                ->orWhere('users.name', 'like', $patron)
+                ->orWhere('users.last_name', 'like', $patron));
+        }
+
+        if (! $request->has('draw')) {
+            $filas = $consulta->with(['personal.tipo', 'turno'])
+                ->orderByDesc('attendances.date')->orderByDesc('attendances.time')->orderByDesc('attendances.id')
+                ->limit(self::TOPE_SIN_PAGINAR)->get()
+                ->map(fn (Asistencia $a) => $this->fila($a));
+
+            return response()->json(['data' => $filas, 'truncado' => $filas->count() >= self::TOPE_SIN_PAGINAR]);
+        }
+
+        $columna = self::ORDENABLES[(int) $request->input('order.0.column', 3)] ?? 'attendances.date';
+        $sentido = $request->input('order.0.dir') === 'asc' ? 'asc' : 'desc';
+
+        $total = $enRango()->count();
+        $filtrados = (clone $consulta)->count();
+
+        $filas = (clone $consulta)->with(['personal.tipo', 'turno'])
+            ->orderBy($columna, $sentido)
+            ->when($columna === 'attendances.date', fn ($q) => $q->orderBy('attendances.time', $sentido))
+            ->orderBy('attendances.id', $sentido)
+            ->offset((int) $request->input('start', 0))->limit((int) $request->input('length', 10))
             ->get()
             ->map(fn (Asistencia $a) => $this->fila($a));
 
-        return response()->json(['data' => $filas]);
+        return response()->json([
+            'draw' => (int) $request->input('draw'),
+            'recordsTotal' => $total,
+            'recordsFiltered' => $filtrados,
+            'data' => $filas,
+        ]);
     }
 
     public function create()
@@ -112,36 +164,56 @@ class AsistenciaController extends Controller
             throw ValidationException::withMessages(['time' => 'No se puede registrar asistencia en una hora futura.']);
         }
 
-        $this->validarContraOtrasDelDia($asistencia, $datos['date'], $datos['status']);
+        DB::transaction(function () use ($asistencia, $datos, $momento) {
+            // Se bloquea a la persona: una edición y una marcación simultáneas no se pisan.
+            Personal::whereKey($asistencia->user_id)->lockForUpdate()->first();
+            $asistencia->refresh();
 
-        $turnoAnterior = [$asistencia->schedule_id, $asistencia->shift_date?->toDateString()];
+            $this->validarContraOtrasDelDia($asistencia, $datos['date'], $datos['status']);
 
-        if ($datos['status'] === Asistencia::AUSENTE) {
-            $ubicacion = ['schedule_id' => ResolverTurno::paraHora($momento)?->id, 'shift_date' => $datos['date'], 'type' => null, 'late_minutes' => null];
-        } else {
-            // Misma regla que al registrar (una entrada y una salida por turno), sin contarse a sí misma.
-            $marcacion = $this->servicio->resolverMarcacion($asistencia->personal, $momento, $asistencia->id);
+            $turnoAnterior = [$asistencia->schedule_id, $asistencia->shift_date?->toDateString()];
 
-            if ($marcacion['problema']) {
-                throw ValidationException::withMessages(['time' => $marcacion['problema']]);
+            if ($datos['status'] === Asistencia::AUSENTE) {
+                // Mismas reglas que al registrar: contrato vigente y sin vacaciones en la fecha nueva.
+                $this->servicio->verificarVigencia($asistencia->personal, $momento->copy()->startOfDay(), 'date');
+
+                $ubicacion = ['schedule_id' => ResolverTurno::paraHora($momento)?->id, 'shift_date' => $datos['date'], 'type' => null, 'late_minutes' => null, 'shift_start' => null];
+            } else {
+                // Misma regla que al registrar (una entrada y una salida por turno), sin contarse a sí misma.
+                $marcacion = $this->servicio->resolverMarcacion($asistencia->personal, $momento, $asistencia->id);
+
+                if ($marcacion['problema']) {
+                    throw ValidationException::withMessages(['time' => $marcacion['problema']]);
+                }
+
+                $this->servicio->verificarVigencia(
+                    $asistencia->personal,
+                    $this->servicio->fechaDeVigencia($marcacion['tipo'], $marcacion['jornada'], $momento->copy()->startOfDay()),
+                    'date',
+                );
+
+                // Si sigue en el mismo turno conserva la hora de inicio con la que se calculó; si cambia de turno, se recalcula.
+                $mismoTurno = $marcacion['turno']->id === $asistencia->schedule_id && $marcacion['jornada'] === $asistencia->shift_date?->toDateString();
+                $ubicacion = [
+                    'schedule_id' => $marcacion['turno']->id, 'shift_date' => $marcacion['jornada'],
+                    'type' => null, 'shift_start' => $mismoTurno ? $asistencia->shift_start : null,
+                ];
             }
 
-            $ubicacion = ['schedule_id' => $marcacion['turno']->id, 'shift_date' => $marcacion['jornada'], 'type' => $marcacion['tipo']];
-        }
+            $asistencia->update($ubicacion + [
+                'date' => $datos['date'],
+                'time' => $momento->format('H:i:s'),
+                'status' => $datos['status'],
+                'notes' => $datos['notes'] ?? null,
+            ]);
 
-        $asistencia->update($ubicacion + [
-            'date' => $datos['date'],
-            'time' => $momento->format('H:i:s'),
-            'status' => $datos['status'],
-            'notes' => $datos['notes'] ?? null,
-        ]);
+            // Al mover una marcación se reordena entrada/salida (y tardanza) en su turno nuevo y en el anterior.
+            Asistencia::renumerarTurno($asistencia->user_id, $asistencia->schedule_id, $asistencia->shift_date?->toDateString());
 
-        // Al mover una marcación se reordena entrada/salida (y tardanza) en su turno nuevo y en el anterior.
-        Asistencia::renumerarTurno($asistencia->user_id, $asistencia->schedule_id, $asistencia->shift_date?->toDateString());
-
-        if ($turnoAnterior !== [$asistencia->schedule_id, $asistencia->shift_date?->toDateString()]) {
-            Asistencia::renumerarTurno($asistencia->user_id, ...$turnoAnterior);
-        }
+            if ($turnoAnterior !== [$asistencia->schedule_id, $asistencia->shift_date?->toDateString()]) {
+                Asistencia::renumerarTurno($asistencia->user_id, ...$turnoAnterior);
+            }
+        });
 
         return $this->exito('Asistencia actualizada', 'admin.asistencias.index', [
             'asistencia' => $this->fila($asistencia->fresh(['personal.tipo', 'turno'])),
@@ -151,10 +223,15 @@ class AsistenciaController extends Controller
     public function destroy(string $id)
     {
         $asistencia = Asistencia::findOrFail($id);
-        [$idPersonal, $idTurno, $jornada] = [$asistencia->user_id, $asistencia->schedule_id, $asistencia->shift_date?->toDateString()];
 
-        $asistencia->delete();
-        Asistencia::renumerarTurno($idPersonal, $idTurno, $jornada);
+        DB::transaction(function () use ($asistencia) {
+            Personal::whereKey($asistencia->user_id)->lockForUpdate()->first();
+
+            [$idPersonal, $idTurno, $jornada] = [$asistencia->user_id, $asistencia->schedule_id, $asistencia->shift_date?->toDateString()];
+
+            $asistencia->delete();
+            Asistencia::renumerarTurno($idPersonal, $idTurno, $jornada);
+        });
 
         return $this->exito('Asistencia eliminada', 'admin.asistencias.index');
     }
@@ -194,7 +271,7 @@ class AsistenciaController extends Controller
         $turno = ResolverTurno::paraHora($ahora);
 
         $ultimas = Asistencia::with('personal.tipo')
-            ->whereDate('date', $ahora->toDateString())
+            ->where('date', $ahora->toDateString())
             ->where('status', Asistencia::PRESENTE)
             ->orderByDesc('time')->orderByDesc('id')
             ->limit(6)
@@ -242,6 +319,10 @@ class AsistenciaController extends Controller
         $persona = Personal::with('tipo')->where('dni', $datos['dni'])->first();
 
         // Mismo mensaje si el DNI no existe o la clave no coincide: no se revela qué DNI está registrado.
+        if (! $persona) {
+            HashFicticio::verificar($datos['password']);
+        }
+
         if (! $persona || ! Hash::check($datos['password'], $persona->password)) {
             RateLimiter::hit($clave, 60);
 
@@ -264,7 +345,7 @@ class AsistenciaController extends Controller
 
         return response()->json([
             'mensaje' => $esEntrada
-                ? ($asistencia->late_minutes ? "Entrada registrada con ".Asistencia::textoDeDuracion($asistencia->late_minutes)." de tardanza" : 'Entrada registrada a tiempo')
+                ? ($asistencia->late_minutes ? 'Entrada registrada con '.Asistencia::textoDeDuracion($asistencia->late_minutes).' de tardanza' : 'Entrada registrada a tiempo')
                 : 'Salida registrada',
             'marcacion' => [
                 'tipo' => $asistencia->type,
@@ -286,7 +367,7 @@ class AsistenciaController extends Controller
     /** Entre las marcaciones del mismo día no pueden mezclarse ausencias y asistencias. */
     private function validarContraOtrasDelDia(Asistencia $asistencia, string $dia, string $estado): void
     {
-        $otras = Asistencia::where('user_id', $asistencia->user_id)->whereDate('date', $dia)->whereKeyNot($asistencia->id);
+        $otras = Asistencia::where('user_id', $asistencia->user_id)->where('date', $dia)->whereKeyNot($asistencia->id);
         $hayPresencia = (clone $otras)->where('status', Asistencia::PRESENTE)->exists();
         $hayAusencia = (clone $otras)->where('status', Asistencia::AUSENTE)->exists();
 

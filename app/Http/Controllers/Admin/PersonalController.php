@@ -42,12 +42,9 @@ class PersonalController extends Controller
     public function store(Request $request)
     {
         $datos = $this->validado($request);
-        $datos['profile_photo_path'] = $request->hasFile('photo')
-            ? $this->guardarArchivo($request->file('photo'), 'employee_photos')
-            : null;
         unset($datos['photo']);
 
-        $persona = Personal::create($datos);
+        $persona = $this->conArchivoNuevo($request->file('photo'), 'employee_photos', fn (?string $foto) => Personal::create($datos + ['profile_photo_path' => $foto]));
 
         return $this->exito('Personal registrado', 'admin.personal.index', ['persona' => $this->fila($persona->load('tipo'))]);
     }
@@ -84,7 +81,7 @@ class PersonalController extends Controller
                 'contratos as con_contrato' => fn ($c) => match (true) {
                     $paraVacaciones => $c->vigente()->whereIn('type', ReglasVacacion::CONTRATOS_CON_DERECHO),
                     $paraAsistencia => $c->vigente(),
-                    default => $c->where('is_active', true),
+                    default => $c->noVencido(),
                 },
             ])
             ->orderBy('last_name')->orderBy('name')
@@ -184,13 +181,11 @@ class PersonalController extends Controller
             unset($datos['password']);
         }
 
-        if ($request->hasFile('photo')) {
-            $this->borrarArchivo($persona->profile_photo_path);
-            $datos['profile_photo_path'] = $this->guardarArchivo($request->file('photo'), 'employee_photos');
-        }
-
         unset($datos['photo']);
-        $persona->update($datos);
+
+        $this->conArchivoNuevo($request->file('photo'), 'employee_photos', function (?string $foto) use ($persona, $datos) {
+            $persona->update($foto ? $datos + ['profile_photo_path' => $foto] : $datos);
+        }, $persona->profile_photo_path);
 
         return $this->exito('Personal actualizado', 'admin.personal.index', [
             'persona' => $this->fila($persona->fresh(['tipo', 'contratoVigente'])),

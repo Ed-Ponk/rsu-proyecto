@@ -55,6 +55,7 @@
 
     /* ---------- TIPOS DE PERSONAL ---------- */
     function motivoBloqueoTipoPersonal(tipo) {
+        if (tipo.del_sistema) return 'No se puede eliminar: es una función predefinida del sistema';
         if (tipo.personal > 0) return `No se puede eliminar: el tipo tiene ${tipo.personal} persona(s) asignada(s)`;
         return '';
     }
@@ -134,6 +135,65 @@
                         ) },
                 ],
             });
+        },
+    };
+
+    /* ---------- USUARIOS DEL SISTEMA ---------- */
+    Tads.Modulos.usuarios = {
+        init: function (contenedor) {
+            contenedor._gestor = new Tads.Gestor({
+                entidad: 'usuario',
+                icono: 'bi-person-gear',
+                urlListado: contenedor.dataset.urlListado,
+                urlRecurso: contenedor.dataset.urlRecurso,
+                urlCrear: contenedor.dataset.urlCrear,
+                orden: [[0, 'asc']],
+                columnas: [
+                    { data: 'nombre', render: (v, t, fila) => `<strong>${Tads.escapar(v)}</strong>${fila.actual ? ` ${Tads.insignia('Usted', 'azul')}` : ''}` },
+                    { data: 'correo' },
+                    { data: 'activo', render: (v) => v ? Tads.insignia('Activo', 'verde') : Tads.insignia('Inactivo', 'gris') },
+                    { data: 'dos_pasos', render: (v) => v ? Tads.insignia('Activada', 'verde') : Tads.insignia('No activada', 'gris') },
+                    { data: 'creado', render: Tads.celdaFecha },
+                    { data: null, orderable: false, searchable: false, className: 'text-center',
+                        render: (fila) => Tads.acciones(
+                            Tads.botonEditar(fila.id),
+                            Tads.botonEliminar(fila.id, fila.correo, fila.actual ? 'No puede eliminar su propia cuenta desde aquí' : ''),
+                        ) },
+                ],
+            });
+        },
+    };
+
+    /* ---------- BITÁCORA (solo lectura) ---------- */
+    Tads.Modulos.bitacora = {
+        init: function (contenedor) {
+            const campo = (id) => document.getElementById(id);
+            const colores = { creado: 'verde', modificado: 'ambar', eliminado: 'rojo' };
+
+            const tabla = $('#tabla').DataTable({
+                ajax: async (_parametros, devolver) => {
+                    const filtros = new URLSearchParams({ modelo: campo('filtroModelo').value, accion: campo('filtroAccion').value });
+                    const { ok, estado, json } = await Tads.peticion(`${contenedor.dataset.urlListado}?${filtros}`);
+                    if (!ok) { Tads.alertaDeError(estado, json, 'No se pudo cargar la bitácora'); return devolver({ data: [] }); }
+                    devolver({ data: json.data });
+                },
+                columns: [
+                    { data: 'fecha', render: Tads.celdaFecha },
+                    { data: 'usuario' },
+                    { data: 'accion', render: (v) => Tads.insignia(v.charAt(0).toUpperCase() + v.slice(1), colores[v] ?? 'gris') },
+                    { data: 'registro', render: (v) => `<strong>${Tads.escapar(v)}</strong>` },
+                    { data: 'detalle', render: (v) => `<small class="text-muted">${Tads.escapar(v)}</small>` },
+                ],
+                order: [[0, 'desc']],
+                pageLength: 10,
+                lengthChange: false,
+                autoWidth: false,
+                processing: true,
+                language: Tads.idioma,
+            });
+
+            campo('botonFiltrar').addEventListener('click', () => tabla.ajax.reload());
+            contenedor._tabla = tabla;
         },
     };
 

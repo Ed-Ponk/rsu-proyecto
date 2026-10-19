@@ -21,6 +21,12 @@
                 urlRecurso: contenedor.dataset.urlRecurso,
                 urlCrear: contenedor.dataset.urlCrear,
                 orden: [[2, 'asc']],
+                alCargarListado: (json) => {
+                    const aviso = document.getElementById('avisoHuecos');
+                    if (!aviso) return;
+                    aviso.hidden = !(json.huecos?.length);
+                    document.getElementById('textoHuecos').textContent = (json.huecos ?? []).join(' · ');
+                },
                 columnas: [
                     { data: 'nombre', render: (v, t, fila) => `<strong>${Tads.escapar(v)}</strong>`
                         + (fila.nocturno ? ` ${Tads.insignia('Nocturno', 'violeta')}` : '') },

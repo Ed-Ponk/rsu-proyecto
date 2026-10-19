@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Feriado;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -85,8 +86,9 @@ class CargadorFeriados
 
                 return [$feriados, 'api'];
             }
-        } catch (Throwable) {
-            // Sin internet o bloqueado: se usa el calendario propio.
+        } catch (Throwable $e) {
+            // Sin internet o bloqueado: se usa el calendario propio (pero se deja constancia).
+            Log::warning('No se pudo consultar la API de feriados; se usa el calendario del sistema.', ['error' => $e->getMessage()]);
         }
 
         return [$this->calendarioPropio($anio), 'local'];

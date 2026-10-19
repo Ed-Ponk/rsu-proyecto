@@ -88,15 +88,19 @@ class ReglasDeNegocioTest extends TestCase
         $this->assertSame('Chofer', TipoPersonal::conductor()->name);
     }
 
-    public function test_un_tipo_de_personal_solo_se_elimina_si_no_tiene_personal(): void
+    public function test_un_tipo_de_personal_solo_se_elimina_si_no_tiene_personal_ni_es_del_sistema(): void
     {
         $this->crearPersona(['usertype_id' => TipoPersonal::ayudante()->id]);
 
+        // Conductor y Ayudante son funciones predefinidas: no se eliminan (aunque no tengan personal).
         $this->deleteJson(route('admin.tipospersonal.destroy', TipoPersonal::ayudante()->id))->assertStatus(422);
-        $this->deleteJson(route('admin.tipospersonal.destroy', TipoPersonal::conductor()->id))->assertOk();
+        $this->deleteJson(route('admin.tipospersonal.destroy', TipoPersonal::conductor()->id))->assertStatus(422);
+        $this->assertNotNull(TipoPersonal::conductor());
 
-        $this->assertNull(TipoPersonal::conductor());
-        $this->assertNotNull(TipoPersonal::ayudante());
+        // Una función creada por el usuario sí se elimina cuando no tiene personal.
+        $propio = TipoPersonal::create(['name' => 'Supervisor', 'description' => 'Prueba']);
+        $this->deleteJson(route('admin.tipospersonal.destroy', $propio->id))->assertOk();
+        $this->assertNull(TipoPersonal::find($propio->id));
     }
 
     /* ------------------------------ contratos ------------------------------ */

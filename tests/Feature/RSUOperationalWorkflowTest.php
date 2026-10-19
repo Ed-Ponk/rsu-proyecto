@@ -31,6 +31,7 @@ class RSUOperationalWorkflowTest extends TestCase
     use RefreshDatabase;
 
     private int $dniCounter = 40000000;
+
     private ?User $adminUser = null;
 
     protected function setUp(): void
@@ -390,8 +391,8 @@ class RSUOperationalWorkflowTest extends TestCase
         // Check Milestone 1 KPI metrics contract
         if (! isset($viewData['kpis'])) {
             $this->markTestIncomplete(
-                'Milestone M1 pending: InicioController::index does not yet return the complete ' .
-                'operational KPI metrics dictionary (vehiculos_total, vehiculos_operativos, ' .
+                'Milestone M1 pending: InicioController::index does not yet return the complete '.
+                'operational KPI metrics dictionary (vehiculos_total, vehiculos_operativos, '.
                 'capacidad_total_toneladas, personal_total, contratos_vigentes, etc.).'
             );
         }

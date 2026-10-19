@@ -1,5 +1,5 @@
 {{-- Ventana emergente reutilizable: el formulario llega por AJAX y se coloca dentro de .modal-body. --}}
-<div class="modal fade t-modal" id="ventanaFormulario" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+<div class="modal fade t-modal" id="ventanaFormulario" data-bs-backdrop="static" tabindex="-1"
     aria-labelledby="tituloVentana" aria-hidden="true">
     <div class="modal-dialog {{ $tamano ?? 'modal-lg' }} modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">

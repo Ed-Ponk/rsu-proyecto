@@ -10,6 +10,13 @@
         'boton' => 'Nuevo turno',
     ])
 
+    {{-- Horas del día que ningún turno cubre: en ese horario nadie podría marcar asistencia. --}}
+    <div class="t-nota t-nota-ambar mb-3" id="avisoHuecos" @if (empty($huecos)) hidden @endif>
+        <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Horas sin turno:</strong>
+        <span id="textoHuecos">{{ implode(' · ', $huecos ?? []) }}</span>
+        <div class="small mt-1">En esas horas nadie puede marcar asistencia. Ajuste los turnos para cubrir las 24 horas.</div>
+    </div>
+
     <div class="t-tarjeta"
          id="moduloTurnos"
          data-tads-modulo="turnos"
