@@ -28,7 +28,7 @@ class ContratoController extends Controller
         // Antes de mostrar nada se cierran los temporales cuya fecha ya pasó.
         Contrato::cerrarVencidos();
 
-        if (! $request->ajax()) {
+        if (! $request->routeIs('*.datos') && ! $request->ajax()) {
             return view('admin.contratos.index', ['criterios' => self::CRITERIOS, 'tipos' => Contrato::TIPOS]);
         }
 

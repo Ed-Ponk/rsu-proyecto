@@ -24,8 +24,29 @@ $protegidas = ['auth:sanctum', config('jetstream.auth_session'), 'verified'];
 
 Route::middleware($protegidas)->get('/dashboard', fn () => redirect('/admin'))->name('dashboard');
 
-Route::middleware($protegidas)->prefix('admin')->group(function () {
+Route::middleware([...$protegidas, 'can:administrar-panel'])->prefix('admin')->group(function () {
     Route::get('/', [InicioController::class, 'index'])->name('admin.inicio');
+
+    // Datos de las tablas: URL distinta de la página para que el historial no restaure JSON como HTML.
+    foreach ([
+        'colores' => [ColorController::class, 'colores'],
+        'marcas' => [MarcaController::class, 'marcas'],
+        'modelos' => [ModeloController::class, 'modelos'],
+        'tipos-vehiculo' => [TipoVehiculoController::class, 'tiposvehiculo'],
+        'vehiculos' => [VehiculoController::class, 'vehiculos'],
+        'tipos-personal' => [TipoPersonalController::class, 'tipospersonal'],
+        'personal' => [PersonalController::class, 'personal'],
+        'contratos' => [ContratoController::class, 'contratos'],
+        'asistencias' => [AsistenciaController::class, 'asistencias'],
+        'vacaciones' => [VacacionController::class, 'vacaciones'],
+        'usuarios' => [UsuarioController::class, 'usuarios'],
+        'bitacora' => [BitacoraController::class, 'bitacora'],
+        'turnos' => [TurnoController::class, 'turnos'],
+        'zonas' => [ZonaController::class, 'zonas'],
+        'feriados' => [FeriadoController::class, 'feriados'],
+    ] as $recurso => [$controlador, $nombre]) {
+        Route::get("{$recurso}/datos", [$controlador, 'index'])->name("admin.{$nombre}.datos");
+    }
 
     // ---- Gestión de vehículos
     Route::get('colores/buscar', [ColorController::class, 'buscar'])->name('admin.colores.buscar');

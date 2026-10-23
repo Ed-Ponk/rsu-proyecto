@@ -18,7 +18,7 @@ class BitacoraController extends Controller
 
     public function index(Request $request)
     {
-        if (! $request->ajax()) {
+        if (! $request->routeIs('*.datos') && ! $request->ajax()) {
             return view('admin.bitacora.index', ['modelos' => self::ETIQUETAS]);
         }
 

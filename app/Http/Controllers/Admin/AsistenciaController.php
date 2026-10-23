@@ -38,7 +38,7 @@ class AsistenciaController extends Controller
      */
     public function index(Request $request)
     {
-        if (! $request->ajax()) {
+        if (! $request->routeIs('*.datos') && ! $request->ajax()) {
             return view('admin.asistencias.index', ['hoy' => today()->toDateString()]);
         }
 

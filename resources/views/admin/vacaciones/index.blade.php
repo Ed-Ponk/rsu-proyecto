@@ -13,7 +13,7 @@
     <div class="t-tarjeta"
          id="moduloVacaciones"
          data-tads-modulo="vacaciones"
-         data-url-listado="{{ route('admin.vacaciones.index') }}"
+         data-url-listado="{{ route('admin.vacaciones.datos') }}"
          data-url-recurso="{{ url('admin/vacaciones') }}"
          data-url-crear="{{ route('admin.vacaciones.create') }}">
         <div class="t-tarjeta-cuerpo">

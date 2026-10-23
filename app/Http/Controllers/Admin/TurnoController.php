@@ -15,7 +15,7 @@ class TurnoController extends Controller
 
     public function index()
     {
-        if (! request()->ajax()) {
+        if (! request()->routeIs('*.datos') && ! request()->ajax()) {
             return view('admin.turnos.index', ['huecos' => Turno::huecos()]);
         }
 

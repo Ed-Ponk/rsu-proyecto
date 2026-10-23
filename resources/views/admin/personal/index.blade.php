@@ -13,7 +13,7 @@
     <div class="t-tarjeta"
          id="moduloPersonal"
          data-tads-modulo="personal"
-         data-url-listado="{{ route('admin.personal.index') }}"
+         data-url-listado="{{ route('admin.personal.datos') }}"
          data-url-recurso="{{ url('admin/personal') }}"
          data-url-crear="{{ route('admin.personal.create') }}">
         <div class="t-tarjeta-cuerpo">

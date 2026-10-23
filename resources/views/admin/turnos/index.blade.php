@@ -20,7 +20,7 @@
     <div class="t-tarjeta"
          id="moduloTurnos"
          data-tads-modulo="turnos"
-         data-url-listado="{{ route('admin.turnos.index') }}"
+         data-url-listado="{{ route('admin.turnos.datos') }}"
          data-url-recurso="{{ url('admin/turnos') }}"
          data-url-crear="{{ route('admin.turnos.create') }}">
         <div class="t-tarjeta-cuerpo">

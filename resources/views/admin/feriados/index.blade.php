@@ -20,7 +20,7 @@
     <div class="t-modulo"
          id="moduloFeriados"
          data-tads-modulo="feriados"
-         data-url-listado="{{ route('admin.feriados.index') }}"
+         data-url-listado="{{ route('admin.feriados.datos') }}"
          data-url-recurso="{{ url('admin/feriados') }}"
          data-url-crear="{{ route('admin.feriados.create') }}"
          data-url-cargar="{{ route('admin.feriados.cargar') }}"

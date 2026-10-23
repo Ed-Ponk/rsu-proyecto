@@ -20,7 +20,7 @@
     <div class="t-modulo"
          id="moduloAsistencias"
          data-tads-modulo="asistencias"
-         data-url-listado="{{ route('admin.asistencias.index') }}"
+         data-url-listado="{{ route('admin.asistencias.datos') }}"
          data-url-recurso="{{ url('admin/asistencias') }}"
          data-url-crear="{{ route('admin.asistencias.create') }}"
          data-url-vista-previa="{{ route('admin.asistencias.vistaprevia') }}"

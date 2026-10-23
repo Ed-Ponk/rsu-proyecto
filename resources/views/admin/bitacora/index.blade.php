@@ -12,7 +12,7 @@
     <div class="t-modulo"
          id="moduloBitacora"
          data-tads-modulo="bitacora"
-         data-url-listado="{{ route('admin.bitacora.index') }}">
+         data-url-listado="{{ route('admin.bitacora.datos') }}">
         <div class="t-tarjeta mb-3">
             <div class="t-tarjeta-cuerpo">
                 <div class="t-filtros">

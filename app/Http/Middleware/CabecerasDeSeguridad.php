@@ -29,6 +29,12 @@ class CabecerasDeSeguridad
 
         $respuesta->headers->remove('X-Powered-By');
 
+        // Las rutas antiguas aún negocian HTML/JSON; sus representaciones no deben compartir caché.
+        $respuesta->setVary(['Accept', 'X-Requested-With'], false);
+        if ($request->is('admin', 'admin/*')) {
+            $respuesta->headers->set('Cache-Control', 'private, no-store');
+        }
+
         return $respuesta;
     }
 }

@@ -22,7 +22,7 @@
     <div class="t-tarjeta"
          id="moduloZonas"
          data-tads-modulo="zonas"
-         data-url-listado="{{ route('admin.zonas.index') }}"
+         data-url-listado="{{ route('admin.zonas.datos') }}"
          data-url-recurso="{{ url('admin/zonas') }}"
          data-url-crear="{{ route('admin.zonas.create') }}"
          data-url-mapa="{{ route('admin.zonas.mapa') }}"

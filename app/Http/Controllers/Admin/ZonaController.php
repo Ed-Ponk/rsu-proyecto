@@ -24,7 +24,7 @@ class ZonaController extends Controller
 
     public function index()
     {
-        if (! request()->ajax()) {
+        if (! request()->routeIs('*.datos') && ! request()->ajax()) {
             return view('admin.zonas.index', ['ubigeo' => $this->ubigeo()]);
         }
 
