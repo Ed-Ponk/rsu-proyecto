@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Versionado;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Vehiculo extends Model
 {
+    use Versionado;
+
     protected $table = 'vehicles';
 
     /** Placas válidas: XXXXXX, XX-XXXX o XXX-XXX (letras y números). */

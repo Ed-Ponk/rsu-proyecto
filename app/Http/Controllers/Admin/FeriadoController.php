@@ -20,8 +20,8 @@ class FeriadoController extends Controller
         }
 
         $request->validate([
-            'desde' => ['nullable', 'date'],
-            'hasta' => ['nullable', 'date', 'after_or_equal:desde'],
+            'desde' => ['nullable', 'date_format:Y-m-d'],
+            'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
             'estado' => ['nullable', 'in:activo,inactivo'],
         ], ['hasta.after_or_equal' => 'La fecha final no puede ser anterior a la inicial.']);
 
@@ -95,15 +95,7 @@ class FeriadoController extends Controller
     public function cargar(Request $request, CargadorFeriados $cargador)
     {
         if ($request->has('feriados')) {
-            $lote = $request->validate([
-                'feriados' => ['required', 'array', 'max:60'],
-                'feriados.*.date' => [
-                    'required', 'date_format:Y-m-d',
-                    'after_or_equal:'.config('proyecto.feriados.anio_minimo').'-01-01',
-                    'before_or_equal:'.(today()->year + config('proyecto.feriados.anios_hacia_adelante')).'-12-31',
-                ],
-                'feriados.*.description' => ['required', 'string', 'max:150'],
-            ]);
+            $lote = $request->validate(CargadorFeriados::reglasLote());
 
             $resultado = $cargador->guardar(collect($lote['feriados'])->pluck('description', 'date')->all());
 
@@ -129,7 +121,7 @@ class FeriadoController extends Controller
     {
         $datos = $request->validate([
             'date' => [
-                'required', 'date',
+                'required', 'date_format:Y-m-d',
                 'after_or_equal:'.config('proyecto.feriados.anio_minimo').'-01-01',
                 'before_or_equal:'.(today()->year + config('proyecto.feriados.anios_hacia_adelante')).'-12-31',
                 Rule::unique('holidays', 'date')->ignore($ignorarId),
@@ -162,6 +154,7 @@ class FeriadoController extends Controller
     {
         return [
             'id' => $feriado->id,
+            'version' => (int) $feriado->version,
             'fecha' => $feriado->date->format('d/m/Y'),
             'orden' => $feriado->date->toDateString(),
             'descripcion' => $feriado->description,

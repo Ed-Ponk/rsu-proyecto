@@ -1,27 +1,25 @@
 # Decisiones técnicas
 
-## Mantener Laravel reconocible
+## Laravel y responsabilidades
 
-Los controladores ya están agrupados en `Admin`, las vistas por módulo y las reglas extensas en servicios. Se mantiene esa arquitectura: cambiar namespaces o agrupar cada módulo en una carpeta ajena a las convenciones añadiría configuración y saltos sin resolver un problema demostrado. No se renombraron tablas, columnas ni migraciones históricas.
+Se conservan controladores Admin, modelos Eloquent y servicios con reglas reales. Las entradas complejas se separan en `app/Http/Requests/Admin`; `datos()` valida explícitamente después de adquirir bloqueos. Catálogos sencillos conservan validadores locales y la comprobación en vivo comparte reglas con guardar. No hay repositorios ni interfaces añadidas por anticipación.
 
-## Separar páginas de datos sin romper clientes
+## Escrituras protegidas
 
-Se agregan rutas `admin.{modulo}.datos` antes de los `resource`. Las 15 tablas apuntan allí. Se reutiliza `index()` para preparar las mismas filas, evitando duplicar consultas o reglas. La condición distingue el nombre de ruta y conserva `ajax()` para clientes antiguos. Las respuestas incluyen `Vary: Accept, X-Requested-With`; el panel utiliza `Cache-Control: private, no-store`.
+`EscrituraDelPanel` mantiene validación y escritura en una transacción, bloquea conjuntos estables antes de persona/registro y compara versiones. La lectura inicial de identificación ocurre antes de la transacción para no fijar una vista antigua de datos en MySQL REPEATABLE READ mientras se espera un bloqueo. La autorización se vuelve a comprobar bajo bloqueo del actor. El servicio DNI y el cierre programado conservan protección también fuera de HTTP.
 
-La transición mantiene negociación en los listados antiguos. Retirarla exigiría confirmar todos los consumidores externos y anunciar el cambio. El contrato nuevo `/datos` siempre es JSON en una respuesta satisfactoria; errores de autenticación/validación siguen la negociación HTTP de Laravel.
+## Compatibilidad
 
-## Permisos en cada solicitud
+Se mantienen rutas y claves de negocio; se añade `version` a ediciones y acciones. Estado de contrato recibe el estado deseado. JSON de tablas tiene rutas `/datos`; los listados anteriores conservan negociación por compatibilidad. Las migraciones históricas no se reescriben y los datos incompatibles se informan mediante diagnóstico sin corregirlos automáticamente.
 
-Fortify ya impedía iniciar sesión al personal y a cuentas inactivas. Eso no garantizaba revocar una sesión previamente abierta. La Gate `administrar-panel` aplica la misma regla de identidad en todo `/admin`, incluyendo JSON y escrituras. No se inventan roles adicionales. La factory declara el estado activo igual que el valor predeterminado SQL para representar correctamente una cuenta recién creada en pruebas.
+## Fuentes de interfaz
 
-## Reutilizar componentes existentes
+El panel, el menú y el acceso se compilan con Vite desde `resources`. El layout compartido carga JS después de las librerías de AdminLTE; se conserva `Tads` y se separan módulos y piezas comunes. Terceros permanecen publicados en `public/vendor`. Nunca editar `public/build` ni mantener una segunda copia propia en `public/js`.
 
-El partial `admin.partials.cabecera` ahora llama a `x-admin.cabecera`. Los includes antiguos siguen funcionando y el diseño se modifica en un solo componente. Es una reducción localizada de duplicación; no se creó otra capa de interfaz.
+## Reglas de negocio conservadas
 
-## Validaciones próximas a su uso
+Vacaciones usan días corridos y cupo del año inicial; aprobación iniciada requiere periodo no terminado y sin asistencia. Placas no se fusionan por separadores. La geometría usa cajas aproximadas y tolerancia de 1%, con límite de 200 vértices y precisión almacenada de siete decimales. No se añaden roles ni planificación de rutas.
 
-Modelos comparte `reglas()` entre guardado y comprobación en vivo; separarlo en múltiples clases añadiría archivos sin eliminar duplicación. Se mantienen reglas locales en controladores y reglas complejas de dominio en `ReglasContrato`, `ReglasVacacion` y `ReglasZona`. Use Form Requests cuando la validación crezca y su extracción permita seguir mejor el flujo.
+## Pruebas y operación
 
-## Rendimiento con evidencia
-
-Modelos ya usa `with('marca')` y `withCount('vehiculos')`, evitando una consulta por fila en el listado. Asistencias ya tiene paginación en servidor y límite de compatibilidad. No se añadió caché de datos personales ni una capa de consultas nueva sin mediciones. Los demás catálogos siguen usando paginación del cliente: mida volumen y memoria antes de migrarlos a paginación de servidor.
+SQLite verifica HTTP y reglas; MySQL verifica integridad y dos procesos simultáneos con base descartable. No confundir ambos resultados. Ver `IMPLEMENTACION_Y_VERIFICACION.md` para contratos, despliegue y límites, y `TRES_RECORRIDOS_DEL_CODIGO.md` para empezar a modificar módulos.

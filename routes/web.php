@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\Admin\VacacionController;
 use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\Admin\ZonaController;
+use App\Http\Middleware\EscrituraDelPanel;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
@@ -24,7 +25,7 @@ $protegidas = ['auth:sanctum', config('jetstream.auth_session'), 'verified'];
 
 Route::middleware($protegidas)->get('/dashboard', fn () => redirect('/admin'))->name('dashboard');
 
-Route::middleware([...$protegidas, 'can:administrar-panel'])->prefix('admin')->group(function () {
+Route::middleware([...$protegidas, 'can:administrar-panel', EscrituraDelPanel::class])->prefix('admin')->group(function () {
     Route::get('/', [InicioController::class, 'index'])->name('admin.inicio');
 
     // Datos de las tablas: URL distinta de la página para que el historial no restaure JSON como HTML.

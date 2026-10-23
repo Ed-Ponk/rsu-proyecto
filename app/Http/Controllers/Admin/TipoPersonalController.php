@@ -47,6 +47,7 @@ class TipoPersonalController extends Controller
 
         return [
             'id' => $tipo->id,
+            'version' => (int) $tipo->version,
             'titulo' => $tipo->name,
             'detalle' => $cantidad === 1 ? '1 persona' : "{$cantidad} personas",
             'iniciales' => mb_strtoupper(mb_substr($tipo->name, 0, 2)),
@@ -106,6 +107,7 @@ class TipoPersonalController extends Controller
 
     private function validado(Request $request, ?int $ignorarId = null): array
     {
+        $request->validate(['name' => ['sometimes', 'nullable', 'string']]);
         $request->merge(['name' => preg_replace('/\s+/', ' ', trim((string) $request->input('name')))]);
 
         return $request->validate([
@@ -122,6 +124,7 @@ class TipoPersonalController extends Controller
     {
         return [
             'id' => $tipo->id,
+            'version' => (int) $tipo->version,
             'nombre' => $tipo->name,
             'descripcion' => $tipo->description,
             'del_sistema' => $tipo->is_system,

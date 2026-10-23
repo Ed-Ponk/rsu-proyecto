@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Versionado;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class TipoPersonal extends Model
 {
+    use Versionado;
+
     protected $table = 'usertypes';
 
     /** Nombres con los que se crean las funciones del sistema. */

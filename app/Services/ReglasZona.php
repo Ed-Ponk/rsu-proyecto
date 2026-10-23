@@ -16,6 +16,12 @@ class ReglasZona
     {
         $puntos = array_values(array_map(fn ($c) => [(float) $c['latitude'], (float) $c['longitude']], $coordenadas));
         $n = count($puntos);
+        if ($n > 200) {
+            return 'El perímetro admite como máximo 200 coordenadas.';
+        }
+        if (count(array_unique(array_map(fn ($p) => implode(',', $p), $puntos))) !== $n) {
+            return 'El perímetro contiene coordenadas repetidas.';
+        }
 
         if ($n < self::MINIMO_PUNTOS) {
             return 'El perímetro necesita al menos '.self::MINIMO_PUNTOS.' coordenadas.';
@@ -41,6 +47,24 @@ class ReglasZona
         for ($i = 0; $i < $n; $i++) {
             if ($puntos[$i] === $puntos[($i + 1) % $n]) {
                 return 'Hay dos coordenadas consecutivas repetidas (puntos '.($i + 1).' y '.((($i + 1) % $n) + 1).').';
+            }
+        }
+
+        $alineados = true;
+        for ($i = 2; $i < $n; $i++) {
+            $alineados = $alineados && abs($this->orientacion($puntos[0], $puntos[1], $puntos[$i])) < 1e-12;
+        }
+        if ($alineados) {
+            return 'Las coordenadas están alineadas: no forman una superficie.';
+        }
+
+        for ($i = 0; $i < $n; $i++) {
+            $anterior = $puntos[($i + $n - 1) % $n];
+            $actual = $puntos[$i];
+            $siguiente = $puntos[($i + 1) % $n];
+            $producto = ($anterior[0] - $actual[0]) * ($siguiente[0] - $actual[0]) + ($anterior[1] - $actual[1]) * ($siguiente[1] - $actual[1]);
+            if (abs($this->orientacion($anterior, $actual, $siguiente)) < 1e-12 && $producto > 0) {
+                return 'Hay lados que retroceden sobre el mismo segmento.';
             }
         }
 
@@ -225,7 +249,14 @@ class ReglasZona
         $o3 = $this->orientacion($c, $d, $a);
         $o4 = $this->orientacion($c, $d, $b);
 
-        return $o1 * $o2 < 0 && $o3 * $o4 < 0;
+        if ($o1 * $o2 < 0 && $o3 * $o4 < 0) {
+            return true;
+        }
+        $enSegmento = fn ($p, $a, $b) => $p[0] >= min($a[0], $b[0]) - 1e-12 && $p[0] <= max($a[0], $b[0]) + 1e-12
+            && $p[1] >= min($a[1], $b[1]) - 1e-12 && $p[1] <= max($a[1], $b[1]) + 1e-12;
+
+        return (abs($o1) < 1e-12 && $enSegmento($c, $a, $b)) || (abs($o2) < 1e-12 && $enSegmento($d, $a, $b))
+            || (abs($o3) < 1e-12 && $enSegmento($a, $c, $d)) || (abs($o4) < 1e-12 && $enSegmento($b, $c, $d));
     }
 
     private function orientacion(array $a, array $b, array $c): float

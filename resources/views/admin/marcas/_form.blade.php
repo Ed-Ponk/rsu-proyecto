@@ -29,7 +29,7 @@
                 <div><i class="bi bi-image"></i><small>Haga clic para elegir una imagen</small></div>
             @endif
         </div>
-        <input type="file" name="logo" id="archivoLogo" class="d-none" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+        <input type="file" name="logo" id="archivoLogo" class="d-none" accept="image/png,image/jpeg,image/webp,image/gif">
         <div class="form-text">JPG, PNG, WEBP, GIF o SVG. Máximo 2 MB.</div>
     </div>
 </div>

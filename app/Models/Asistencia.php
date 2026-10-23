@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditable;
+use App\Models\Concerns\Versionado;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,7 @@ use Illuminate\Support\Carbon;
 class Asistencia extends Model
 {
     use Auditable;
+    use Versionado;
 
     protected $table = 'attendances';
 
@@ -105,8 +107,9 @@ class Asistencia extends Model
 
         foreach ($marcaciones as $posicion => $marcacion) {
             $esEntrada = $posicion % 2 === 0;
+            $marcacion->refresh();
 
-            static::whereKey($marcacion->id)->update([
+            $marcacion->update([
                 'type' => $esEntrada ? self::ENTRADA : self::SALIDA,
                 'late_minutes' => $esEntrada ? $turno->minutosDeTardanza($jornada, $marcacion->momento(), $inicio) : null,
                 'shift_start' => $inicio,

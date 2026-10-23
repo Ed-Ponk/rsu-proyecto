@@ -6,6 +6,7 @@ use App\Models\Asistencia;
 use App\Models\Personal;
 use App\Models\Turno;
 use App\Models\Vacacion;
+use App\Support\Bloqueo;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -154,11 +155,14 @@ class ServicioAsistencia
         ?int $registradoPor = null,
         string $campoError = 'user_id',
     ): Asistencia {
-        $this->verificarEstadoYMomento($persona, $momento, $campoError);
-
         try {
             return DB::transaction(function () use ($persona, $momento, $estado, $notas, $origen, $registradoPor, $campoError) {
-                Personal::whereKey($persona->id)->lockForUpdate()->first();
+                Bloqueo::tomar('turnos');
+                $persona = Personal::whereKey($persona->id)->lockForUpdate()->firstOrFail();
+                $this->verificarEstadoYMomento($persona, $momento, $campoError);
+                if ($origen === 'marcacion' && ($espera = $this->segundosParaVolverAMarcar($persona))) {
+                    throw ValidationException::withMessages([$campoError => "Espere {$espera} segundos para volver a marcar."]);
+                }
 
                 $dia = $momento->toDateString();
                 $esAusencia = $estado === Asistencia::AUSENTE;

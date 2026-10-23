@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin\Concerns;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -90,7 +92,7 @@ trait RespondeAjax
         }
 
         if ($nueva) {
-            $this->borrarArchivo($archivoAnterior);
+            DB::afterCommit(fn () => $this->borrarArchivo($archivoAnterior));
         }
 
         return $resultado;
@@ -106,7 +108,9 @@ trait RespondeAjax
         $fisica = public_path(ltrim($ruta, '/'));
 
         if (is_file($fisica)) {
-            @unlink($fisica);
+            if (! @unlink($fisica)) {
+                Log::warning('No se pudo limpiar un archivo subido.', ['ruta' => $ruta]);
+            }
         }
     }
 }

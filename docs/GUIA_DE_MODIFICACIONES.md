@@ -11,7 +11,7 @@ Ejecute `git status`, cree una rama con `git switch -c codex/mi-cambio` y use un
 3. Revise `$fillable` en `app/Models/Modelo.php` si el campo se asignará mediante `create` o `update`.
 4. Añada la regla a `ModeloController::reglas()` y el mensaje cuando corresponda. No acepte datos sin validarlos.
 5. Añada el campo a `resources/views/admin/modelos/_form.blade.php` usando una etiqueta asociada y `old()` para recuperar el valor.
-6. Si aparece en el listado, actualice `fila()`, el encabezado de la tabla y las columnas de `public/js/tads/catalogos.js` juntos. Escape todo texto al convertirlo en HTML.
+6. Si aparece en el listado, actualice `fila()`, el encabezado de la tabla y las columnas de `resources/js/admin/modulos/` juntos. Escape todo texto al convertirlo en HTML.
 7. Ajuste el seeder solo si necesita un dato de ejemplo; añada una prueba de aceptación y una de rechazo.
 8. Aplique `php artisan migrate` únicamente en la base prevista. Ejecute las pruebas y revise la pantalla.
 
@@ -23,7 +23,7 @@ Para agregar una funcionalidad, primero trace ruta → controlador → validaci�
 
 ## Cambiar estilos
 
-El panel carga `public/css/tads.css` y `tads-menu.css`; las pantallas de acceso cargan `tads-login.css`. Compruebe escritorio, móvil, teclado, mensajes y modales. El perfil utiliza assets Vite: ejecute `npm run build`. Si el navegador conserva CSS antiguo, haga una recarga completa.
+El panel carga `resources/css/admin/panel.css` y `tads-menu.css`; las pantallas de acceso cargan `tads-login.css`. Compruebe escritorio, móvil, teclado, mensajes y modales. El perfil utiliza assets Vite: ejecute `npm run build`. Si el navegador conserva CSS antiguo, haga una recarga completa.
 
 ## Comprobaciones
 

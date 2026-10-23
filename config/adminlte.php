@@ -875,26 +875,6 @@ return [
                 ['type' => 'js', 'asset' => true, 'location' => 'vendor/leaflet-draw/leaflet.draw.js'],
             ],
         ],
-        'EstilosTads' => [
-            'active' => true,
-            'files' => [
-                ['type' => 'css', 'asset' => true, 'location' => 'css/tads-menu.css'],
-                ['type' => 'css', 'asset' => true, 'location' => 'css/tads.css'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/gestor.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/vehiculos.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/asistencias.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/marcacion.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/inicio.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/contratos.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/personal.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/colores.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/catalogos.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/programacion.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/vacaciones.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/zonas.js'],
-                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/app-admin.js'],
-            ],
-        ],
         'Jquery' => [
             'active' => true,
             'files' => [

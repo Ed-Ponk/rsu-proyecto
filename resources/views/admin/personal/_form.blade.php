@@ -46,7 +46,7 @@
             </div>
             <div class="col-md-6" id="bloqueLicencia">
                 <label for="personalLicencia" class="form-label t-obligatorio">Licencia de conducir</label>
-                <input type="text" name="license" id="personalLicencia" class="form-control text-uppercase" maxlength="9"
+                <input type="text" name="license" aria-describedby="avisoLicencia" id="personalLicencia" class="form-control text-uppercase" maxlength="9"
                     pattern="[A-Za-z][0-9]{8}" title="Una letra seguida de 8 dígitos"
                     placeholder="Q12345678" value="{{ old('license', $persona->license ?? '') }}">
                 <div class="form-text">Obligatoria para conductores (una letra y 8 dígitos).</div>
@@ -105,3 +105,5 @@
 </div>
 
 @include('admin.partials.pie-formulario')
+
+<p id="avisoLicencia" class="small text-muted">Al cambiar a una función no conductora se eliminará la licencia guardada.</p>

@@ -13,7 +13,7 @@ trait Auditable
 
         static::updated(function ($modelo) {
             $cambios = $modelo->getChanges();
-            unset($cambios['updated_at']);
+            unset($cambios['updated_at'], $cambios['version']);
 
             Bitacora::registrar('modificado', $modelo, array_intersect_key($modelo->getOriginal(), $cambios), $cambios);
         });

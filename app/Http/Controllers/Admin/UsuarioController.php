@@ -4,10 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UsuarioRequest;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
+use App\Services\SeguridadAdministrativa;
 use Illuminate\Validation\ValidationException;
 
 /** Usuarios del sistema (administradores). El personal operativo (conductores y ayudantes) no inicia sesión y no aparece aquí. */
@@ -31,7 +30,7 @@ class UsuarioController extends Controller
         return view('admin.usuarios.create');
     }
 
-    public function store(Request $request)
+    public function store(UsuarioRequest $request)
     {
         $datos = $this->validado($request);
 
@@ -51,7 +50,7 @@ class UsuarioController extends Controller
         return view('admin.usuarios.edit', ['usuario' => $this->administradores()->findOrFail($id)]);
     }
 
-    public function update(Request $request, string $id)
+    public function update(UsuarioRequest $request, string $id)
     {
         $usuario = $this->administradores()->findOrFail($id);
         $datos = $this->validado($request, $usuario);
@@ -79,8 +78,7 @@ class UsuarioController extends Controller
             return $this->rechazo($motivo, 'admin.usuarios.index');
         }
 
-        $usuario->tokens()->delete();
-        $usuario->delete();
+        app(SeguridadAdministrativa::class)->eliminar($usuario);
 
         return $this->exito('Usuario eliminado', 'admin.usuarios.index');
     }
@@ -113,26 +111,16 @@ class UsuarioController extends Controller
             : 'No se puede eliminar: debe quedar al menos un administrador activo.';
     }
 
-    private function validado(Request $request, ?User $actual = null): array
+    private function validado(UsuarioRequest $request, ?User $actual = null): array
     {
-        $request->merge(['email' => strtolower(trim((string) $request->input('email'))), 'status' => $request->boolean('status')]);
-
-        return $request->validate([
-            'name' => ['required', 'string', 'min:3', 'max:100'],
-            'email' => ['required', 'email:rfc', 'max:150', Rule::unique('users', 'email')->ignore($actual?->id)],
-            'password' => [$actual ? 'nullable' : 'required', 'string', 'max:72', 'confirmed', Password::defaults()],
-            'status' => ['boolean'],
-        ], [
-            'email.unique' => 'Ya existe una cuenta con ese correo.',
-            'password.confirmed' => 'La confirmación de la contraseña no coincide.',
-            'name.min' => 'El nombre debe tener al menos 3 caracteres.',
-        ]);
+        return $request->datos($actual);
     }
 
     private function fila(User $usuario): array
     {
         return [
             'id' => $usuario->id,
+            'version' => (int) $usuario->version,
             'nombre' => $usuario->name,
             'correo' => $usuario->email,
             'activo' => (bool) $usuario->status,

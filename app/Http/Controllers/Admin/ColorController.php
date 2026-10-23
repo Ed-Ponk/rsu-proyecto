@@ -44,6 +44,7 @@ class ColorController extends Controller
     {
         return [
             'id' => $color->id,
+            'version' => (int) $color->version,
             'titulo' => $color->name,
             'detalle' => $color->code,
             'color' => $color->code,
@@ -97,6 +98,7 @@ class ColorController extends Controller
 
     private function validado(Request $request, ?int $ignorarId = null): array
     {
+        $request->validate(['code' => ['sometimes', 'nullable', 'string']]);
         $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
 
         return $request->validate([
@@ -114,6 +116,7 @@ class ColorController extends Controller
     {
         return [
             'id' => $color->id,
+            'version' => (int) $color->version,
             'nombre' => $color->name,
             'codigo' => $color->code,
             'descripcion' => $color->description,

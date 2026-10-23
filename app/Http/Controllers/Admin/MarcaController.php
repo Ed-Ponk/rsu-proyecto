@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Marca;
+use App\Rules\ImagenSegura;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -81,8 +83,8 @@ class MarcaController extends Controller
             return $this->rechazo('No se puede eliminar la marca porque tiene modelos. Elimine primero sus modelos.', 'admin.marcas.index');
         }
 
-        $this->borrarArchivo($marca->logo);
         $marca->delete();
+        DB::afterCommit(fn () => $this->borrarArchivo($marca->logo));
 
         return $this->exito('Marca eliminada', 'admin.marcas.index');
     }
@@ -122,6 +124,7 @@ class MarcaController extends Controller
 
         return [
             'id' => $marca->id,
+            'version' => (int) $marca->version,
             'titulo' => $marca->name,
             'detalle' => $modelos === 1 ? '1 modelo registrado' : "{$modelos} modelos registrados",
             'foto' => $marca->url_logo,
@@ -135,10 +138,10 @@ class MarcaController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('brands', 'name')->ignore($ignorarId)],
             'description' => ['nullable', 'string', 'max:500'],
-            'logo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
+            'logo' => ['nullable', 'file', new ImagenSegura, 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
         ], [
             'name.unique' => 'Ya existe una marca con ese nombre.',
-            'logo.mimes' => 'El logo debe ser JPG, PNG, WEBP, GIF o SVG.',
+            'logo.mimes' => 'El logo debe ser JPG, PNG, WEBP o GIF.',
             'logo.max' => 'El logo no puede pesar más de 2 MB.',
         ]);
     }
@@ -147,6 +150,7 @@ class MarcaController extends Controller
     {
         return [
             'id' => $marca->id,
+            'version' => (int) $marca->version,
             'nombre' => $marca->name,
             'descripcion' => $marca->description,
             'logo' => $this->urlArchivo($marca->logo),

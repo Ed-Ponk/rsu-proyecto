@@ -6,6 +6,16 @@ Utiliza Laravel 12, PHP 8.2+, Jetstream/Fortify, Livewire 3, AdminLTE 4, Blade, 
 
 ## Orientarse en el código
 
+La implementación actual separa entradas complejas en `app/Http/Requests/Admin`, fuentes de interfaz en `resources/js/admin` y `resources/css/admin`, y pruebas por responsabilidad. El panel requiere `npm run build` en despliegue.
+
+- [Estado del plan, contratos de edición y verificación](docs/IMPLEMENTACION_Y_VERIFICACION.md)
+- [Tres recorridos para entender el código](docs/TRES_RECORRIDOS_DEL_CODIGO.md)
+- [Validaciones y hallazgos originales](docs/ANALISIS_VALIDACIONES_Y_CONCURRENCIA.md)
+- [Inventario regenerable](docs/inventario-proyecto.json): `php scripts/generar-inventario.php`.
+
+Antes de modificar registros existentes, el cliente envía su `version`; un formulario obsoleto recibe 409. Para diagnóstico sin escrituras: `php artisan rsu:verificar-integridad`. Concurrencia MySQL: `php vendor/phpunit/phpunit/phpunit -c phpunit.mysql.xml` contra `rsu_pruebas`, nunca contra la base de trabajo.
+
+
 Empiece por [la guía para principiantes](docs/GUIA_PARA_PRINCIPIANTES.md), siga [el mapa de carpetas](docs/MAPA_DEL_PROYECTO.md) y busque su pantalla en [la guía de módulos](docs/GUIA_DE_MODULOS.md).
 
 - [Flujo de solicitudes](docs/FLUJO_DE_FUNCIONAMIENTO.md)
@@ -24,7 +34,7 @@ Esta rama usa **MySQL** (o MariaDB) como base de datos.
 
 ### Requisitos
 
-- PHP 8.2 o superior, con la extensión `pdo_mysql` activa (XAMPP y Laragon ya la traen)
+- PHP 8.2 o superior con `pdo_mysql`, `mbstring`, `fileinfo` y `gd`; `pdo_sqlite` para las pruebas rápidas
 - Composer
 - Node.js 20.19 o superior (o 22.12+)
 - MySQL 8 o MariaDB 10.4 o superior (por ejemplo, el de XAMPP o Laragon)
@@ -182,7 +192,7 @@ Nuevas pantallas en el menú lateral:
 - **Programación → Zonas**: CRUD con perímetro dibujado en un mapa de **OpenStreetMap** (Leaflet + Leaflet.draw, sin costo ni clave). Incluye el visor del perímetro de cada zona y el botón **Ver mapa de zonas**. Departamentos, provincias y distritos salen de `config/ubigeo.php` (hoy Lambayeque; para agregar otro departamento se copia la misma estructura). Un perímetro necesita mínimo 3 coordenadas dentro de Perú y no puede cruzarse consigo mismo.
 - **Programación → Feriados**: CRUD con tarjetas de resumen y filtros. El botón **Cargar Feriados Perú** consulta la API pública [Nager.Date](https://date.nager.at) (sin clave) y, si no hay internet, usa el calendario propio del sistema (`App\Services\CargadorFeriados`); no duplica los que ya existen.
 
-Restricciones principales (todas se validan en el servidor y tienen pruebas en `tests/Feature/Avance02RestriccionesTest.php`):
+Restricciones principales (todas se validan en el servidor y tienen pruebas en `tests/Feature/Negocio/Avance02RestriccionesTest.php`):
 
 - **Vacaciones:** datos obligatorios; solo personal activo con contrato nombrado o permanente vigente; fecha de inicio no pasada; no se cruzan con solicitudes pendientes/aprobadas de la misma persona (las rechazadas liberan las fechas); máximo el cupo anual restante; solo las pendientes se editan o eliminan (al editar se vuelven a aplicar todas las reglas); no se aprueba un periodo ya terminado ni a quien perdió el derecho; quien está de vacaciones aprobadas no puede registrar asistencia (manual ni con DNI); el personal con vacaciones no se puede eliminar (se marca inactivo).
 - **Turnos:** nombre único, horas distintas, duración entre 1 y 12 horas, sin cruces con otros turnos, no se elimina si tiene asistencias.

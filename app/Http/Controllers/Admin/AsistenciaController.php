@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AsistenciaRequest;
 use App\Models\Asistencia;
 use App\Models\Personal;
 use App\Services\ResolverTurno;
@@ -43,9 +44,12 @@ class AsistenciaController extends Controller
         }
 
         $request->validate([
-            'desde' => ['nullable', 'date'],
-            'hasta' => ['nullable', 'date'],
+            'desde' => ['nullable', 'date_format:Y-m-d'],
+            'hasta' => ['nullable', 'date_format:Y-m-d'],
             'buscar' => ['nullable', 'string', 'max:60'],
+            'search' => ['sometimes', 'array:value,regex'],
+            'search.value' => ['nullable', 'string', 'max:60'],
+            'search.regex' => ['nullable', 'boolean'],
             'draw' => ['nullable', 'integer', 'min:0'],
             'start' => ['nullable', 'integer', 'min:0'],
             'length' => ['nullable', 'integer', 'min:1', 'max:100'],
@@ -55,7 +59,7 @@ class AsistenciaController extends Controller
         $hasta = $this->fechaOpcional($request->input('hasta')) ?? $desde->copy();
 
         if ($hasta->lt($desde)) {
-            [$desde, $hasta] = [$hasta, $desde];
+            throw ValidationException::withMessages(['hasta' => 'La fecha final no puede ser anterior a la inicial.']);
         }
 
         $enRango = fn () => Asistencia::query()
@@ -110,19 +114,9 @@ class AsistenciaController extends Controller
         return view('admin.asistencias.create');
     }
 
-    public function store(Request $request)
+    public function store(AsistenciaRequest $request)
     {
-        $datos = $request->validate([
-            'user_id' => ['required', Rule::exists('users', 'id')->whereNotNull('usertype_id')],
-            'date' => ['required', 'date', 'before_or_equal:today'],
-            'time' => ['required', 'date_format:H:i'],
-            'status' => ['required', Rule::in([Asistencia::PRESENTE, Asistencia::AUSENTE])],
-            'notes' => ['nullable', 'string', 'max:500'],
-        ], [
-            'user_id.required' => 'Seleccione a la persona.',
-            'date.before_or_equal' => 'No se puede registrar asistencia en una fecha futura.',
-            'time.date_format' => 'La hora debe tener el formato HH:MM.',
-        ]);
+        $datos = $request->datos();
 
         $asistencia = $this->servicio->registrar(
             Personal::findOrFail($datos['user_id']),
@@ -145,18 +139,11 @@ class AsistenciaController extends Controller
         ]);
     }
 
-    public function update(Request $request, string $id)
+    public function update(AsistenciaRequest $request, string $id)
     {
         $asistencia = Asistencia::findOrFail($id);
 
-        $datos = $request->validate([
-            'date' => ['required', 'date', 'before_or_equal:today'],
-            'time' => ['required', 'date_format:H:i'],
-            'status' => ['required', Rule::in([Asistencia::PRESENTE, Asistencia::AUSENTE])],
-            'notes' => ['nullable', 'string', 'max:500'],
-        ], [
-            'date.before_or_equal' => 'No se puede registrar asistencia en una fecha futura.',
-        ]);
+        $datos = $request->datos();
 
         $momento = Carbon::parse("{$datos['date']} {$datos['time']}");
 
@@ -227,6 +214,7 @@ class AsistenciaController extends Controller
         DB::transaction(function () use ($asistencia) {
             Personal::whereKey($asistencia->user_id)->lockForUpdate()->first();
 
+            $asistencia->refresh();
             [$idPersonal, $idTurno, $jornada] = [$asistencia->user_id, $asistencia->schedule_id, $asistencia->shift_date?->toDateString()];
 
             $asistencia->delete();
@@ -241,7 +229,7 @@ class AsistenciaController extends Controller
     {
         $datos = $request->validate([
             'user_id' => ['required', Rule::exists('users', 'id')->whereNotNull('usertype_id')],
-            'date' => ['required', 'date'],
+            'date' => ['required', 'date_format:Y-m-d'],
             'time' => ['required', 'date_format:H:i'],
         ]);
 
@@ -296,6 +284,7 @@ class AsistenciaController extends Controller
     /** Registra la marcación: valida credenciales, limita intentos y aplica las mismas reglas que el registro manual. */
     public function marcar(Request $request)
     {
+        $request->validate(['dni' => ['required', 'string']]);
         $request->merge(['dni' => preg_replace('/\D/', '', (string) $request->input('dni'))]);
 
         $datos = $request->validate([
@@ -398,6 +387,7 @@ class AsistenciaController extends Controller
 
         return [
             'id' => $asistencia->id,
+            'version' => (int) $asistencia->version,
             'dni' => $persona?->dni,
             'persona' => $persona?->nombre_completo,
             'funcion' => $persona?->tipo?->name,

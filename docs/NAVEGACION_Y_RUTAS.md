@@ -2,7 +2,7 @@
 
 ## Evidencia del defecto original
 
-Antes del cambio, `ModeloController::index()` devolvía HTML o JSON en `/admin/modelos` según `request()->ajax()`. `resources/views/admin/modelos/index.blade.php` apuntaba `data-url-listado` a esa misma URL; `Tads.peticion` en `public/js/gestor.js` enviaba `X-Requested-With: XMLHttpRequest` y `Accept: application/json`. `CabecerasDeSeguridad` no declaraba `Vary` para distinguir representaciones.
+Antes del cambio, `ModeloController::index()` devolvía HTML o JSON en `/admin/modelos` según `request()->ajax()`. `resources/views/admin/modelos/index.blade.php` apuntaba `data-url-listado` a esa misma URL; `Tads.peticion` en `resources/js/admin/compartido/` enviaba `X-Requested-With: XMLHttpRequest` y `Accept: application/json`. `CabecerasDeSeguridad` no declaraba `Vary` para distinguir representaciones.
 
 Esto permitía almacenar una respuesta JSON bajo la dirección usada para navegar a la página. Es un defecto verificable de separación y caché, compatible con el síntoma al restaurar historial. No se capturó una reproducción del fallo intermitente antes de modificarlo: no se afirma que todos los navegadores lo reproduzcan ni que sea la única causa posible.
 

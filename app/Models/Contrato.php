@@ -3,14 +3,17 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditable;
+use App\Models\Concerns\Versionado;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class Contrato extends Model
 {
     use Auditable;
+    use Versionado;
 
     protected $table = 'contracts';
 
@@ -74,10 +77,23 @@ class Contrato extends Model
     /** Desactiva los temporales cuya fecha de término ya pasó y devuelve cuántos cerró. */
     public static function cerrarVencidos(): int
     {
-        return static::where('is_active', true)
-            ->whereNotNull('end_date')
-            ->where('end_date', '<', today()->toDateString())
-            ->update(['is_active' => false]);
+        $cerrados = 0;
+        $personas = static::where('is_active', true)->whereNotNull('end_date')->where('end_date', '<', today()->toDateString())
+            ->distinct()->orderBy('user_id')->pluck('user_id');
+        foreach ($personas as $idPersonal) {
+            $cerrados += DB::transaction(function () use ($idPersonal) {
+                Personal::whereKey($idPersonal)->lockForUpdate()->firstOrFail();
+                $contratos = static::where('user_id', $idPersonal)->where('is_active', true)
+                    ->whereNotNull('end_date')->where('end_date', '<', today()->toDateString())->get();
+                foreach ($contratos as $contrato) {
+                    $contrato->update(['is_active' => false]);
+                }
+
+                return $contratos->count();
+            });
+        }
+
+        return $cerrados;
     }
 
     public function getEstadoAttribute(): string

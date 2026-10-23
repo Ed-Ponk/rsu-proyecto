@@ -49,6 +49,7 @@ class ModeloController extends Controller
     {
         return [
             'id' => $modelo->id,
+            'version' => (int) $modelo->version,
             'titulo' => $modelo->name,
             'detalle' => "Código {$modelo->code}",
             'iniciales' => mb_strtoupper(mb_substr($modelo->name, 0, 2)),
@@ -136,6 +137,7 @@ class ModeloController extends Controller
 
     private function normalizar(Request $request): void
     {
+        $request->validate(['name' => ['sometimes', 'nullable', 'string'], 'code' => ['sometimes', 'nullable', 'string']]);
         $request->merge([
             'name' => preg_replace('/\s+/', ' ', trim((string) $request->input('name'))),
             'code' => strtoupper(trim((string) $request->input('code'))),
@@ -185,6 +187,7 @@ class ModeloController extends Controller
     {
         return [
             'id' => $modelo->id,
+            'version' => (int) $modelo->version,
             'nombre' => $modelo->name,
             'codigo' => $modelo->code,
             'descripcion' => $modelo->description,

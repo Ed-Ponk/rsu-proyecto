@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ZonaRequest;
 use App\Models\Zona;
 use App\Services\ReglasZona;
 use App\Services\Ubigeo;
@@ -12,7 +13,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -67,7 +67,7 @@ class ZonaController extends Controller
         return view('admin.zonas.create', $this->catalogos());
     }
 
-    public function store(Request $request)
+    public function store(ZonaRequest $request)
     {
         $datos = $this->validado($request);
 
@@ -94,7 +94,7 @@ class ZonaController extends Controller
         return view('admin.zonas.edit', ['zona' => Zona::with('coordenadas')->findOrFail($id)] + $this->catalogos());
     }
 
-    public function update(Request $request, string $id)
+    public function update(ZonaRequest $request, string $id)
     {
         $zona = Zona::findOrFail($id);
         $datos = $this->validado($request, $zona->id);
@@ -114,33 +114,10 @@ class ZonaController extends Controller
         return $this->exito('Zona eliminada', 'admin.zonas.index');
     }
 
-    private function validado(Request $request, ?int $ignorarId = null): array
+    private function validado(ZonaRequest $request, ?int $ignorarId = null): array
     {
-        $datos = $request->validate([
-            'name' => ['required', 'string', 'max:100', Rule::unique('zones', 'name')->ignore($ignorarId)],
-            'department' => ['required', 'string'],
-            'province' => ['required', 'string'],
-            'district' => ['required', 'string'],
-            'description' => ['nullable', 'string', 'max:500'],
-            'average_waste' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'status' => ['required', 'boolean'],
-            'coordinates' => ['required', 'array', 'min:'.ReglasZona::MINIMO_PUNTOS],
-            'coordinates.*.latitude' => ['required', 'numeric', 'between:-90,90'],
-            'coordinates.*.longitude' => ['required', 'numeric', 'between:-180,180'],
-        ], [
-            'name.unique' => 'Ya existe una zona con ese nombre.',
-            'coordinates.required' => 'Dibuje el perímetro de la zona en el mapa (mínimo '.ReglasZona::MINIMO_PUNTOS.' coordenadas).',
-            'coordinates.min' => 'El perímetro necesita al menos '.ReglasZona::MINIMO_PUNTOS.' coordenadas.',
-            'coordinates.*.latitude.required' => 'Complete la latitud de todas las coordenadas.',
-            'coordinates.*.longitude.required' => 'Complete la longitud de todas las coordenadas.',
-            'coordinates.*.latitude.numeric' => 'La latitud debe ser un número.',
-            'coordinates.*.longitude.numeric' => 'La longitud debe ser un número.',
-            'coordinates.*.latitude.between' => 'La latitud debe estar entre -90 y 90.',
-            'coordinates.*.longitude.between' => 'La longitud debe estar entre -180 y 180.',
-        ]);
-
+        $datos = $request->datos($ignorarId);
         $this->validarUbicacion($datos['department'], $datos['province'], $datos['district']);
-
         if ($mensaje = $this->mensajeDelPerimetro($datos['coordinates'], $ignorarId, $datos['department'])) {
             throw ValidationException::withMessages(['coordinates' => $mensaje]);
         }
@@ -199,12 +176,12 @@ class ZonaController extends Controller
         $datos = $request->validate([
             'zona' => ['nullable', 'integer'],
             'department' => ['nullable', 'string', 'max:60'],
-            'coordinates' => ['nullable', 'array'],
+            'coordinates' => ['nullable', 'array', 'max:200'],
             'coordinates.*.latitude' => ['required', 'numeric', 'between:-90,90'],
             'coordinates.*.longitude' => ['required', 'numeric', 'between:-180,180'],
         ]);
 
-        $coordenadas = $datos['coordinates'] ?? [];
+        $coordenadas = array_map(fn ($p) => ['latitude' => round((float) $p['latitude'], 7), 'longitude' => round((float) $p['longitude'], 7)], $datos['coordinates'] ?? []);
 
         // Con menos de 3 puntos todavía se está dibujando: no hay nada que reprochar.
         $mensaje = count($coordenadas) < ReglasZona::MINIMO_PUNTOS
@@ -275,6 +252,7 @@ class ZonaController extends Controller
     {
         return [
             'id' => $zona->id,
+            'version' => (int) $zona->version,
             'nombre' => $zona->name,
             'distrito' => $zona->district,
             'provincia' => $zona->province,
@@ -290,6 +268,7 @@ class ZonaController extends Controller
     {
         return [
             'id' => $zona->id,
+            'version' => (int) $zona->version,
             'nombre' => $zona->name,
             'distrito' => $zona->district,
             'provincia' => $zona->province,

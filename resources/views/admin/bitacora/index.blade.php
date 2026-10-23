@@ -1,4 +1,4 @@
-@extends('adminlte::page')
+@extends('layouts.admin')
 
 @section('title', 'Bitácora')
 
@@ -6,7 +6,7 @@
     @include('admin.partials.cabecera', [
         'icono' => 'bi-clipboard-data',
         'titulo' => 'Bitácora de cambios',
-        'subtitulo' => 'Quién creó, modificó o eliminó cada registro. Se muestran los últimos 1 000 movimientos.',
+        'subtitulo' => 'Quién creó, modificó o eliminó cada registro. El historial se consulta por páginas con filtros de registro y acción.',
     ])
 
     <div class="t-modulo"

@@ -33,7 +33,7 @@
 
     <div class="col-md-6">
         <label for="vacacionInicio" class="form-label t-obligatorio">Fecha de inicio</label>
-        <input type="date" name="start_date" id="vacacionInicio" class="form-control" required min="{{ today()->toDateString() }}"
+        <input type="date" name="start_date" id="vacacionInicio" class="form-control" required min="{{ isset($vacacion) ? min($vacacion->start_date->toDateString(), today()->toDateString()) : today()->toDateString() }}"
             value="{{ old('start_date', isset($vacacion) ? $vacacion->start_date->toDateString() : '') }}">
     </div>
 

@@ -137,6 +137,7 @@ class TurnoController extends Controller
     {
         return [
             'id' => $turno->id,
+            'version' => (int) $turno->version,
             'nombre' => $turno->name,
             'descripcion' => $turno->description,
             'entrada' => substr($turno->time_start, 0, 5),

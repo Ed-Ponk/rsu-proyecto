@@ -1,18 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sistema de residuos sólidos urbanos">
-  <defs>
-    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#16a34a"/>
-      <stop offset="1" stop-color="#0b5cad"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="url(#fondo)"/>
-  <!-- tres flechas que giran: reciclaje -->
-  <g fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M24 20l8-8 8 8"/>
-    <path d="M32 12v14"/>
-    <path d="M18 40l-6 10h14"/>
-    <path d="M22 36l-8 14"/>
-    <path d="M46 40l6 10H38"/>
-    <path d="M42 36l8 14"/>
+  <rect width="64" height="64" rx="14" fill="#245d46"/>
+  <g transform="translate(0 -3)">
+  <path d="M10 22h27a3 3 0 0 1 3 3v18H12a3 3 0 0 1-3-3V25a3 3 0 0 1 3-3Z" fill="#f5fbf6"/>
+  <path d="M40 29h6a4 4 0 0 1 3.2 1.6l5.5 7.3V43H40Z" fill="#f5fbf6"/>
+  <rect x="13" y="26" width="22" height="13" rx="2" fill="#dceee2"/>
+  <path d="M20 34c2.6-5.2 7.6-6.6 11-6.1-.6 5.4-3.7 8.8-8.2 8.8-2.4 0-3.6-1-2.8-2.7Z" fill="#245d46"/>
+  <path d="m20.8 36.6 7.5-7.2" fill="none" stroke="#245d46" stroke-linecap="round" stroke-width="1.6"/>
+  <path d="M43 32h2.2a2 2 0 0 1 1.6.8l3.3 4.2H43Z" fill="#b8dec4"/>
+  <circle cx="19" cy="43" r="5" fill="#153e30"/>
+  <circle cx="46" cy="43" r="5" fill="#153e30"/>
+  <circle cx="19" cy="43" r="2" fill="#dceee2"/>
+  <circle cx="46" cy="43" r="2" fill="#dceee2"/>
   </g>
 </svg>

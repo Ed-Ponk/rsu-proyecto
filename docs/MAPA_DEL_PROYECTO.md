@@ -1,41 +1,45 @@
 # Mapa del proyecto
 
+Punto de entrada actualizado: [implementación y organización](IMPLEMENTACION_Y_VERIFICACION.md) y [tres recorridos del código](TRES_RECORRIDOS_DEL_CODIGO.md).
+
+Revisión del 23/10/2026: [mapa técnico actual](MAPA_TECNICO_ACTUAL.md), [análisis de validaciones y concurrencia](ANALISIS_VALIDACIONES_Y_CONCURRENCIA.md) e [inventario de archivos, métodos y pruebas](inventario-proyecto.json).
+
 Las rutas indicadas en estas guías son relativas a la raíz del repositorio.
 
 ```text
 app/
-  Actions/Fortify/         Creación de cuentas y cambios de contraseña/perfil
-  Actions/Jetstream/       Eliminación protegida de cuentas
-  Http/Controllers/Admin/  Solicitudes de cada módulo administrativo
-    Concerns/             Respuestas AJAX y buscadores reutilizados
-  Http/Middleware/         Cabeceras HTTP de seguridad y caché
-  Http/Responses/          Recuperación de acceso sin revelar cuentas
-  Models/                  Tablas, relaciones y operaciones de datos
-    Concerns/             Registro compartido en bitácora
-  Providers/               Autenticación, permiso del panel y configuración
-  Services/                Reglas de contratos, vacaciones, asistencia y zonas
-  Support/                 Verificación ficticia para igualar tiempos de acceso
-config/                    Parámetros del negocio, menú y servicios Laravel
-database/
-  factories/               Cuentas para pruebas automatizadas
-  migrations/              Historia de la estructura SQL
-  seeders/                 Catálogos y ejemplos según el entorno
-public/
-  css/                     tads.css, tads-menu.css y tads-login.css
-  js/gestor.js              Tablas, ventanas y formularios compartidos
-  js/tads/                 Comportamiento específico por módulo
-  vendor/                  Assets de terceros publicados; no código propio
-resources/views/
-  admin/                   Una carpeta por módulo: index, create, edit y _form
-  admin/partials/          Adaptadores y fragmentos compartidos
-  components/admin/       Componentes visuales reutilizables
-  auth/                   Pantallas de acceso
-  profile/                Gestión de la cuenta autenticada
-routes/web.php             Interfaces, datos JSON y operaciones del panel
-routes/console.php         Comandos y tareas programadas
-tests/Feature/             Pruebas HTTP, componentes y reglas de negocio
-tests/Unit/                Pruebas unitarias
-docs/                      Guías en español y resultados de revisión
+  Actions/Fortify/           Acceso y cambios de perfil/contraseña
+  Actions/Jetstream/         Eliminación protegida de cuenta
+  Console/Commands/          Diagnóstico de integridad sin escrituras
+  Http/Controllers/Admin/    Entradas HTTP y respuestas por módulo
+    Concerns/               Respuestas y archivos compartidos
+  Http/Requests/Admin/       Validación de flujos complejos
+  Http/Middleware/          Transacciones, versiones, acceso y cabeceras
+  Models/                   Relaciones, consultas y datos
+    Concerns/               Auditoría y versiones
+  Services/                 Reglas de negocio, asistencia, galería y seguridad
+  Support/                  Bloqueos e identidad inexistente
+config/                     Negocio, menú, librerías y servicios Laravel
+resources/
+  views/admin/              Vistas por módulo
+  views/layouts/admin       Entrada compartida del panel mediante Vite
+  views/components/         Componentes del panel y Jetstream
+  js/admin/compartido/       Peticiones, errores, buscadores, reloj, tablas
+  js/admin/modulos/          Un archivo por módulo
+  js/admin/panel.js          Orden de carga
+  css/admin/                Fuentes de panel, menú y acceso
+public/                     Entrada web, terceros, imágenes y cargas
+  build/                    Assets compilados; no editar
+routes/                     Rutas HTTP y comandos programados
+database/                   Migraciones, seeders y factory
+tests/
+  Feature/Negocio/           Reglas y flujos
+  Feature/Seguridad/         Acceso y perfil
+  Feature/Navegacion/        Páginas y endpoints
+  Feature/Arquitectura/      Contratos de estructura y componentes
+  Concurrencia/             Dos procesos sobre MySQL descartable
+scripts/                    Generación reproducible de inventario
+docs/                       Guías y evidencia de implementación
 ```
 
 | Quiero modificar… | Debo revisar… | Motivo |
@@ -47,8 +51,8 @@ docs/                      Guías en español y resultados de revisión
 | Permiso del panel | `app/Providers/AppServiceProvider.php`, `routes/web.php` | Gate y aplicación a las rutas |
 | Inicio de sesión | `app/Providers/FortifyServiceProvider.php` | Comprueba identidad, estado y contraseña |
 | Menú | `config/adminlte.php` | Define enlaces y agrupaciones |
-| Tabla o modal | `public/js/gestor.js`, `public/js/tads/` | Lógica compartida y columnas específicas |
-| Apariencia | `public/css/` | El panel utiliza CSS público directamente |
+| Tabla o modal | `resources/js/admin/compartido/`, `resources/js/admin/modulos/` | Lógica compartida y columnas específicas |
+| Apariencia | `resources/css/admin/` | El panel utiliza CSS público directamente |
 | Perfil Jetstream | `resources/css/app.css`, `resources/js/app.js` | Se compilan con Vite |
 | Base de datos | `database/migrations/`, `app/Models/` | Estructura y relaciones |
 | Parámetros de negocio | `config/proyecto.php` | Cupos, tolerancias y límites existentes |

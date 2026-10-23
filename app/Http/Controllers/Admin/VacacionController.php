@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\VacacionRequest;
+use App\Models\Asistencia;
 use App\Models\Personal;
 use App\Models\Vacacion;
 use App\Services\ReglasVacacion;
-use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -41,7 +42,7 @@ class VacacionController extends Controller
         return view('admin.vacaciones.create', ['cupo' => config('proyecto.vacaciones.dias_por_anio')]);
     }
 
-    public function store(Request $request)
+    public function store(VacacionRequest $request)
     {
         $datos = $this->validado($request);
 
@@ -72,7 +73,7 @@ class VacacionController extends Controller
         return view('admin.vacaciones.edit', ['vacacion' => $vacacion, 'cupo' => config('proyecto.vacaciones.dias_por_anio')]);
     }
 
-    public function update(Request $request, string $id)
+    public function update(VacacionRequest $request, string $id)
     {
         $vacacion = Vacacion::findOrFail($id);
 
@@ -141,6 +142,11 @@ class VacacionController extends Controller
                 return 'No se puede aprobar: la persona ya no es personal nombrado o con contrato permanente vigente.';
             }
 
+            if (Asistencia::where('user_id', $vacacion->user_id)
+                ->whereBetween('date', [$vacacion->start_date->toDateString(), $vacacion->end_date->toDateString()])->exists()) {
+                return 'No se puede aprobar: existen asistencias en el periodo solicitado.';
+            }
+
             $anio = $vacacion->start_date->year;
             $disponibles = $this->reglas->disponiblesParaAprobar($vacacion->user_id, $anio);
 
@@ -184,26 +190,9 @@ class VacacionController extends Controller
         return $this->exito('Solicitud rechazada', 'admin.vacaciones.index', ['vacacion' => $this->fila($vacacion->fresh('personal'))]);
     }
 
-    private function validado(Request $request, ?int $idPersonal = null): array
+    private function validado(VacacionRequest $request, ?int $idPersonal = null): array
     {
-        $datos = $request->validate([
-            'user_id' => $idPersonal ? ['nullable'] : ['required', 'integer', 'exists:users,id'],
-            'days' => ['required', 'integer', 'min:1', 'max:'.config('proyecto.vacaciones.dias_por_anio')],
-            'start_date' => ['required', 'date'],
-            'notes' => ['nullable', 'string', 'max:500'],
-        ], [
-            'user_id.required' => 'Seleccione al personal.',
-            'days.required' => 'Indique los días solicitados.',
-            'days.min' => 'Debe solicitar al menos 1 día.',
-            'days.max' => 'No puede solicitar más de :max días.',
-            'start_date.required' => 'Indique la fecha de inicio.',
-        ]);
-
-        if ($idPersonal) {
-            $datos['user_id'] = $idPersonal;
-        }
-
-        return $datos;
+        return $request->datos($idPersonal);
     }
 
     private function exigirReglas(array $datos, ?Vacacion $actual = null): void
@@ -238,6 +227,7 @@ class VacacionController extends Controller
 
         return [
             'id' => $vacacion->id,
+            'version' => (int) $vacacion->version,
             'dni' => $persona?->dni,
             'empleado' => $persona?->nombre_completo,
             'solicitud' => $vacacion->created_at?->format('d/m/Y'),

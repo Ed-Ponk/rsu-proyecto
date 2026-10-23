@@ -57,7 +57,7 @@ class ReglasContrato
         }
 
         if ($tipo === Contrato::TEMPORAL && ! isset($errores['user_id'])) {
-            $errorPlazo = $this->validarPlazoEntreTemporales($persona, $inicio, $actual);
+            $errorPlazo = $this->validarPlazoEntreTemporales($persona, $inicio, $fin, $actual);
 
             if ($errorPlazo) {
                 $errores['start_date'] = $errorPlazo;
@@ -76,30 +76,23 @@ class ReglasContrato
     }
 
     /** Entre dos temporales de la misma persona deben pasar N meses desde que venció el anterior. */
-    private function validarPlazoEntreTemporales(Personal $persona, Carbon $inicio, ?Contrato $excepto): ?string
+    private function validarPlazoEntreTemporales(Personal $persona, Carbon $inicio, ?Carbon $fin, ?Contrato $excepto): ?string
     {
+        if (! $fin) {
+            return null;
+        }
         $meses = (int) config('proyecto.contratos.meses_entre_temporales', 2);
-
-        $anterior = Contrato::where('user_id', $persona->id)
-            ->where('type', Contrato::TEMPORAL)
-            ->whereNotNull('end_date')
-            ->where('start_date', '<', $inicio->toDateString())
-            ->when($excepto, fn ($q) => $q->whereKeyNot($excepto->id))
-            ->orderByDesc('end_date')
-            ->first();
-
-        if (! $anterior) {
-            return null;
+        $otros = Contrato::where('user_id', $persona->id)->where('type', Contrato::TEMPORAL)
+            ->whereNotNull('end_date')->when($excepto, fn ($q) => $q->whereKeyNot($excepto->id))->get();
+        foreach ($otros as $otro) {
+            $separado = $otro->end_date->copy()->addMonthsNoOverflow($meses)->lte($inicio)
+                || $fin->copy()->addMonthsNoOverflow($meses)->lte($otro->start_date);
+            if (! $separado) {
+                return "Deben pasar {$meses} meses entre contratos temporales; revise el intervalo del contrato #{$otro->id}.";
+            }
         }
 
-        $primerDiaPermitido = $anterior->end_date->copy()->addMonths($meses);
-
-        if ($inicio->gte($primerDiaPermitido)) {
-            return null;
-        }
-
-        return "El último temporal venció el {$anterior->end_date->format('d/m/Y')}. Deben pasar {$meses} meses: "
-            ."la nueva fecha de inicio debe ser el {$primerDiaPermitido->format('d/m/Y')} o posterior.";
+        return null;
     }
 
     /**
@@ -144,10 +137,10 @@ class ReglasContrato
         }
 
         $fuera = Asistencia::where('user_id', $actual->user_id)
-            ->where(fn ($q) => $q->where('date', '<', $inicio->toDateString())
-                ->when($fin, fn ($w) => $w->orWhere('date', '>', $fin->toDateString())))
-            ->orderBy('date')->get(['date'])
-            ->first(fn ($a) => ! $otros->contains(fn (Contrato $c) => $c->start_date->lte($a->date) && (! $c->end_date || $c->end_date->gte($a->date))));
+            ->where(fn ($q) => $q->whereRaw('COALESCE(shift_date, date) < ?', [$inicio->toDateString()])
+                ->when($fin, fn ($w) => $w->orWhereRaw('COALESCE(shift_date, date) > ?', [$fin->toDateString()])))
+            ->orderBy('date')->get(['date', 'shift_date'])
+            ->first(fn ($a) => ! $otros->contains(fn (Contrato $c) => $c->start_date->lte($a->shift_date ?? $a->date) && (! $c->end_date || $c->end_date->gte($a->shift_date ?? $a->date))));
 
         if ($fuera) {
             return 'Hay asistencias registradas fuera de las nuevas fechas del contrato (por ejemplo, el '.$fuera->date->format('d/m/Y').'). Corrija esas asistencias o ajuste las fechas.';

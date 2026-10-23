@@ -46,6 +46,7 @@ class TipoVehiculoController extends Controller
 
         return [
             'id' => $tipo->id,
+            'version' => (int) $tipo->version,
             'titulo' => $tipo->name,
             'detalle' => $cantidad === 1 ? '1 vehículo' : "{$cantidad} vehículos",
             'iniciales' => mb_strtoupper(mb_substr($tipo->name, 0, 2)),
@@ -110,6 +111,7 @@ class TipoVehiculoController extends Controller
     {
         return [
             'id' => $tipo->id,
+            'version' => (int) $tipo->version,
             'nombre' => $tipo->name,
             'descripcion' => $tipo->description,
             'vehiculos' => $tipo->vehiculos_count ?? $tipo->vehiculos()->count(),

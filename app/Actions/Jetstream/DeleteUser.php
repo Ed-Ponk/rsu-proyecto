@@ -3,6 +3,7 @@
 namespace App\Actions\Jetstream;
 
 use App\Models\User;
+use App\Services\SeguridadAdministrativa;
 use Illuminate\Validation\ValidationException;
 use Laravel\Jetstream\Contracts\DeletesUsers;
 
@@ -13,13 +14,10 @@ class DeleteUser implements DeletesUsers
      */
     public function delete(User $user): void
     {
-        // Sin administradores nadie podría volver a entrar al sistema.
-        if ($user->usertype_id === null && User::whereNull('usertype_id')->count() <= 1) {
-            throw ValidationException::withMessages(['password' => 'No se puede eliminar la única cuenta de administrador del sistema.']);
+        try {
+            app(SeguridadAdministrativa::class)->eliminar($user);
+        } catch (ValidationException $error) {
+            throw ValidationException::withMessages(['password' => $error->validator->errors()->first()]);
         }
-
-        $user->deleteProfilePhoto();
-        $user->tokens->each->delete();
-        $user->delete();
     }
 }

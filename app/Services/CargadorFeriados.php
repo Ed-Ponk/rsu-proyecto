@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Feriado;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Throwable;
 
 /**
@@ -56,20 +58,31 @@ class CargadorFeriados
      */
     public function guardar(array $feriados): array
     {
-        $creados = 0;
-        $existentes = 0;
+        $filas = collect($feriados)->map(fn ($descripcion, $fecha) => ['date' => $fecha, 'description' => $descripcion])->values()->all();
+        Validator::make(['feriados' => $filas], self::reglasLote())->validate();
 
-        foreach ($feriados as $fecha => $descripcion) {
-            // Respeta lo que ya existe (aunque el usuario lo haya editado o desactivado).
-            $feriado = Feriado::firstOrCreate(
-                ['date' => $fecha],
-                ['description' => $descripcion, 'status' => true],
-            );
+        return DB::transaction(function () use ($feriados) {
+            $creados = 0;
+            $existentes = 0;
+            foreach ($feriados as $fecha => $descripcion) {
+                $feriado = Feriado::firstOrCreate(['date' => $fecha], ['description' => trim($descripcion), 'status' => true]);
+                $feriado->wasRecentlyCreated ? $creados++ : $existentes++;
+            }
 
-            $feriado->wasRecentlyCreated ? $creados++ : $existentes++;
-        }
+            return ['creados' => $creados, 'existentes' => $existentes];
+        });
+    }
 
-        return ['creados' => $creados, 'existentes' => $existentes];
+    public static function reglasLote(): array
+    {
+        return [
+            'feriados' => ['required', 'array', 'max:60'],
+            'feriados.*' => ['array:date,description'],
+            'feriados.*.date' => ['required', 'date_format:Y-m-d', 'distinct',
+                'after_or_equal:'.config('proyecto.feriados.anio_minimo').'-01-01',
+                'before_or_equal:'.(today()->year + config('proyecto.feriados.anios_hacia_adelante')).'-12-31'],
+            'feriados.*.description' => ['required', 'string', 'min:3', 'max:150'],
+        ];
     }
 
     /** @return array{0: array<string,string>, 1: string} fecha => descripción, y de dónde salieron. */
@@ -79,6 +92,14 @@ class CargadorFeriados
             $respuesta = Http::timeout(8)->acceptJson()->get(sprintf(self::API, $anio));
 
             if ($respuesta->successful() && is_array($respuesta->json()) && $respuesta->json() !== []) {
+                $filas = $respuesta->json();
+                $normalizadas = collect($filas)->map(fn ($dia) => ['date' => $dia['date'] ?? null, 'description' => $dia['localName'] ?? $dia['name'] ?? null])->all();
+                Validator::make(['feriados' => $normalizadas], self::reglasLote())->validate();
+                foreach ($normalizadas as $dia) {
+                    if (! str_starts_with($dia['date'], $anio.'-')) {
+                        throw new \UnexpectedValueException('Año incorrecto en la fuente de feriados.');
+                    }
+                }
                 $feriados = [];
                 foreach ($respuesta->json() as $dia) {
                     $feriados[$dia['date']] = $dia['localName'] ?? $dia['name'];

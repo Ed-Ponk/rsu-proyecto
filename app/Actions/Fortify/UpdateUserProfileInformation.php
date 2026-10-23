@@ -17,11 +17,18 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
      */
     public function update(User $user, array $input): void
     {
+        $user->refresh();
+        if (isset($input['email']) && is_string($input['email'])) {
+            $input['email'] = strtolower(trim($input['email']));
+        }
         Validator::make($input, [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'version' => ['required', 'integer', 'min:1'],
+            'name' => ['required', 'string', 'min:3', 'max:100'],
+            'email' => ['required', 'email', 'max:150', Rule::unique('users')->ignore($user->id)],
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
         ])->validateWithBag('updateProfileInformation');
+
+        abort_if((int) $input['version'] !== (int) $user->version, 409, 'El perfil cambió. Recargue antes de guardar.');
 
         if (isset($input['photo'])) {
             $user->updateProfilePhoto($input['photo']);

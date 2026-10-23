@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ContratoRequest;
 use App\Models\Contrato;
 use App\Services\ReglasContrato;
 use Illuminate\Http\Request;
@@ -33,8 +34,8 @@ class ContratoController extends Controller
         }
 
         $filtro = $request->validate([
-            'desde' => ['nullable', 'date'],
-            'hasta' => ['nullable', 'date', 'after_or_equal:desde'],
+            'desde' => ['nullable', 'date_format:Y-m-d'],
+            'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
             'criterio' => ['nullable', Rule::in(array_keys(self::CRITERIOS))],
             'tipo' => ['nullable', Rule::in(array_keys(Contrato::TIPOS))],
         ], [
@@ -64,10 +65,8 @@ class ContratoController extends Controller
         return view('admin.contratos.create', $this->catalogos());
     }
 
-    public function store(Request $request)
+    public function store(ContratoRequest $request)
     {
-        Contrato::cerrarVencidos();
-
         $contrato = Contrato::create($this->validado($request));
 
         return $this->exito('Contrato registrado', 'admin.contratos.index', ['contrato' => $this->fila($contrato->load('personal.tipo'))]);
@@ -83,10 +82,8 @@ class ContratoController extends Controller
         return view('admin.contratos.edit', $this->catalogos() + ['contrato' => Contrato::with('personal')->findOrFail($id)]);
     }
 
-    public function update(Request $request, string $id)
+    public function update(ContratoRequest $request, string $id)
     {
-        Contrato::cerrarVencidos();
-
         $contrato = Contrato::findOrFail($id);
         $datos = $this->validado($request, $contrato);
         unset($datos['user_id']);   // un contrato no se pasa a otra persona
@@ -101,13 +98,17 @@ class ContratoController extends Controller
     }
 
     /** Los contratos no se borran (son historial): se activan o desactivan. */
-    public function cambiarEstado(string $id)
+    public function cambiarEstado(Request $request, string $id)
     {
-        Contrato::cerrarVencidos();
-
         $contrato = Contrato::findOrFail($id);
 
-        if (! $contrato->is_active) {
+        $request->validate(['is_active' => ['required', 'boolean']]);
+        $deseado = $request->boolean('is_active');
+        if ($deseado === (bool) $contrato->is_active) {
+            return $this->exito('El contrato ya tiene ese estado', 'admin.contratos.index', ['contrato' => $this->fila($contrato)]);
+        }
+
+        if ($deseado) {
             $errores = $this->reglas->revisar([
                 'user_id' => $contrato->user_id,
                 'type' => $contrato->type,
@@ -130,7 +131,7 @@ class ContratoController extends Controller
             return $this->rechazo($problema, 'admin.contratos.index');
         }
 
-        $contrato->update(['is_active' => ! $contrato->is_active]);
+        $contrato->update(['is_active' => $deseado]);
 
         return $this->exito(
             $contrato->is_active ? 'Contrato activado' : 'Contrato desactivado',
@@ -160,44 +161,9 @@ class ContratoController extends Controller
         return ['tipos' => Contrato::TIPOS];
     }
 
-    private function validado(Request $request, ?Contrato $actual = null): array
+    private function validado(ContratoRequest $request, ?Contrato $actual = null): array
     {
-        $request->merge([
-            'is_active' => $request->boolean('is_active'),
-            'probation_months' => $request->filled('probation_months') ? $request->input('probation_months') : null,
-        ]);
-
-        // Solo el contrato temporal tiene fecha de término.
-        if ($request->input('type') !== Contrato::TEMPORAL) {
-            $request->merge(['end_date' => null]);
-        }
-
-        $reglas = [
-            'type' => ['required', Rule::in(array_keys(Contrato::TIPOS))],
-            'start_date' => ['required', 'date', 'after:2000-01-01', 'before_or_equal:'.today()->addYear()->toDateString()],
-            'end_date' => ['nullable', 'date', 'before_or_equal:'.today()->addYears(10)->toDateString()],
-            'salary' => ['required', 'numeric', 'gt:0', 'max:99999.99'],
-            'probation_months' => ['nullable', 'integer', 'between:1,12'],
-            'is_active' => ['boolean'],
-        ];
-
-        if (! $actual) {
-            $reglas['user_id'] = ['required', Rule::exists('users', 'id')->whereNotNull('usertype_id')];
-        }
-
-        $datos = $request->validate($reglas, [
-            'user_id.required' => 'Seleccione a la persona.',
-            'salary.gt' => 'El salario debe ser mayor que cero.',
-            'probation_months.between' => 'El período de prueba va de 1 a 12 meses.',
-        ]);
-
-        $datos['user_id'] = $actual?->user_id ?? $datos['user_id'];
-
-        if ($errores = $this->reglas->revisar($datos, $actual)) {
-            throw ValidationException::withMessages($errores);
-        }
-
-        return $datos;
+        return $request->datos($actual);
     }
 
     private function fila(Contrato $contrato): array
@@ -206,6 +172,7 @@ class ContratoController extends Controller
 
         return [
             'id' => $contrato->id,
+            'version' => (int) $contrato->version,
             'dni' => $persona?->dni,
             'persona' => $persona?->nombre_completo,
             'funcion' => $persona?->tipo?->name,

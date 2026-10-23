@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Versionado;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Marca extends Model
 {
+    use Versionado;
+
     protected $table = 'brands';
 
     protected $fillable = ['name', 'description', 'logo'];

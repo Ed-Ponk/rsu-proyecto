@@ -9,7 +9,7 @@
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/logo-municipalidad.svg') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fonts/source-sans-3/index.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/font/bootstrap-icons.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/tads-login.css') }}">
+    @vite('resources/css/admin/acceso.css')
 </head>
 <body class="acceso">
     <main class="acceso-contenedor">
@@ -47,7 +47,7 @@
         </aside>
     </main>
 
-    <script src="{{ asset('js/tads/auth.js') }}" defer></script>
+    @vite('resources/js/admin/modulos/auth.js')
     @stack('scripts')
 </body>
 </html>

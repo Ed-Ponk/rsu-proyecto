@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Versionado;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ColorVehiculo extends Model
 {
+    use Versionado;
+
     protected $table = 'vehiclecolors';
 
     /** `code` guarda el color en RGB hexadecimal (#RRGGBB). */

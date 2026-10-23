@@ -4,7 +4,7 @@
 
 Todos los módulos de esta tabla requieren un administrador activo (`usertype_id` nulo) y sesión autenticada. Las rutas están en `routes/web.php`. Cada listado tiene una página HTML y una URL `/datos` JSON, con nombre `admin.{nombre}.datos`. Las antiguas llamadas AJAX a `index` siguen admitidas por compatibilidad.
 
-Las vistas están en `resources/views/admin/{carpeta}/`; el controlador está en `app/Http/Controllers/Admin/{Controlador}.php`. Los modelos están en `app/Models/`. Los controladores validan antes de guardar; los métodos privados de validación y los servicios citados contienen las reglas. `store` crea, `update` modifica y `destroy` elimina cuando el módulo lo permite. Revise cada método y sus pruebas antes de cambiar una regla.
+Las vistas están en `resources/views/admin/{carpeta}/`; el controlador está en `app/Http/Controllers/Admin/{Controlador}.php`. Los modelos están en `app/Models/`. Los controladores coordinan el guardado. Los módulos complejos validan entradas en Requests/Admin dentro de la transacción; los catálogos sencillos conservan métodos privados y las reglas de negocio viven en servicios. `store` crea, `update` modifica y `destroy` elimina cuando el módulo lo permite. Revise cada método y sus pruebas antes de cambiar una regla.
 
 | Función / acciones | URL base | Nombre/carpeta de vistas | Controlador | Modelo → tabla | Reglas y pruebas principales |
 |---|---|---|---|---|---|
@@ -40,9 +40,23 @@ Los archivos de prueba citados están en `tests/Feature/`. `NavegacionTest` reco
 
 1. Localice sus rutas con `php artisan route:list --path=admin/modelos -v`.
 2. Revise `ModeloController`, `Modelo`, la relación `marca` y la restricción de vehículos.
-3. Edite `_form.blade.php` para campos y `public/js/tads/catalogos.js` para columnas/interacciones. La tabla utiliza el gestor compartido.
+3. Edite `_form.blade.php` para campos y `resources/js/admin/modulos/` para columnas/interacciones. La tabla utiliza el gestor compartido.
 4. Mantenga la forma de `fila()` si cambia la información enviada a JavaScript; actualizar solo el HTML deja desalineadas las columnas.
 5. Ejecute `php artisan test --filter=NavegacionTest` y la suite completa.
 6. Compruebe crear/editar, duplicados, búsqueda, segunda página y navegación real. No elimine datos de trabajo para hacer pruebas.
 
 Para los demás módulos siga el mismo recorrido, consultando los servicios de la tabla cuando existan. No copie las reglas de Modelos sobre contratos o personal: sus restricciones son distintas.
+
+
+## Entradas complejas y dependencias
+
+- **Personal:** `PersonalRequest`; DNI, tipo, nombres/apellidos, nacimiento, correo, dirección, estado y clave inicial; teléfono, licencia y foto según reglas. Depende de tipos de personal y contratos históricos. Su clave es de marcación, no acceso al panel.
+- **Contratos:** `ContratoRequest` y `ReglasContrato`; persona, tipo, inicio, fin temporal, salario de dos decimales, prueba y estado. Se conserva historial: crear/editar y cambiar estado deseado, sin eliminar. Depende de persona, vacaciones y jornadas de asistencia.
+- **Asistencia:** `AsistenciaRequest` y `ServicioAsistencia`; persona al crear, fecha, hora, presente/ausente y notas. Turno, jornada, entrada/salida y tardanza se calculan; no son decisiones libres del formulario. Depende de persona, contrato, vacaciones y turnos.
+- **Vacaciones:** `VacacionRequest` y `ReglasVacacion`; persona al crear, días, inicio y notas. Fin calculado; estados pendiente/aprobada/rechazada. Solo pendiente se modifica/elimina. Aprobación revalida cupo y ausencia de asistencias.
+- **Vehículos:** `VehiculoRequest`; nombre, código, placa, año, capacidades con dos decimales, ocupantes y relaciones tipo/marca/modelo/color. Estado activo no implica asignación a una ruta: esa función no está implementada.
+- **Galería:** `ImagenesRequest` y `GaleriaVehiculos`; `images[]`, IDs distintos `delete[]`, `profile=existing:ID` o `new:posición`, y versión. Máximo 12, 2 MB por imagen y 25 megapíxeles. La posición nueva empieza en cero.
+- **Zonas:** `ZonaRequest`, `ReglasZona` y `Ubigeo`; nombre, ubicación, descripción, residuos promedio, estado y 3–200 vértices. El estado inactivo no libera el espacio para invadirlo con otra zona. Geometría aproximada, no certificación territorial.
+- **Usuarios:** `UsuarioRequest` y `SeguridadAdministrativa`; nombre, correo, estado y contraseña confirmada. Panel y perfil conservan al menos un administrador activo; `ProtegeCuentaActiva` cubre Livewire. El perfil reutiliza Jetstream con un componente que refresca su versión tras guardar.
+
+Cada escritura de un registro existente envía `version`. Una aprobación o un cambio de estado también puede quedar obsoleto; 409 solicita recarga sin sobrescribir. Las reglas de campo, estados y rangos completos están en el diagnóstico original y sus correcciones en `IMPLEMENTACION_Y_VERIFICACION.md`.

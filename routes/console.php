@@ -2,7 +2,10 @@
 
 use App\Models\Contrato;
 use App\Models\User;
+use App\Rules\ClaveCompatible;
+use App\Support\Bloqueo;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
@@ -22,7 +25,7 @@ Artisan::command('admin:cambiar-clave {correo : Correo del administrador}', func
     }
 
     $clave = $this->secret('Nueva contraseña (mínimo 8 caracteres con mayúsculas, minúsculas y números)');
-    $reglas = ['password' => [Password::defaults()]];
+    $reglas = ['password' => ['required', 'string', new ClaveCompatible, Password::defaults()]];
 
     $validador = Validator::make(['password' => $clave], $reglas);
 
@@ -32,7 +35,11 @@ Artisan::command('admin:cambiar-clave {correo : Correo del administrador}', func
         return self::FAILURE;
     }
 
-    $usuario->forceFill(['password' => $clave, 'status' => true])->save();
+    DB::transaction(function () use ($usuario, $clave) {
+        Bloqueo::tomar('administradores');
+        $actual = User::whereNull('usertype_id')->whereKey($usuario->id)->lockForUpdate()->firstOrFail();
+        $actual->forceFill(['password' => $clave, 'status' => true])->save();
+    });
     $this->info('Contraseña actualizada. La cuenta quedó activa.');
 })->purpose('Cambia la contraseña de un administrador (para recuperar el acceso sin correo)');
 

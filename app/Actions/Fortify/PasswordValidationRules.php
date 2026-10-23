@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fortify;
 
+use App\Rules\ClaveCompatible;
 use Illuminate\Contracts\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -14,6 +15,6 @@ trait PasswordValidationRules
      */
     protected function passwordRules(): array
     {
-        return ['required', 'string', Password::default(), 'confirmed'];
+        return ['required', 'string', new ClaveCompatible, Password::default(), 'confirmed'];
     }
 }
