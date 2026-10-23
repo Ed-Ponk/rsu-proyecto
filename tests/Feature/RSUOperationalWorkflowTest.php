@@ -504,6 +504,8 @@ class RSUOperationalWorkflowTest extends TestCase
      */
     public function test_end_to_end_shift_attendance_and_standby_replacement_cycle(): void
     {
+        // La salida de las 12:30 no debe depender de la hora real de ejecución.
+        $this->travelTo(today()->setTime(13, 0));
         // 1. Register driver and standby assistant
         $conductorType = TipoPersonal::conductor();
         $driver = $this->createPersonal([

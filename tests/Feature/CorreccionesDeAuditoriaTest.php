@@ -45,6 +45,8 @@ class CorreccionesDeAuditoriaTest extends TestCase
 
     public function test_dos_marcaciones_seguidas_dan_entrada_y_salida_nunca_dos_entradas(): void
     {
+        // Las dos marcaciones deben estar en el pasado, aunque la suite se ejecute por la mañana.
+        $this->travelTo(today()->setTime(13, 0));
         $persona = $this->persona();
         $momento = Carbon::today()->setTime(9, 0);
 
