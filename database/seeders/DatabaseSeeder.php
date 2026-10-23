@@ -73,8 +73,8 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // Administrador (sin tipo de personal, por eso puede iniciar sesión). Cambie la clave al ingresar.
-        User::updateOrCreate(
+        // Repetir el seeder no debe sobrescribir la contraseña ni el nombre de una cuenta existente.
+        User::firstOrCreate(
             ['email' => $correo],
             ['name' => 'Administrador', 'password' => $clave, 'email_verified_at' => now()],
         );
