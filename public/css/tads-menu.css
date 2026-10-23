@@ -234,3 +234,8 @@
     background: #f8fafc;
     min-height: calc(100vh - 57px);
 }
+
+.app-sidebar .nav-link:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -3px;
+}

@@ -106,7 +106,9 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--t-borde);
 }
 
 .t-titulo {
@@ -163,13 +165,13 @@
 }
 
 .t-boton-cancelar {
-    --bs-btn-bg: var(--rsu-red-600);
-    --bs-btn-border-color: var(--rsu-red-600);
-    --bs-btn-color: #ffffff;
-    --bs-btn-hover-bg: var(--rsu-red-700);
-    --bs-btn-hover-border-color: var(--rsu-red-700);
-    --bs-btn-hover-color: #ffffff;
-    --bs-btn-active-bg: var(--rsu-red-800);
+    --bs-btn-bg: #ffffff;
+    --bs-btn-border-color: var(--rsu-slate-300);
+    --bs-btn-color: var(--rsu-slate-700);
+    --bs-btn-hover-bg: var(--rsu-slate-100);
+    --bs-btn-hover-border-color: var(--rsu-slate-400);
+    --bs-btn-hover-color: var(--rsu-slate-900);
+    --bs-btn-active-bg: var(--rsu-slate-200);
     border-radius: var(--t-radio);
     font-weight: 600;
     padding: 0.48rem 1.1rem;
@@ -212,7 +214,7 @@
 
 .t-boton-icono.t-editar {
     background: var(--rsu-amber-500);
-    color: #ffffff;
+    color: var(--rsu-slate-900);
 }
 
 .t-boton-icono.t-eliminar {
@@ -899,151 +901,6 @@
     padding-bottom: 0.25rem;
 }
 
-/* --- Banner de bienvenida --- */
-.t-bienvenida {
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 18px;
-    padding: 30px 24px 26px;
-    text-align: center;
-    color: #ffffff;
-    border-radius: var(--t-radio-lg);
-    background:
-        radial-gradient(circle at 12% 0%, rgba(16, 185, 129, 0.22), transparent 45%),
-        linear-gradient(160deg, var(--rsu-slate-800), var(--rsu-slate-950));
-    border-bottom: 3px solid var(--rsu-emerald-500);
-    box-shadow: var(--t-sombra-lg);
-}
-
-/* Isotipo de reciclaje como marca de agua */
-.t-bienvenida-icono {
-    position: absolute;
-    right: -18px;
-    bottom: -38px;
-    font-size: 9rem;
-    line-height: 1;
-    color: rgba(255, 255, 255, 0.05);
-    pointer-events: none;
-}
-
-.t-bienvenida h1 {
-    position: relative;
-    margin: 0 0 8px;
-    font-size: clamp(1.45rem, 3vw, 2rem);
-    font-weight: 800;
-    letter-spacing: -0.01em;
-}
-
-.t-bienvenida h1 i {
-    color: var(--rsu-amber-400);
-}
-
-.t-bienvenida p {
-    position: relative;
-    margin: 0 0 8px;
-    font-size: 1.02rem;
-    font-weight: 600;
-    color: var(--rsu-slate-100);
-}
-
-.t-bienvenida > small {
-    position: relative;
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: var(--t-radio-pill);
-    background: rgba(16, 185, 129, 0.14);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: var(--rsu-emerald-200);
-    font-size: 0.82rem;
-}
-
-/* --- Tarjeta de información general --- */
-.t-info-cabecera {
-    padding: 12px 20px;
-    color: #ffffff;
-    font-weight: 600;
-    background: var(--rsu-emerald-700);
-}
-
-/* La tarjeta se estira hasta el final de la pantalla y su cuerpo reparte ese alto */
-.t-presentacion {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.t-info-cuerpo {
-    flex: 1;
-    display: grid;
-    grid-template-columns: minmax(300px, 1fr) 1.2fr;
-    gap: 32px;
-    align-items: stretch;
-    padding: 28px;
-}
-
-/* Columna de texto centrada en vertical respecto a la foto */
-.t-info-cuerpo > div {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-@media (max-width: 900px) {
-    .t-info-cuerpo {
-        grid-template-columns: 1fr;
-        padding: 18px;
-    }
-}
-
-.t-info-foto {
-    display: flex;
-    flex-direction: column;
-    margin: 0;
-}
-
-/* La foto llena el alto disponible recortándose (sin deformarse) */
-.t-info-foto img {
-    display: block;
-    flex: 1;
-    width: 100%;
-    min-height: 260px;
-    object-fit: cover;
-    object-position: center 60%;
-    border-radius: var(--t-radio-lg);
-    border: 1px solid var(--rsu-slate-200);
-    box-shadow: var(--t-sombra-lg);
-}
-
-.t-sello {
-    display: table;
-    margin: 12px auto 0;
-    padding: 5px 14px;
-    border-radius: var(--t-radio-pill);
-    color: var(--rsu-emerald-800);
-    background: var(--rsu-emerald-50);
-    border: 1px solid rgba(22, 101, 52, 0.25);
-    font-size: 0.82rem;
-    font-weight: 700;
-}
-
-.t-presentacion h2 {
-    margin: 0 0 10px;
-    color: var(--rsu-emerald-700);
-    font-size: 1.45rem;
-    font-weight: 700;
-}
-
-.t-presentacion h2 i {
-    margin-right: 6px;
-}
-
-.t-presentacion .t-descripcion {
-    margin: 0 0 18px;
-    color: var(--rsu-slate-600);
-    font-size: 1.02rem;
-    line-height: 1.65;
-}
-
 /* --- Accesos rápidos --- */
 .t-funciones {
     display: grid;
@@ -1147,35 +1004,6 @@ a.t-funcion:hover .t-funcion-flecha {
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-}
-
-/* --- Sellos de compromiso --- */
-.t-sellos {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 16px;
-}
-
-.t-sellos span {
-    padding: 5px 14px;
-    border-radius: var(--t-radio-pill);
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #ffffff;
-}
-
-.t-sellos .t-sello-eco {
-    background: var(--rsu-emerald-600);
-}
-
-.t-sellos .t-sello-sostenible {
-    background: var(--rsu-steel-500);
-}
-
-.t-sellos .t-sello-responsable {
-    background: var(--rsu-amber-400);
-    color: var(--rsu-amber-900);
 }
 
 /* ---------- Buscador con sugerencias (reemplaza a los combos largos) ---------- */
@@ -1553,104 +1381,6 @@ a.t-funcion:hover .t-funcion-flecha {
 
 @media (prefers-reduced-motion: reduce) {
     .t-resultado.visible { animation: none; }
-}
-
-/* ---------- Inicio: reloj del servidor y acceso a Marcación DNI (dentro del banner) ---------- */
-.t-bienvenida-acciones {
-    position: relative;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: stretch;
-    gap: 12px;
-    margin-top: 18px;
-}
-
-.t-reloj-chip {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 18px 8px 10px;
-    border-radius: var(--t-radio-lg);
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    text-align: left;
-}
-
-.t-reloj-chip-icono {
-    width: 40px;
-    height: 40px;
-    display: grid;
-    place-items: center;
-    border-radius: var(--t-radio);
-    background: rgba(16, 185, 129, 0.18);
-    color: var(--rsu-emerald-400);
-    font-size: 1.2rem;
-}
-
-.t-reloj-chip-datos {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.15;
-}
-
-.t-reloj-chip-datos strong {
-    font-size: 1.5rem;
-    font-weight: 800;
-    letter-spacing: 0.02em;
-    font-variant-numeric: tabular-nums;
-    color: #ffffff;
-}
-
-.t-reloj-chip-datos small {
-    margin-top: 2px;
-    font-size: 0.78rem;
-    color: var(--rsu-slate-300);
-}
-
-.t-boton.t-boton-marcacion {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 20px 8px 14px;
-    border-radius: var(--t-radio-lg);
-    text-align: left;
-    --bs-btn-bg: var(--rsu-emerald-600);
-    --bs-btn-border-color: var(--rsu-emerald-500);
-    --bs-btn-hover-bg: var(--rsu-emerald-700);
-    --bs-btn-hover-border-color: var(--rsu-emerald-400);
-    box-shadow: 0 6px 16px -6px rgba(16, 185, 129, 0.55);
-}
-
-.t-boton-marcacion > i {
-    font-size: 1.7rem;
-    line-height: 1;
-}
-
-.t-boton-marcacion > span {
-    display: flex;
-    flex-direction: column;
-    font-size: 1rem;
-    font-weight: 700;
-    line-height: 1.2;
-}
-
-.t-boton-marcacion > span small {
-    font-size: 0.74rem;
-    font-weight: 500;
-    opacity: 0.85;
-}
-
-.t-boton.t-boton-marcacion:hover {
-    transform: translateY(-1px);
-}
-
-@media (max-width: 520px) {
-    .t-reloj-chip,
-    .t-boton.t-boton-marcacion {
-        width: 100%;
-        justify-content: center;
-    }
 }
 
 /* ---------- Botón secundario (acciones de carga masiva) ---------- */
@@ -2088,4 +1818,50 @@ a.t-funcion:hover .t-funcion-flecha {
 
 .t-boton-icono.t-bloqueado:hover {
     transform: none;
+}
+
+/* El contorno de teclado debe seguir visible sobre botones claros y oscuros. */
+.btn:focus-visible,
+.form-control:focus-visible,
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid var(--rsu-emerald-800);
+    outline-offset: 3px;
+}
+
+@media (max-width: 575.98px) {
+    .t-titulo { font-size: 1.3rem; }
+    .t-cabecera { align-items: flex-start; }
+    .t-cabecera > div:last-child { max-width: 100%; flex-wrap: wrap; }
+}
+
+/* Inicio: acceso a tareas antes que presentación institucional. */
+.t-jornada {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 24px;
+    margin-bottom: 32px;
+    border: 1px solid var(--t-borde);
+    border-left: 4px solid var(--rsu-emerald-800);
+    border-radius: var(--t-radio);
+    background: #fff;
+}
+.t-jornada-reloj { display: grid; gap: 4px; color: var(--rsu-slate-600); }
+.t-jornada-etiqueta { font-size: .85rem; font-weight: 600; }
+.t-jornada-reloj strong { font-size: 2rem; line-height: 1.2; color: var(--t-texto); }
+.t-inicio-herramientas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 260px); gap: 32px; }
+.t-inicio-herramientas h2 { margin: 0 0 6px; font-size: 1.2rem; font-weight: 700; }
+.t-inicio-herramientas p { color: var(--rsu-slate-600); margin-bottom: 20px; }
+.t-inicio-operativo .t-funciones { padding: 0; border: 0; background: transparent; gap: 0 20px; }
+.t-inicio-operativo .t-funcion { min-height: 76px; padding: 14px 0; border-bottom: 1px solid var(--t-borde); border-radius: 0; }
+.t-inicio-operativo a.t-funcion:hover { background: var(--rsu-emerald-50); box-shadow: none; }
+.t-inicio-operativo a.t-funcion:focus-visible { outline: 3px solid var(--rsu-emerald-800); outline-offset: 3px; }
+.t-inicio-municipalidad { margin: 0; }
+.t-inicio-municipalidad img { display: block; width: 100%; height: 180px; object-fit: cover; border-radius: var(--t-radio); }
+.t-inicio-municipalidad figcaption { margin-top: 10px; font-size: .85rem; color: var(--rsu-slate-600); line-height: 1.5; }
+@media (max-width: 900px) {
+    .t-inicio-herramientas { grid-template-columns: minmax(0, 1fr); }
+    .t-inicio-municipalidad { max-width: 320px; }
 }

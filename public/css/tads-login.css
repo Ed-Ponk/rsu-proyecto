@@ -4,10 +4,10 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
-    --marino: #003366;
-    --marino-oscuro: #00213f;
-    --verde-agua: #0f9d84;
-    --celeste: #0a84d6;
+    --marino: #14532d;
+    --marino-oscuro: #052e16;
+    --verde-agua: #166534;
+    --celeste: #166534;
     --tinta: #1f2933;
     --gris: #6b7785;
     --campo: #f1f5f9;
@@ -60,24 +60,20 @@ body.acceso {
 .enlace:hover { text-decoration: underline; }
 
 .boton-acceso {
-    width: 100%; height: 52px; border: 0; border-radius: 999px; cursor: pointer; color: #fff;
-    font-size: .95rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
-    background: linear-gradient(90deg, var(--marino), var(--celeste) 60%, var(--verde-agua));
-    box-shadow: 0 14px 24px -14px rgba(0, 51, 102, .9); transition: transform .15s, filter .15s;
+    width: 100%; height: 52px; border: 0; border-radius: 8px; cursor: pointer; color: #fff;
+    font-size: 1rem; font-weight: 700;
+    background: var(--verde-agua);
+    transition: background-color .15s;
 }
-.boton-acceso:hover { transform: translateY(-1px); filter: brightness(1.07); }
+.boton-acceso:hover { background: var(--marino-oscuro); }
 .boton-acceso:disabled { opacity: .7; cursor: wait; transform: none; }
 
 /* ------------------------------ panel institucional ------------------------------ */
 .acceso-lateral {
     order: 1; position: relative; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding: 56px 60px; color: #fff; overflow: hidden;
-    background:
-        linear-gradient(155deg, rgba(0, 51, 102, .94) 0%, rgba(0, 33, 63, .93) 55%, rgba(15, 157, 132, .88) 130%),
-        url('../images/municipalidad.jpg') center / cover;
-    clip-path: polygon(0 0, 100% 0, 93% 100%, 0 100%);
-    padding-right: 110px;
+    background: var(--marino-oscuro);
 }
-.acceso-lateral::before { content: ''; position: absolute; left: -90px; top: -90px; width: 300px; height: 300px; border-radius: 50%; border: 44px solid rgba(255, 255, 255, .07); }
+.acceso-lateral::before { content: ''; position: absolute; left: 60px; top: 56px; width: 48px; height: 4px; background: #86efac; }
 .acceso-lateral > * { position: relative; z-index: 1; }
 .acceso-lateral .etiqueta { display: inline-block; align-self: flex-start; padding: 5px 14px; border-radius: 999px; background: rgba(255, 255, 255, .16); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .acceso-lateral h1 { margin: 0; max-width: 520px; font-size: clamp(1.9rem, 3vw, 2.7rem); line-height: 1.12; font-weight: 800; }
@@ -97,3 +93,9 @@ body.acceso {
     .acceso-lateral { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+:where(a, button, input):focus-visible {
+    outline: 3px solid var(--marino);
+    outline-offset: 3px;
+}
+.caja-campo input:focus-visible { outline: 3px solid var(--marino); outline-offset: 3px; }

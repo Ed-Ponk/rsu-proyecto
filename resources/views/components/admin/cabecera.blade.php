@@ -53,7 +53,7 @@
 
         <h1 class="t-titulo">
             @if($icono)
-                <span class="t-icono-titulo"><i class="bi {{ $icono }}"></i></span>
+                <span class="t-icono-titulo" aria-hidden="true"><i class="bi {{ $icono }}"></i></span>
             @endif
             <span>{{ $titulo }}</span>
         </h1>

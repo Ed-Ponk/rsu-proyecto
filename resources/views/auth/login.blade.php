@@ -18,10 +18,10 @@
             <div class="caja-campo">
                 <i class="bi bi-envelope icono-campo"></i>
                 <input id="correo" type="email" name="email" value="{{ old('email') }}" required autofocus
-                    autocomplete="username" placeholder="usuario@municipalidad.gob.pe" @class(['invalido' => $errors->has('email')])>
+                    autocomplete="username" placeholder="usuario@municipalidad.gob.pe" aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}" @if($errors->has('email')) aria-describedby="error-correo" @endif @class(['invalido' => $errors->has('email')])>
             </div>
             @error('email')
-                <div class="error-campo"><i class="bi bi-exclamation-circle"></i><span>{{ $message }}</span></div>
+                <div class="error-campo" id="error-correo" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>{{ $message }}</span></div>
             @enderror
         </div>
 
@@ -30,11 +30,11 @@
             <div class="caja-campo">
                 <i class="bi bi-lock icono-campo"></i>
                 <input id="clave" type="password" name="password" required autocomplete="current-password"
-                    placeholder="Ingrese su contraseña" @class(['invalido' => $errors->has('password')])>
+                    placeholder="Ingrese su contraseña" aria-invalid="{{ $errors->has('password') ? 'true' : 'false' }}" @if($errors->has('password')) aria-describedby="error-clave" @endif @class(['invalido' => $errors->has('password')])>
                 <button type="button" class="ver-clave" data-ver-clave="clave" aria-label="Mostrar u ocultar contraseña"><i class="bi bi-eye"></i></button>
             </div>
             @error('password')
-                <div class="error-campo"><i class="bi bi-exclamation-circle"></i><span>{{ $message }}</span></div>
+                <div class="error-campo" id="error-clave" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span>{{ $message }}</span></div>
             @enderror
         </div>
 
