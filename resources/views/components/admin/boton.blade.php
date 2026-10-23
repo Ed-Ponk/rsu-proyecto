@@ -4,9 +4,9 @@
     
     Props:
     - variante (string, por defecto 'primary'):
-      * 'primary'   -> Botón principal municipal (celeste/azul acción .t-boton)
+      * 'primary'   -> Botón principal municipal verde (.t-boton)
       * 'secondary' -> Botón neutro/secundario (.btn-secondary)
-      * 'danger' / 'cancel' -> Botón de cancelación / eliminación (.t-boton-cancelar)
+      * 'danger' -> Acción destructiva roja; 'cancel' -> Cancelación neutra
       * 'warning'   -> Botón de advertencia o edición (.btn-warning)
       * 'success'   -> Botón de éxito o confirmación (.btn-success)
       * 'ghost'     -> Botón sin fondo / plano (.btn-link)
@@ -38,7 +38,8 @@
     $claseVariante = match(strtolower($variante)) {
         'primary' => 'btn t-boton',
         'secondary' => 'btn btn-secondary',
-        'danger', 'cancel' => 'btn t-boton-cancelar',
+        'danger' => 'btn t-boton-cancelar t-boton-peligro',
+        'cancel' => 'btn t-boton-cancelar',
         'warning' => 'btn btn-warning text-dark',
         'success' => 'btn btn-success',
         'ghost' => 'btn btn-link text-decoration-none',

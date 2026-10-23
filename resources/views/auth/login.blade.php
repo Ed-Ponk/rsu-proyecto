@@ -1,6 +1,6 @@
 <x-acceso titulo="Iniciar sesión">
-    <h2>Bienvenido</h2>
-    <p class="bajada">Ingrese con su correo y contraseña para acceder al sistema.</p>
+    <h2>Bienvenido de nuevo</h2>
+    <p class="bajada">Ingrese a su espacio de gestión municipal.</p>
 
     @session('status')
         <div class="aviso exito"><i class="bi bi-check-circle-fill"></i><span>{{ $value }}</span></div>
@@ -48,6 +48,6 @@
             @endif
         </div>
 
-        <button type="submit" class="boton-acceso">Iniciar sesión</button>
+        <button type="submit" class="boton-acceso">Iniciar sesión <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
     </form>
 </x-acceso>

@@ -1,48 +1,66 @@
 # Diseño del sistema RSU
 
-Aplicación de trabajo municipal: localizar registros, comprobar datos y guardar cambios con claridad. Se conserva el logotipo oficial y la tipografía local; los cambios de esta revisión se concentran en Inicio, acceso y componentes compartidos.
+## Dirección actual · 23 de octubre de 2026
 
-## Paleta y significado
+Interfaz municipal con componentes de precisión, inspirados en el acabado de shadcn/ui y adaptados a Blade, Bootstrap y DataTables. La identidad procede de la fotografía del palacio municipal, la marca oficial y un verde vegetal contenido. La revisión sustituye la dirección demasiado austera del primer pase.
 
-| Uso | Valor / token |
+El acceso contrapone una fotografía del lugar y un formulario delineado; el panel utiliza superficies claras, navegación lateral suave, tablas limpias y modales blancos. No hay una migración a React ni componentes shadcn instalados: se conserva la interacción nativa de las herramientas existentes.
+
+## Paleta semántica
+
+| Uso | Color / token |
 |---|---|
-| Texto principal y navegación | `#0f172a`, `--rsu-slate-900` |
-| Texto secundario | `#475569`, `--rsu-slate-600` |
-| Fondo de trabajo | `#f8fafc`, `--rsu-slate-50` |
-| Bordes | `#e2e8f0`, `--rsu-slate-200` |
-| Acción principal | `#15803d`, `--rsu-emerald-700` |
-| Foco y verde oscuro | `#166534`, `--rsu-emerald-800` |
-| Fondo de acceso institucional | `#052e16` |
-| Advertencia / edición | `#f59e0b`, texto oscuro |
-| Eliminación y error | `#dc2626` |
+| Texto principal | `#202a25`, `--rsu-slate-900` |
+| Texto secundario | `#5b6a61`, `--rsu-slate-600` |
+| Texto atenuado / placeholders | `#68766e`, `--rsu-slate-500` |
+| Fondo lateral | `#f8faf7` |
+| Fondo de trabajo | `#fbfcfa` |
+| Superficies | Blanco |
+| Bordes | `#e5e9e5`, `--rsu-slate-200` |
+| Acción principal | `#245d46`, `--rsu-emerald-700` |
+| Selección del menú | `#e7efe8`, texto `#234e38` |
+| Acción destructiva | `#b44141` |
+| Foto: superposición de contraste | `#132b24` con opacidad progresiva |
 
-Los nombres heredados `--t-celeste` y `--t-marino` se conservan como alias: cambiar sus nombres sin actualizar consumidores rompería estilos. Cancelar es una acción neutral; el rojo se reserva para eliminación o error. Un estado debe tener texto o un nombre accesible, además del color.
+Los tokens heredados conservan sus nombres por compatibilidad. En esta versión `slate` identifica una gama neutral con matiz vegetal. No use el color como única señal de un estado. Los indicadores de negocio conservan sus variantes semánticas.
 
-## Tipografía y composición
+## Componentes
 
-Se utiliza Source Sans 3 alojada en `public/vendor/fonts/source-sans-3/`, con fuentes de sistema como respaldo. Títulos administrativos de 1.55rem (1.3rem en móvil), subtítulos de .88rem y reloj de Inicio de 2rem. Mantenga una sola cabecera principal y use h2 para secciones. No aplique mayúsculas a párrafos.
+- **Campos:** superficie blanca, borde de 1px, radio de 7px, sombra de 1px muy suave y foco verde translúcido. Etiquetas en caja normal. Login: 44px de alto; formularios del panel: mínimo 38px y texto de 16px en móvil para evitar zoom automático en iOS.
+- **Botones:** primario verde, secundario delineado, acciones de fila discretas. No se elevan ni saltan al pasar el cursor. El botón de eliminación de fila usa icono rojo y fondo suave solo al interactuar. `danger` y `cancel` son variantes diferentes en `x-admin.boton`.
+- **Tablas:** encabezados sin mayúsculas forzadas, líneas horizontales finas, filas blancas y hover neutral. La página actual tiene fondo gris y borde suave. El contenedor de desplazamiento conserva todas las columnas.
+- **Modales:** cabecera blanca, título de 1.12rem, borde fino, radio de 12px, cierre discreto y sombra reservada para la separación entre capas. Bootstrap conserva el control de foco y el cierre.
+- **Navegación:** tema claro nativo de AdminLTE; selección verde suave, textos oscuros y separación de 1px. Cabecera blanca. Se desactiva el preloader de pantalla completa: no oculta una página HTML ya disponible.
+- **Confirmaciones:** SweetAlert utiliza tipografía heredada, acciones coherentes y radios de 7–12px.
+- **Buscadores:** mismo campo delineado; sugerencias sobre una superficie blanca con borde y sombra de popover.
 
-El espaciado de Inicio utiliza 4, 6, 10, 20, 24 y 32px según agrupación. Bordes de 1px, radios de 6–12px y sombras discretas existentes. El encabezado se separa del contenido con una línea; Inicio muestra la jornada y después herramientas, con la fotografía institucional en un papel secundario.
+## Tipografía y ritmo
 
-## Componentes y comportamiento
+Fuente del sistema: Segoe UI con respaldo `system-ui`. Títulos administrativos de 1.65rem, peso 650 y espaciado -0.035em. Cuerpo de datos de .82rem; etiquetas de .8rem. Fotografía de acceso con titular de 36–58px y un texto breve. Las cifras de datos conservan números tabulares.
 
-- `x-admin.cabecera`: título, explicación y acción principal. El partial anterior delega en este componente.
-- `public/js/gestor.js`: tablas, formularios, errores y confirmación de eliminación.
-- `resources/views/components/admin/`: botones, tarjetas, modales, indicadores y estados vacíos disponibles. Reutilice los que correspondan; no todos deben aparecer en cada pantalla.
-- Iconos de Bootstrap Icons ya instalados. Los adornos llevan `aria-hidden`; los botones de icono necesitan nombre accesible.
-- Los controles conservan foco visible. El menú usa contorno blanco; los controles claros usan verde oscuro. No quite outlines para ocultar el foco.
-- La validación de login asocia los mensajes con el campo mediante `aria-describedby` y declara `aria-invalid`.
+Los radios de controles son de 7px, tarjetas de 10px y paneles de acceso de 16px. Use espacios de 8, 12, 20, 24 y 40px para separar controles, grupos y superficies. Las sombras se reservan para controles leves y capas superpuestas, sin brillo de color.
 
-## Adaptación y accesibilidad
+## Acceso y adaptación
 
-La jornada permite envolver sus elementos. Inicio pasa a una columna a 900px, y los accesos rápidos a una columna a 600px. Las tablas conservan contenedor con desplazamiento horizontal; no oculte columnas esenciales para hacerlas caber.
+`x-acceso` es compartido por login, confirmación, recuperación y 2FA. Conserva el formulario dentro del slot y todos sus atributos y endpoints. La fotografía es `public/images/municipalidad.jpg`, ya existente; no es una imagen generada ni un recurso descargado.
 
-El acceso oculta su panel institucional por debajo de 900px. Respete preferencias de movimiento reducido. Evite usar un gráfico, una animación o una fotografía para comunicar un dato necesario.
+A 760px el panel fotográfico se retira para que el formulario ocupe el espacio disponible. La interfaz se comprobó visualmente a 1280×720 y el acceso y modal a 390×844. Inicio conserva su adaptación a una columna a 900px; los accesos pasan a una columna a 600px.
 
-WCAG 2.2 AA es el objetivo, no una certificación obtenida en esta sesión. Se revisaron visualmente Inicio y Modelos en escritorio, navegación y formulario modal. Falta comprobar todos los tamaños móviles, lectores de pantalla, zoom y contraste de todas las variantes heredadas.
+## Accesibilidad y estados
 
-## Archivos y comprobación
+Se conservan etiquetas, CSRF, autocompletado, visibilidad de contraseña, bloqueo de doble envío y errores ARIA de login. No se elimina el foco de teclado. El verde principal sobre blanco tiene contraste aproximado 7.69:1; el placeholder gris sobre blanco, 4.77:1. Estas comprobaciones de colores concretos no son una certificación WCAG de todo el producto.
 
-`public/css/tads.css` contiene estilos internos; `tads-menu.css`, navegación; `tads-login.css`, acceso. No edite assets de terceros. Los estilos del perfil Jetstream que están en `resources` requieren `npm run build`.
+El movimiento reducido desactiva transiciones en los controles y modales. La navegación mantiene nombres y rutas; no se añade un flujo de navegación nuevo. Quedan pendientes las comprobaciones exhaustivas con lectores de pantalla y todos los módulos/estados particulares.
 
-Comparación del inicio: [antes](docs/capturas/inicio-antes.png) y [después](docs/capturas/inicio-despues.png). Son capturas del navegador de esta revisión, con datos de prueba. No existe una captura anterior del login en esta entrega.
+## Archivos y verificación
+
+- `public/css/tads-login.css`: acceso y sus estados.
+- `public/css/tads-menu.css`: lateral y cabecera.
+- `public/css/tads.css`: componentes administrativos.
+- `config/adminlte.php`: tema claro y preloader desactivado.
+- `resources/views/components/acceso.blade.php`: composición del acceso.
+- `resources/views/components/admin/boton.blade.php`: variantes de botón.
+
+Capturas actuales: [acceso](docs/capturas/acceso-pulido.png), [acceso móvil](docs/capturas/acceso-movil.png), [tabla](docs/capturas/modelos-pulido.png), [modal](docs/capturas/formulario-pulido.png) y [modal móvil](docs/capturas/formulario-movil.png). Las capturas `inicio-antes.png` e `inicio-despues.png` documentan el primer pase, no la paleta actual.
+
+Referencias de componentes: [Input](https://ui.shadcn.com/docs/components/input), [Button](https://ui.shadcn.com/docs/components/button) y [Dialog](https://ui.shadcn.com/docs/components/dialog), documentación oficial de shadcn/ui. Se usa como referencia visual; la implementación continúa en los componentes de este repositorio.

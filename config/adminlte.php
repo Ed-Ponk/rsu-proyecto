@@ -142,7 +142,7 @@ return [
     */
 
     'preloader' => [
-        'enabled' => true,
+        'enabled' => false,
         'mode' => 'fullscreen',
         'img' => [
             'path' => 'images/logo-sistema.svg',
@@ -551,9 +551,9 @@ return [
     'classes_content' => '',
     'classes_content_top_area' => '',
     'classes_content_bottom_area' => '',
-    'classes_sidebar' => 'bg-body-secondary shadow',
+    'classes_sidebar' => 'bg-body-secondary',
     'classes_sidebar_nav' => '',
-    'classes_topnav' => 'navbar-dark',
+    'classes_topnav' => 'navbar-light',
     'classes_topnav_nav' => 'navbar-expand',
     'classes_topnav_container' => 'container-fluid',
 
@@ -573,7 +573,7 @@ return [
     // the classic AdminLTE dark sidebar, 'light' for a light one, or null to
     // inherit the color mode of the page. Any other value is read as 'dark'.
 
-    'sidebar_theme' => 'dark',
+    'sidebar_theme' => 'light',
 
     // Behavior of the sidebar. The mini mode keeps the icons of a collapsed
     // sidebar visible, 'sidebar_collapse' starts the panel with the sidebar
@@ -608,7 +608,7 @@ return [
     // over) the three above. At or below the 'disable_below' viewport width
     // no instance is created at all, so touch scrolling is left alone.
 
-    'sidebar_scrollbar_theme' => 'os-theme-light',
+    'sidebar_scrollbar_theme' => 'os-theme-dark',
     'sidebar_scrollbar_auto_hide' => 'leave',
     'sidebar_scrollbar_click_scroll' => true,
     'sidebar_scrollbar_options' => [],

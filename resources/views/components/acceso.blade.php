@@ -22,29 +22,28 @@
 
                 {{ $slot }}
 
-                <div class="pie-tarjeta">Sistema de Gestión de Residuos Sólidos Urbanos</div>
+                <div class="pie-tarjeta"><i class="bi bi-shield-check" aria-hidden="true"></i> Sistema de Gestión de Residuos Sólidos Urbanos</div>
             </div>
+            <p class="acceso-derechos">© {{ now()->year }} {{ config('proyecto.municipalidad') }}</p>
         </section>
 
         {{-- Lado izquierdo: presentación institucional --}}
         <aside class="acceso-lateral">
-            <span class="etiqueta"><i class="bi bi-building-fill me-1"></i> Gobierno local</span>
-            <h1>Una ciudad más limpia empieza con una buena gestión</h1>
-            <p class="bajada-lateral">Administre la flota, el personal de recolección y su asistencia diaria desde un solo sistema.</p>
-
-            <ul class="acceso-pasos">
-                <li><i class="bi bi-truck-front"></i> Control de vehículos y sus imágenes</li>
-                <li><i class="bi bi-people"></i> Personal, contratos y asistencia</li>
-                <li><i class="bi bi-geo-alt"></i> Zonas, rutas y programación</li>
-            </ul>
-
-            <div class="acceso-sellos">
-                <span class="eco"><i class="bi bi-leaf-fill me-1"></i> Eco-Friendly</span>
-                <span class="sostenible"><i class="bi bi-recycle me-1"></i> Sostenible</span>
-                <span class="responsable"><i class="bi bi-heart-fill me-1"></i> Responsable</span>
+            <img class="acceso-fotografia" src="{{ asset('images/municipalidad.jpg') }}" alt="Palacio municipal de José Leonardo Ortiz">
+            <div class="acceso-identidad">
+                <span class="acceso-simbolo" aria-hidden="true"><i class="bi bi-recycle"></i></span>
+                <span><strong>RSU</strong><span>Gestión municipal</span></span>
             </div>
-
-            <p class="acceso-derechos">© {{ now()->year }} {{ config('proyecto.municipalidad') }}</p>
+            <div class="acceso-relato">
+                <h1>Cuidar la ciudad.<br>Organizar el día.</h1>
+                <p class="bajada-lateral">La flota, las personas y el territorio.<br>Una gestión conectada para José Leonardo Ortiz.</p>
+                <div class="acceso-ambitos" aria-label="Áreas del sistema">
+                    <span><i class="bi bi-truck" aria-hidden="true"></i> Flota</span>
+                    <span><i class="bi bi-people" aria-hidden="true"></i> Personal</span>
+                    <span><i class="bi bi-map" aria-hidden="true"></i> Territorio</span>
+                </div>
+            </div>
+            <p class="acceso-lugar"><i class="bi bi-geo-alt" aria-hidden="true"></i> José Leonardo Ortiz · Lambayeque, Perú</p>
         </aside>
     </main>
 

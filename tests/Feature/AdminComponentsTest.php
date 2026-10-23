@@ -88,6 +88,7 @@ class AdminComponentsTest extends TestCase
 
         $viewDanger = $this->blade('<x-admin.boton variante="danger" texto="Eliminar" />');
         $viewDanger->assertSee('t-boton-cancelar');
+        $viewDanger->assertSee('t-boton-peligro');
     }
 
     public function test_modal_renders_proper_id_and_backdrop_attributes(): void

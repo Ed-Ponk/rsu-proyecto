@@ -1,26 +1,22 @@
-/* ==========================================================================
-   Menú lateral y barra superior del panel administrativo (RSU).
-   Identidad visual municipal auténtica: Pizarra profunda (#0f172a, #1e293b),
-   Verde Esmeralda institucional (#166534, #10b981) y contrastes nítidos.
-   ========================================================================== */
+/* Navegación clara con selección verde suave; conserva el comportamiento de AdminLTE. */
 
 :root {
-    --menu-fondo: #0f172a;        /* Deep Slate 900 */
-    --menu-fondo-alt: #1e293b;    /* Deep Slate 800 */
-    --menu-texto: #cbd5e1;        /* Slate 300 */
-    --menu-texto-hover: #f8fafc;  /* Slate 50 */
-    --menu-activo: #166534;       /* Forest Emerald 800 */
-    --menu-activo-borde: #10b981; /* Emerald 500 */
-    --barra-superior: #0f172a;    /* Deep Slate 900 */
-    --barra-borde: #1e293b;       /* Slate 800 border */
-    --menu-categoria: #94a3b8;    /* Slate 400 */
+    --menu-fondo: #f8faf7;
+    --menu-fondo-alt: #eff3ef;
+    --menu-texto: #59685e;
+    --menu-texto-hover: #203b2c;
+    --menu-activo: #e7efe8;
+    --menu-activo-borde: #245d46;
+    --barra-superior: #fff;
+    --barra-borde: #e5e9e5;
+    --menu-categoria: #68766e;
 }
 
 .app-sidebar {
     --lte-sidebar-bg: var(--menu-fondo) !important;
     background: var(--menu-fondo) !important;
     border-right: 1px solid var(--barra-borde);
-    box-shadow: 2px 0 8px rgba(15, 23, 42, 0.35);
+    box-shadow: none;
 }
 
 /* Cabecera del menú: fondo blanco nítido con el logo institucional.
@@ -29,7 +25,7 @@
 .app-sidebar .sidebar-brand {
     height: 3.5rem;
     padding: 0;
-    background: #ffffff;
+    background: var(--menu-fondo);
     border-bottom: 1px solid var(--barra-borde);
 }
 
@@ -37,11 +33,11 @@
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     width: 100%;
     height: 100%;
-    padding: 6px 14px;
-    background: #ffffff;
+    padding: 8px 22px;
+    background: var(--menu-fondo);
 }
 
 .app-sidebar .brand-link.logo-switch::before {
@@ -60,7 +56,7 @@
 
 .app-sidebar .brand-link .logo-xl {
     display: block;
-    height: 42px;
+    height: 36px;
     width: auto;
     max-width: 100%;
     max-height: none;
@@ -97,27 +93,27 @@
 
 /* Opciones del menú */
 .app-sidebar .sidebar-menu {
-    padding-top: 0.5rem;
+    padding-top: 16px;
 }
 
 .app-sidebar .sidebar-menu .nav-link {
     width: auto;           /* AdminLTE usa 100% y, sumado al margen, el ítem activo se salía por la derecha */
-    margin: 3px 8px;
-    padding: 0.55rem 0.7rem;
-    border-radius: 6px;
-    color: var(--menu-texto);
+    margin: 3px 12px;
+    padding: .6rem .7rem;
+    border-radius: 7px;
+    color: var(--menu-texto) !important;
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: .82rem;
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    transition: all 0.15s ease-in-out;
+    transition: background-color .15s, color .15s;
 }
 
 .app-sidebar .sidebar-menu .nav-link i,
 .app-sidebar .sidebar-menu .nav-link .nav-icon {
     font-size: 1.05rem;
-    color: var(--menu-texto);
+    color: var(--menu-texto) !important;
     transition: color 0.15s ease-in-out;
 }
 
@@ -142,7 +138,7 @@
 }
 
 .app-sidebar .sidebar-menu .nav-link:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: #edf2ec;
     color: var(--menu-texto-hover);
 }
 
@@ -153,10 +149,9 @@
 
 .app-sidebar .sidebar-menu .nav-link.active {
     background: var(--menu-activo) !important;
-    color: #ffffff !important;
+    color: #234e38 !important;
     font-weight: 600;
-    /* La franja verde va como sombra interna: un borde real empujaría el ícono 3px */
-    box-shadow: inset 3px 0 0 var(--menu-activo-borde), 0 1px 3px rgba(0, 0, 0, 0.25);
+    box-shadow: none;
 }
 
 /* Menú colapsado: cada opción es un cuadro de 44px centrado en la barra de 4.6rem */
@@ -191,51 +186,48 @@
 
 .app-sidebar .sidebar-menu .nav-link.active i,
 .app-sidebar .sidebar-menu .nav-link.active .nav-icon {
-    color: #ffffff !important;
+    color: #245d46 !important;
 }
 
 .app-sidebar .sidebar-menu .nav-treeview > .nav-item > .nav-link {
-    padding-left: 1.5rem;
-    font-size: 0.86rem;
+    padding-left: 1.6rem;
+    font-size: .8rem;
 }
 
 .app-sidebar .nav-header {
-    padding-inline: 18px;
-    padding-top: 14px;
-    padding-bottom: 4px;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.09em;
+    padding-inline: 24px;
+    padding-top: 22px;
+    padding-bottom: 8px;
+    font-size: .65rem;
+    font-weight: 500;
+    letter-spacing: .04em;
     text-transform: uppercase;
     color: var(--menu-categoria) !important;
 }
-
-/* Barra superior en Pizarra Profunda con contraste limpio */
 .app-header.navbar {
     background: var(--barra-superior) !important;
     border-bottom: 1px solid var(--barra-borde);
-    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.15);
+    box-shadow: none;
 }
 
 .app-header.navbar .nav-link,
 .app-header.navbar .navbar-nav .nav-link,
 .app-header.navbar .dropdown-toggle {
-    color: #f8fafc !important;
+    color: #46534b !important;
     font-weight: 500;
+    font-size: .8rem;
 }
 
 .app-header.navbar .nav-link:hover,
 .app-header.navbar .navbar-nav .nav-link:hover {
     color: var(--menu-activo-borde) !important;
 }
-
-/* Fondo principal de trabajo: Slate 50 limpio que reduce la fatiga visual */
 .app-main {
-    background: #f8fafc;
+    background: #fbfcfa;
     min-height: calc(100vh - 57px);
 }
 
 .app-sidebar .nav-link:focus-visible {
-    outline: 2px solid #fff;
-    outline-offset: -3px;
+    outline: 2px solid #245d46;
+    outline-offset: -2px;
 }

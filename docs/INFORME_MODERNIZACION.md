@@ -99,3 +99,15 @@ Los comandos que encontraron restricciones de archivos o red se repitieron con a
 ## Usar y mantener
 
 Siga [README](../README.md) para instalación, [GUIA_DE_MODIFICACIONES](GUIA_DE_MODIFICACIONES.md) para cambios y reversión, y [GUIA_DE_MODULOS](GUIA_DE_MODULOS.md) para el recorrido de cada módulo. Revise los commits de esta rama antes de integrar. No hay despliegue ni publicación en esta entrega.
+
+## Revisión visual del 23 de octubre de 2026
+
+Tras la observación del usuario de que el primer pase era demasiado simple, se sustituyó la dirección visual por una composición más propia y componentes inspirados en el acabado de shadcn/ui. Esta revisión prevalece sobre la descripción visual inicial del informe; la dirección vigente está en `DESIGN.md`.
+
+El acceso integra fotografía municipal, titular breve y formulario delineado. El panel adopta tema claro, bordes precisos, acciones de fila discretas, tablas sin bandas, modales blancos, sugerencias con acabado de popover y confirmaciones coherentes. Se desactivó el preloader visual de pantalla completa y se diferenció la variante destructiva de la de cancelación. No se añadieron paquetes, no se migró a React y no se modificaron reglas ni tablas de negocio.
+
+Se comprobaron login y modal a 390×844, además de acceso, navegación, tabla y modal en escritorio. Se ajustaron el contraste del menú y los placeholders; no se certifica accesibilidad global. Las capturas nuevas están enlazadas desde `DESIGN.md`.
+
+La suite detectó dos pruebas preexistentes dependientes de la hora: intentaban registrar a las 11:00 y 12:30 antes de que llegaran esas horas. Se fijó el reloj a las 13:00 dentro de esos dos tests, conservando la validación real contra asistencias futuras. Después: **159 aprobadas, 6 omitidas y 1 incompleta preexistente; 1673 aserciones**. Pint completo aprobado. La prueba de variante de botón comprueba además la clase de acción destructiva.
+
+Los pendientes de seguridad de dependencias y la regresión sobre MySQL descritos en el informe inicial permanecen sin cambios. El `package-lock.json` previo del usuario continúa fuera de estos cambios.

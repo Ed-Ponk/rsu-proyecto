@@ -1,40 +1,30 @@
-/* ==========================================================================
-   Sistema de Residuos Sólidos Urbanos (RSU) - Municipalidad de José Leonardo Ortiz
-   Hoja de estilos principal: Pantallas internas, centro de mando, listados y formularios.
-   
-   Identidad visual municipal auténtica ("Anti-AI / Human-Crafted"):
-   - Deep Slate / Pizarra (#0f172a, #1e293b, #334155, #f8fafc)
-   - Forest Emerald / Verde Esmeralda (#166534, #15803d, #10b981, #f0fdf4)
-   - Warm Amber / Ámbar Cálido (#d97706, #f59e0b, #fffbeb)
-   - Ladrillo / Crimson (#dc2626, #ef4444, #fef2f2)
-   - Cifras tabulares (font-variant-numeric: tabular-nums), bordes sutiles y sombras nítidas.
-   ========================================================================== */
+/* RSU: estilos de componentes administrativos, formularios y datos. */
 
 :root {
-    /* --- Paleta Municipal RSU: Deep Slate / Pizarra Estructural --- */
-    --rsu-slate-950: #020617;
-    --rsu-slate-900: #0f172a;
-    --rsu-slate-800: #1e293b;
-    --rsu-slate-700: #334155;
-    --rsu-slate-600: #475569;
-    --rsu-slate-500: #64748b;
-    --rsu-slate-400: #94a3b8;
-    --rsu-slate-300: #cbd5e1;
-    --rsu-slate-200: #e2e8f0;
-    --rsu-slate-100: #f1f5f9;
-    --rsu-slate-50:  #f8fafc;
+    /* Neutros con matiz vegetal */
+    --rsu-slate-950: #141c18;
+    --rsu-slate-900: #202a25;
+    --rsu-slate-800: #34413a;
+    --rsu-slate-700: #46534b;
+    --rsu-slate-600: #5b6a61;
+    --rsu-slate-500: #68766e;
+    --rsu-slate-400: #88968d;
+    --rsu-slate-300: #d5ddd7;
+    --rsu-slate-200: #e5e9e5;
+    --rsu-slate-100: #f1f4f0;
+    --rsu-slate-50:  #f8faf7;
 
-    /* --- Forest Emerald / Verde Esmeralda Institucional y Operativo --- */
-    --rsu-emerald-950: #052e16;
-    --rsu-emerald-900: #14532d;
-    --rsu-emerald-800: #166534;
-    --rsu-emerald-700: #15803d;
-    --rsu-emerald-600: #059669;
-    --rsu-emerald-500: #10b981;
+    /* Verdes municipales */
+    --rsu-emerald-950: #132b24;
+    --rsu-emerald-900: #153e30;
+    --rsu-emerald-800: #1c4d39;
+    --rsu-emerald-700: #245d46;
+    --rsu-emerald-600: #2e7054;
+    --rsu-emerald-500: #438666;
     --rsu-emerald-400: #34d399;
     --rsu-emerald-200: #bbf7d0;
     --rsu-emerald-100: #dcfce7;
-    --rsu-emerald-50:  #f0fdf4;
+    --rsu-emerald-50:  #f0f7f2;
 
     /* --- Warm Amber / Ámbar Cálido (Precaución, alertas y contratos) --- */
     --rsu-amber-900: #78350f;
@@ -77,14 +67,14 @@
     --t-fila-par: var(--rsu-slate-50);
 
     /* --- Geometría y Elevación Refinada --- */
-    --t-radio-sm: 0.375rem; /* 6px */
-    --t-radio: 0.5rem;      /* 8px */
-    --t-radio-lg: 0.75rem;  /* 12px */
+    --t-radio-sm: 0.375rem;
+    --t-radio: 7px;
+    --t-radio-lg: 10px;
     --t-radio-pill: 9999px;
 
     --t-sombra-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
-    --t-sombra: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
-    --t-sombra-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+    --t-sombra: 0 1px 3px rgb(20 40 30 / 4%);
+    --t-sombra-md: 0 4px 12px rgb(20 40 30 / 6%);
     --t-sombra-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
 }
 
@@ -107,35 +97,43 @@
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--t-borde);
+    padding-bottom: 0;
+    border-bottom: 0;
+    padding-top: 8px;
 }
 
 .t-titulo {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     margin: 0;
-    font-size: 1.55rem;
-    font-weight: 700;
+    font-size: 1.65rem;
+    font-weight: 650;
     color: var(--rsu-slate-900);
-    letter-spacing: -0.015em;
+    letter-spacing: -.035em;
 }
 
 .t-icono-titulo {
     display: inline-flex;
-    font-size: 1.45rem;
-    color: var(--rsu-emerald-700);
+    font-size: 1.05rem;
+    color: var(--rsu-slate-600);
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border: 1px solid var(--t-borde);
+    border-radius: 8px;
 }
 
 .t-subtitulo {
-    margin: 3px 0 0;
+    margin: 7px 0 0;
     color: var(--rsu-slate-500);
-    font-size: 0.88rem;
+    font-size: .86rem;
     line-height: 1.4;
 }
 
-/* ---------- Botones Artesanales con Identidad Municipal ---------- */
+/* Botones: acciones primarias, neutras y de fila */
 .t-boton {
     --bs-btn-bg: var(--rsu-emerald-700);
     --bs-btn-border-color: var(--rsu-emerald-700);
@@ -149,15 +147,16 @@
     --bs-btn-disabled-border-color: var(--rsu-slate-300);
     border-radius: var(--t-radio);
     font-weight: 600;
-    padding: 0.48rem 1.1rem;
-    font-size: 0.88rem;
-    box-shadow: var(--t-sombra-sm);
-    transition: all 0.15s ease-in-out;
+    padding: .45rem .9rem;
+    font-size: .83rem;
+    box-shadow: 0 1px 2px rgb(20 40 30 / 8%);
+    transition: background-color .15s, border-color .15s, box-shadow .15s;
+    min-height: 36px;
 }
 
 .t-boton:hover {
-    box-shadow: var(--t-sombra);
-    transform: translateY(-1px);
+    box-shadow: 0 1px 3px rgb(20 40 30 / 10%);
+    transform: none;
 }
 
 .t-boton:active {
@@ -174,15 +173,16 @@
     --bs-btn-active-bg: var(--rsu-slate-200);
     border-radius: var(--t-radio);
     font-weight: 600;
-    padding: 0.48rem 1.1rem;
-    font-size: 0.88rem;
+    padding: .45rem .9rem;
+    font-size: .83rem;
     box-shadow: var(--t-sombra-sm);
-    transition: all 0.15s ease-in-out;
+    transition: background-color .15s, border-color .15s;
+    min-height: 36px;
 }
 
 .t-boton-cancelar:hover {
-    box-shadow: var(--t-sombra);
-    transform: translateY(-1px);
+    box-shadow: none;
+    transform: none;
 }
 
 .t-acciones {
@@ -197,45 +197,52 @@
     padding: 0;
     display: inline-grid;
     place-items: center;
-    border: 0;
+    border: 1px solid transparent;
     border-radius: 6px;
-    color: #ffffff;
+    color: var(--rsu-slate-600);
     font-size: 0.85rem;
-    transition: all 0.15s ease-in-out;
-    box-shadow: var(--t-sombra-sm);
+    transition: background-color .15s, color .15s, border-color .15s;
+    box-shadow: none;
+    background: transparent;
 }
 
 .t-boton-icono:hover {
-    color: #ffffff;
-    transform: translateY(-1px);
-    box-shadow: var(--t-sombra);
-    filter: brightness(0.92);
+    color: var(--rsu-slate-900);
+    transform: none;
+    box-shadow: none;
+    filter: none;
+    background: var(--rsu-slate-100);
+    border-color: var(--t-borde);
 }
 
 .t-boton-icono.t-editar {
-    background: var(--rsu-amber-500);
-    color: var(--rsu-slate-900);
+    background: transparent;
+    color: var(--rsu-slate-600);
 }
 
 .t-boton-icono.t-eliminar {
-    background: var(--rsu-red-600);
+    background: transparent;
+    color: #b44141;
 }
 
 .t-boton-icono.t-info {
-    background: var(--rsu-steel-600);
+    background: transparent;
+    color: var(--rsu-slate-600);
 }
 
 .t-boton-icono.t-exito {
-    background: var(--rsu-emerald-600);
+    background: transparent;
+    color: var(--rsu-emerald-700);
 }
 
 .t-boton-icono.t-neutro {
-    background: var(--rsu-slate-500);
+    background: transparent;
+    color: var(--rsu-slate-600);
 }
 
 .t-boton-icono:disabled {
-    background: var(--rsu-slate-200);
-    color: var(--rsu-slate-400);
+    background: transparent;
+    color: #aeb9b2;
     cursor: not-allowed;
     filter: none;
     transform: none;
@@ -253,11 +260,11 @@
 }
 
 .t-tarjeta:hover {
-    box-shadow: var(--t-sombra-md);
+    box-shadow: var(--t-sombra);
 }
 
 .t-tarjeta-cuerpo {
-    padding: 18px 20px;
+    padding: 20px;
 }
 
 .t-tarjeta .card-header {
@@ -278,34 +285,34 @@
 }
 
 .t-tabla thead th {
-    padding: 0.75rem 0.85rem;
-    font-size: 0.76rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--rsu-slate-700);
+    padding: .85rem .8rem;
+    font-size: .8rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--rsu-slate-500);
     white-space: nowrap;
-    border-bottom: 2px solid var(--rsu-slate-200);
-    background: var(--rsu-slate-50);
+    border-bottom: 1px solid var(--t-borde);
+    background: #fff;
 }
 
 .t-tabla tbody td {
-    padding: 0.65rem 0.85rem;
+    padding: .9rem .8rem;
     vertical-align: middle;
-    font-size: 0.88rem;
+    font-size: .82rem;
     border-color: var(--rsu-slate-200);
     color: var(--rsu-slate-800);
 }
 
 .t-tabla > tbody > tr:nth-of-type(odd) > * {
-    --bs-table-bg-type: var(--rsu-slate-50);
-    background: var(--rsu-slate-50);
-    box-shadow: inset 0 0 0 9999px var(--rsu-slate-50);
+    --bs-table-bg-type: transparent;
+    background: transparent;
+    box-shadow: none;
 }
 
 .t-tabla > tbody > tr:hover > * {
-    background: var(--rsu-emerald-50) !important;
-    box-shadow: inset 0 0 0 9999px var(--rsu-emerald-50) !important;
+    background: var(--rsu-slate-50) !important;
+    box-shadow: inset 0 0 0 9999px var(--rsu-slate-50) !important;
 }
 
 /* Integración y estilizado de DataTables */
@@ -314,8 +321,11 @@
     border-radius: var(--t-radio);
     border: 1px solid var(--rsu-slate-300);
     padding: 0.38rem 0.75rem;
-    font-size: 0.88rem;
+    font-size: .82rem;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    min-height: 36px;
+    box-shadow: 0 1px 2px rgb(20 40 30 / 4%);
+    background: #fff;
 }
 
 .dt-container .dt-search input:focus,
@@ -332,11 +342,12 @@
 
 .dt-container .dt-paging .dt-paging-button.current,
 .page-item.active .page-link {
-    background: var(--rsu-emerald-700) !important;
-    border-color: var(--rsu-emerald-700) !important;
-    color: #ffffff !important;
+    background: var(--rsu-slate-100) !important;
+    border-color: var(--rsu-slate-300) !important;
+    color: var(--rsu-slate-900) !important;
     font-weight: 600;
     border-radius: 6px;
+    box-shadow: 0 1px 2px rgb(20 40 30 / 4%);
 }
 
 /* ---------- Insignias Semánticas de Alto Contraste ---------- */
@@ -345,8 +356,8 @@
     align-items: center;
     padding: 3px 8px;
     border-radius: 5px;
-    font-size: 0.73rem;
-    font-weight: 600;
+    font-size: .7rem;
+    font-weight: 500;
     line-height: 1.35;
     white-space: nowrap;
     letter-spacing: 0.02em;
@@ -467,34 +478,38 @@
 
 /* ---------- Ventanas Emergentes (Modales) ---------- */
 .t-modal .modal-content {
-    border: 0;
-    border-radius: var(--t-radio-lg);
-    box-shadow: var(--t-sombra-lg);
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px -12px rgb(14 30 22 / 24%);
     overflow: hidden;
 }
 
 .t-modal .modal-header {
-    background: var(--rsu-slate-900);
-    color: #ffffff;
-    border-bottom: 2px solid var(--rsu-emerald-600);
-    padding: 14px 20px;
+    background: #fff;
+    color: var(--rsu-slate-900);
+    border-bottom: 1px solid var(--t-borde);
+    padding: 22px 24px 18px;
 }
 
 .t-modal .modal-title {
-    font-size: 1.05rem;
-    font-weight: 700;
+    font-size: 1.12rem;
+    font-weight: 600;
     display: flex;
     align-items: center;
     gap: 8px;
+    letter-spacing: -.025em;
 }
 
 .t-modal .modal-title i {
-    color: var(--rsu-amber-400);
+    color: var(--rsu-slate-500);
+    font-size: .95rem;
 }
 
 .t-modal .btn-close {
-    filter: invert(1) grayscale(1) brightness(2);
-    opacity: 0.85;
+    filter: none;
+    opacity: .5;
+    width: .7rem;
+    height: .7rem;
 }
 
 .t-modal .modal-body {
@@ -504,10 +519,10 @@
 
 /* ---------- Formularios Cuidados ---------- */
 .t-formulario .form-label {
-    font-size: 0.86rem;
-    font-weight: 600;
+    font-size: .8rem;
+    font-weight: 500;
     color: var(--rsu-slate-800);
-    margin-bottom: 0.35rem;
+    margin-bottom: .5rem;
 }
 
 .t-formulario .t-obligatorio::after {
@@ -519,17 +534,20 @@
 .t-formulario .form-select {
     border-radius: var(--t-radio);
     border: 1px solid var(--rsu-slate-300);
-    font-size: 0.9rem;
-    padding: 0.48rem 0.8rem;
+    font-size: .85rem;
+    padding: .5rem .75rem;
     color: var(--rsu-slate-900);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    min-height: 38px;
+    box-shadow: 0 1px 2px rgb(20 40 30 / 4%);
+    background-color: #fff;
 }
 
 .t-formulario .form-control:focus,
 .t-formulario .form-select:focus {
-    border-color: var(--rsu-emerald-600);
+    border-color: var(--rsu-emerald-700);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+    box-shadow: 0 0 0 3px rgb(36 93 70 / 12%);
 }
 
 .t-formulario .form-control[readonly],
@@ -1036,14 +1054,14 @@ a.t-funcion:hover .t-funcion-flecha {
     left: 0;
     right: 0;
     margin: 0;
-    padding: 4px;
+    padding: 5px;
     list-style: none;
     max-height: 280px;
     overflow-y: auto;
     background: #ffffff;
-    border: 1px solid var(--rsu-slate-200);
-    border-radius: var(--t-radio);
-    box-shadow: var(--t-sombra-lg);
+    border: 1px solid var(--t-borde);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px -6px rgb(20 40 30 / 16%);
 }
 
 .t-buscador-opcion,
@@ -1829,8 +1847,8 @@ a.t-funcion:hover .t-funcion-flecha {
 }
 
 @media (max-width: 575.98px) {
-    .t-titulo { font-size: 1.3rem; }
-    .t-cabecera { align-items: flex-start; }
+    .t-titulo { font-size: 1.65rem; font-weight: 650; letter-spacing: -.035em; gap: 12px; }
+    .t-cabecera { align-items: flex-start; border-bottom: 0; padding-bottom: 0; margin-bottom: 24px; padding-top: 8px; }
     .t-cabecera > div:last-child { max-width: 100%; flex-wrap: wrap; }
 }
 
@@ -1841,12 +1859,13 @@ a.t-funcion:hover .t-funcion-flecha {
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    padding: 24px;
+    padding: 28px;
     margin-bottom: 32px;
     border: 1px solid var(--t-borde);
-    border-left: 4px solid var(--rsu-emerald-800);
+    border-left: 1px solid var(--t-borde);
     border-radius: var(--t-radio);
     background: #fff;
+    box-shadow: var(--t-sombra);
 }
 .t-jornada-reloj { display: grid; gap: 4px; color: var(--rsu-slate-600); }
 .t-jornada-etiqueta { font-size: .85rem; font-weight: 600; }
@@ -1865,3 +1884,34 @@ a.t-funcion:hover .t-funcion-flecha {
     .t-inicio-herramientas { grid-template-columns: minmax(0, 1fr); }
     .t-inicio-municipalidad { max-width: 320px; }
 }
+
+/* Superficies y estados comunes del panel. */
+body { font-family: 'Segoe UI', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+::selection { color: #153e30; background: #cce4d6; }
+input, textarea { caret-color: var(--rsu-emerald-700); }
+.app-main { scrollbar-color: #c5d0c7 transparent; }
+.t-boton-icono.t-eliminar:hover { background: #fff0f0; color: #a52e2e; border-color: #efd8d8; }
+.t-boton-icono.t-editar:hover { background: var(--rsu-slate-100); color: var(--rsu-slate-900); }
+.t-boton-icono.t-bloqueado { background: transparent; color: #aeb9b2; }
+.t-boton-peligro { --bs-btn-bg: #b44141; --bs-btn-border-color: #b44141; --bs-btn-color: #fff; --bs-btn-hover-bg: #963434; --bs-btn-hover-border-color: #963434; --bs-btn-hover-color: #fff; }
+.dt-container .pagination { gap: 4px; }
+.dt-container .page-link { border-radius: 5px !important; border-color: transparent; color: var(--rsu-slate-600); background: transparent; font-size: .8rem; min-width: 32px; text-align: center; }
+.dt-container .page-link:hover { background: var(--rsu-slate-100); }
+.dt-container .dt-search label { font-size: .8rem; color: var(--rsu-slate-600); }
+.t-modal .btn-close:hover { opacity: .9; background-color: var(--rsu-slate-100); }
+.app-header .dropdown-menu { border: 1px solid var(--t-borde); border-radius: 8px; box-shadow: 0 8px 24px -6px rgb(20 40 30 / 15%); }
+.swal2-popup { border: 1px solid var(--t-borde); border-radius: 12px; font-family: inherit; }
+.swal2-popup .swal2-title { font-size: 1.25rem; font-weight: 600; letter-spacing: -.025em; }
+.swal2-popup .swal2-html-container { font-size: .9rem; line-height: 1.6; }
+.swal2-popup .swal2-styled { border-radius: 7px; font-size: .85rem; font-weight: 500; box-shadow: none; }
+.swal2-popup .swal2-confirm { background-color: var(--rsu-emerald-700); }
+.swal2-popup .swal2-cancel { color: var(--rsu-slate-700); background-color: var(--rsu-slate-100); }
+@media (prefers-reduced-motion: reduce) {
+    .t-boton, .t-boton-icono, .t-funcion, .t-tarjeta, .modal.fade .modal-dialog { transition: none; transform: none; }
+}
+.t-modal .btn-close:focus-visible { outline: 2px solid var(--rsu-emerald-700); outline-offset: 3px; box-shadow: none; }
+@media (max-width: 576px) {
+    .t-formulario .form-control, .t-formulario .form-select { font-size: 16px; }
+    .t-pie-form .btn { min-height: 44px; }
+}
+.t-modal .btn-close:focus { box-shadow: none; }
