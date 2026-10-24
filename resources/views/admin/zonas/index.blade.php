@@ -39,6 +39,7 @@
                             <th>Departamento</th>
                             <th>Descripción</th>
                             <th>Coordenadas</th>
+                            <th>Área</th>
                             <th>Estado</th>
                             <th>Fecha creación</th>
                             <th class="text-center">Acciones</th>
@@ -120,6 +121,7 @@
                                 <div class="t-dato t-dato-celeste"><small>Zonas encontradas</small><strong id="exploradorZonas">0</strong></div>
                                 <div class="t-dato t-dato-verde"><small>Activas</small><strong id="exploradorActivas">0</strong></div>
                                 <div class="t-dato t-dato-azul"><small>Total de puntos</small><strong id="exploradorPuntos">0</strong></div>
+                                <div class="t-dato t-dato-ambar"><small>Área total</small><strong id="exploradorArea">0 km²</strong></div>
                             </div>
 
                             <h6 class="t-seccion-titulo"><i class="bi bi-palette-fill"></i> Leyenda del mapa</h6>

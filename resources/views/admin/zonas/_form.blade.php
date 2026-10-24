@@ -38,13 +38,19 @@
             placeholder="Agregue una descripción de la zona">{{ old('description', $zona->description ?? '') }}</textarea>
     </div>
 
-    <div class="col-md-6">
+    <div class="col-md-4">
         <label for="zonaResiduos" class="form-label">Residuos promedio (kg)</label>
         <input type="number" name="average_waste" id="zonaResiduos" class="form-control" min="0" step="0.01" placeholder="Ej: 150.50"
             value="{{ old('average_waste', isset($zona) && $zona->average_waste !== null ? number_format((float) $zona->average_waste, 2, '.', '') : '') }}">
         <div class="form-text">Cantidad promedio de residuos en kilogramos por día.</div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-4">
+        <label for="zonaArea" class="form-label">Área de la zona</label>
+        <input type="text" id="zonaArea" class="form-control" readonly tabindex="-1" placeholder="Dibuje el perímetro"
+            value="{{ $editando ? number_format($zona->areaKm2(), 3, '.', ',').' km² ('.number_format($zona->areaKm2() * 1_000_000, 0, '.', ',').' m²)' : '' }}">
+        <div class="form-text">Se calcula automáticamente con el perímetro.</div>
+    </div>
+    <div class="col-md-4">
         <label for="zonaEstado" class="form-label">Estado</label>
         <select name="status" id="zonaEstado" class="form-select">
             <option value="1" @selected($estadoActual === '1')>Activo</option>

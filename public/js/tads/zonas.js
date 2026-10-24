@@ -16,6 +16,31 @@
     const MINIMO_PUNTOS = 3;
     const COLORES_ZONA = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d'];
 
+    /* ------------------------------------------------------------------ Área */
+
+    /** Área aproximada en km² de puntos [lat, lng]; la misma fórmula que ReglasZona::areaKm2 en el servidor. */
+    function areaKm2(puntos) {
+        const n = puntos.length;
+        if (n < MINIMO_PUNTOS) return 0;
+
+        const latMedia = puntos.reduce((suma, [lat]) => suma + lat, 0) / n;
+        const kmLat = 111.32;
+        const kmLng = 111.32 * Math.cos(latMedia * Math.PI / 180);
+
+        let suma = 0;
+        for (let i = 0; i < n; i++) {
+            const [lat1, lng1] = puntos[i];
+            const [lat2, lng2] = puntos[(i + 1) % n];
+            suma += (lng1 * kmLng) * (lat2 * kmLat) - (lng2 * kmLng) * (lat1 * kmLat);
+        }
+
+        return Math.abs(suma) / 2;
+    }
+
+    const formatoKm2 = (km2) => `${Number(km2).toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} km²`;
+    const formatoM2 = (km2) => `${Math.round(km2 * 1e6).toLocaleString('en-US')} m²`;
+    const formatoArea = (km2) => `${formatoKm2(km2)} (${formatoM2(km2)})`;
+
     /* ------------------------------------------------------------------ Leaflet */
 
     let leafletListo = false;
@@ -142,6 +167,7 @@
         const dist = cuerpo.querySelector('#zonaDistrito');
         const contenedorFilas = cuerpo.querySelector('#zonaFilas');
         const conteo = cuerpo.querySelector('#zonaConteo');
+        const campoArea = cuerpo.querySelector('#zonaArea');
         const ventana = cuerpo.closest('.modal');
 
         const mapa = crearMapa(cuerpo.querySelector('#zonaMapa'), [mapaInicial.lat, mapaInicial.lng], mapaInicial.zoom);
@@ -183,6 +209,14 @@
             });
             const n = filas().length;
             conteo.textContent = `${n} coordenada${n === 1 ? '' : 's'}.`;
+            actualizarArea();
+        }
+
+        /** El área se recalcula con cada cambio del perímetro (filas, dibujo o edición en el mapa). */
+        function actualizarArea() {
+            if (!campoArea) return;
+            const puntos = puntosDeLasFilas();
+            campoArea.value = puntos.length >= MINIMO_PUNTOS ? formatoArea(areaKm2(puntos)) : '';
         }
 
         function agregarFila(lat = '', lng = '') {
@@ -208,6 +242,7 @@
             dibujo.clearLayers();
             programarRevision();
             setTimeout(() => refrescarBarra());
+            actualizarArea();
             const puntos = puntosDeLasFilas();
 
             if (puntos.length >= MINIMO_PUNTOS) {
@@ -572,7 +607,7 @@
             campo('zonaVerPuntos').textContent = json.puntos;
             campo('zonaVerResiduos').textContent = json.residuos !== null ? `${json.residuos} kg` : 'N/A';
             campo('zonaVerDepartamento').textContent = json.departamento;
-            campo('zonaVerArea').textContent = `${json.area_km2} km²`;
+            campo('zonaVerArea').innerHTML = `${formatoKm2(json.area_km2)}<br><small>${formatoM2(json.area_km2)}</small>`;
             campo('zonaVerDescripcion').textContent = json.descripcion || 'Sin descripción.';
             campo('zonaVerCoordenadas').innerHTML = json.vertices
                 .map(([lat, lng], i) => `<tr><td>${i + 1}</td><td>${numero(lat)}</td><td>${numero(lng)}</td></tr>`).join('');
@@ -586,7 +621,8 @@
 
                 const poligono = L.polygon(json.vertices, estiloZona(json.activa, '#2563eb'));
                 const popup = `<strong>${Tads.escapar(json.nombre)}</strong><br><small>${Tads.escapar(json.distrito)}</small><br>`
-                    + `<small>Residuos: ${json.residuos !== null ? `${json.residuos} kg` : 'N/A'}</small><br><small>${json.puntos} puntos</small>`;
+                    + `<small>Residuos: ${json.residuos !== null ? `${json.residuos} kg` : 'N/A'}</small><br><small>${json.puntos} puntos</small>`
+                    + `<br><small>Área: ${formatoArea(json.area_km2)}</small>`;
                 const marcador = L.marker(poligono.getBounds().getCenter()).bindPopup(popup);
                 capa = L.featureGroup([poligono, marcador]).addTo(mapa);
                 mapa.fitBounds(poligono.getBounds(), { padding: [30, 30], maxZoom: 17 });
@@ -624,6 +660,7 @@
             campo('exploradorZonas').textContent = json.resumen.zonas;
             campo('exploradorActivas').textContent = json.resumen.activas;
             campo('exploradorPuntos').textContent = json.resumen.puntos;
+            campo('exploradorArea').textContent = formatoKm2(json.resumen.area_km2);
 
             const lugar = [dist.value, prov.value, dep.value].filter(Boolean).join(', ') || 'Todas las ubicaciones';
             campo('exploradorTexto').innerHTML = `<i class="bi bi-info-circle-fill me-1"></i> ${json.resumen.zonas} zona(s) encontrada(s) en <strong>${Tads.escapar(lugar)}</strong>`;
@@ -635,6 +672,7 @@
                 const color = z.activa ? COLORES_ZONA[i % COLORES_ZONA.length] : '#6b7280';
                 const popup = `<strong>${Tads.escapar(z.nombre)}</strong><br>`
                     + `${z.activa ? Tads.insignia('Activa', 'verde') : Tads.insignia('Inactiva', 'gris')} ${Tads.insignia(`${z.puntos} puntos`, 'azul')}<br>`
+                    + `<small>Área: ${formatoArea(z.area_km2)}</small><br>`
                     + `<small>${Tads.escapar(z.descripcion ?? '')}</small>`;
                 L.polygon(z.vertices, estiloZona(z.activa, color)).bindPopup(popup).bindTooltip(Tads.escapar(z.nombre), { sticky: true }).addTo(capa);
             });
@@ -691,6 +729,7 @@
                     { data: 'departamento' },
                     { data: 'descripcion', defaultContent: '', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">—</span>' },
                     { data: 'puntos', render: (v) => Tads.insignia(`${v} puntos`, v >= MINIMO_PUNTOS ? 'azul' : 'rojo') },
+                    { data: 'area_km2', className: 'text-nowrap', render: (v, tipo) => (tipo === 'display' ? `${formatoKm2(v)}<br><small class="text-muted">${formatoM2(v)}</small>` : v) },
                     { data: 'activa', render: (v) => v ? Tads.insignia('Activo', 'verde') : Tads.insignia('Inactivo', 'gris') },
                     { data: 'creado', render: Tads.celdaFecha },
                     { data: null, orderable: false, searchable: false, className: 'text-center text-nowrap',
