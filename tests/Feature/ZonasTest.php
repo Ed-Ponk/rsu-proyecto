@@ -159,6 +159,22 @@ class ZonasTest extends TestCase
         $this->assertEqualsWithDelta(1.85, $zona->areaKm2(), 0.05);
     }
 
+    public function test_el_listado_y_el_mapa_muestran_el_area_de_cada_zona(): void
+    {
+        $this->seed(ZonaSeeder::class);
+        $zona = Zona::firstWhere('name', 'Zona Centro');
+
+        $fila = collect($this->ajax('get', route('admin.zonas.index'))->assertOk()->json('data'))->firstWhere('id', $zona->id);
+        $this->assertEqualsWithDelta(1.85, $fila['area_km2'], 0.05);
+
+        $this->ajax('post', route('admin.zonas.store'), $this->datos(['name' => 'Zona Nueva', 'coordinates' => [
+            ['latitude' => -6.79, 'longitude' => -79.85], ['latitude' => -6.79, 'longitude' => -79.84], ['latitude' => -6.80, 'longitude' => -79.84],
+        ]]))->assertOk()->assertJsonPath('zona.area_km2', round(Zona::firstWhere('name', 'Zona Nueva')->areaKm2(), 3));
+
+        $total = Zona::with('coordenadas')->get()->sum(fn (Zona $z) => $z->areaKm2());
+        $this->assertEqualsWithDelta($total, $this->ajax('get', route('admin.zonas.mapa'))->json('resumen.area_km2'), 0.001);
+    }
+
     public function test_el_mapa_filtra_por_ubicacion_y_resume(): void
     {
         $this->seed(ZonaSeeder::class);
@@ -170,7 +186,7 @@ class ZonasTest extends TestCase
             ->assertJsonPath('resumen.activas', 4)
             ->assertJsonPath('resumen.puntos', 20);
 
-        $this->ajax('get', route('admin.zonas.mapa', ['province' => 'Ferreñafe']))->assertJsonPath('resumen.zonas', 0);
+        $this->ajax('get', route('admin.zonas.mapa', ['province' => 'Ferreñafe']))->assertJsonPath('resumen.zonas', 0)->assertJsonPath('resumen.area_km2', 0);
         $this->ajax('get', route('admin.zonas.mapa', ['district' => 'José Leonardo Ortiz']))->assertJsonPath('resumen.zonas', 5);
     }
 

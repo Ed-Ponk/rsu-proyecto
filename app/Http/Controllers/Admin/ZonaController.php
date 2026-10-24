@@ -28,7 +28,8 @@ class ZonaController extends Controller
             return view('admin.zonas.index', ['ubigeo' => $this->ubigeo()]);
         }
 
-        $filas = Zona::withCount('coordenadas')
+        $filas = Zona::with('coordenadas')
+            ->withCount('coordenadas')
             ->orderBy('name')
             ->get()
             ->map(fn (Zona $zona) => $this->fila($zona));
@@ -58,6 +59,7 @@ class ZonaController extends Controller
                 'zonas' => $zonas->count(),
                 'activas' => $zonas->where('status', true)->count(),
                 'puntos' => $zonas->sum(fn (Zona $z) => $z->coordenadas->count()),
+                'area_km2' => round($zonas->sum(fn (Zona $z) => $z->areaKm2()), 3),
             ],
         ]);
     }
@@ -281,6 +283,7 @@ class ZonaController extends Controller
             'departamento' => $zona->department,
             'descripcion' => $zona->description,
             'puntos' => $zona->coordenadas_count ?? $zona->coordenadas()->count(),
+            'area_km2' => round($zona->areaKm2(), 3),
             'activa' => $zona->status,
             'creado' => $zona->created_at?->format('d/m/Y H:i'),
         ];
