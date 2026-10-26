@@ -133,11 +133,12 @@ class MarcaController extends Controller
     private function validado(Request $request, ?int $ignorarId = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:100', Rule::unique('brands', 'name')->ignore($ignorarId)],
+            'name' => ['required', 'string', 'max:100', 'regex:/\p{L}/u', Rule::unique('brands', 'name')->ignore($ignorarId)],
             'description' => ['nullable', 'string', 'max:500'],
             'logo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
         ], [
             'name.unique' => 'Ya existe una marca con ese nombre.',
+            'name.regex' => 'El nombre debe contener letras (no puede ser solo números o símbolos).',
             'logo.mimes' => 'El logo debe ser JPG, PNG, WEBP, GIF o SVG.',
             'logo.max' => 'El logo no puede pesar más de 2 MB.',
         ]);

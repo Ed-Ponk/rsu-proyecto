@@ -183,6 +183,31 @@ Notas:
 - Leaflet y Leaflet.draw están en `public/vendor/leaflet` y `public/vendor/leaflet-draw` (no hace falta instalarlos). Los mosaicos del mapa y el buscador de direcciones necesitan conexión a internet.
 - Tras actualizar la rama ejecuta `php artisan migrate` (o `migrate:fresh --seed` para recargar los datos de ejemplo: 3 vacaciones, 16 feriados del año y 5 zonas en José Leonardo Ortiz).
 
+## Avance 03: grupos de personal y programaciones
+
+- **Grupos de personal** (Programación → Grupos de personal): plantillas con nombre, turno, zona, vehículo, días de la semana, conductor y ayudantes. Los ayudantes que caben salen de la capacidad del vehículo (capacidad − 1 conductor).
+- **Programación** (Programación → Programación): una fila por día de trabajo.
+  - *Nueva programación*: fecha de inicio, fecha de fin y grupo. Al elegir el grupo trae conductor, ayudantes y días, que se pueden cambiar. **Guardar solo se activa después de «Validar disponibilidad»**; cualquier cambio posterior vuelve a bloquearlo.
+  - *Programación masiva*: varios grupos a la vez con un solo rango de fechas (con «Todos» y filtro de grupos). Es la forma rápida cuando hay decenas de grupos.
+  - La validación revisa contrato vigente, vacaciones aprobadas, personal o vehículo ya asignado el mismo día y turno, función correcta, capacidad del vehículo y zona/vehículo activos. Los **feriados activos se omiten** (los inactivos no cuentan). Si hay errores se listan por persona con sugerencias de reemplazo.
+  - Modificar y eliminar solo aplican a lo «Programado»; **Finalizar** desde el día programado; el **historial de cambios** sale de la bitácora; el listado exporta a Excel, PDF e imprime.
+  - Las restricciones únicas de la base de datos impiden duplicar persona o vehículo el mismo día y turno aunque dos usuarios guarden a la vez.
+  - Aprobar vacaciones de alguien programado en esas fechas se bloquea hasta reprogramarlo.
+- Los datos de demostración (`php artisan db:seed` en local) incluyen «Grupo A» y «Grupo B».
+- **Reglas para situaciones reales** (ajustables en `config/proyecto.php`, bloque `programacion`):
+  - Nadie trabaja dos turnos el mismo día y entre dos turnos debe haber un descanso mínimo (8 h por defecto): un turno de noche no puede seguir con uno de mañana.
+  - **Reemplazar** (botón en Programación): cambia a un conductor, un ayudante o un vehículo (por ejemplo, al taller) en todas las programaciones pendientes de un rango, con las mismas validaciones y con historial.
+  - Un feriado nuevo sobre días ya programados avisa; el listado marca esas filas y «Quitar las de feriados» las elimina de una vez.
+  - Aprobar vacaciones de quien está programado se bloquea hasta reemplazarlo; al solicitarlas ya se avisa.
+  - El listado marca a quien no registró asistencia en un día que ya empezó (informativo) y la validación avisa de personas con muchas faltas recientes o con contrato que vence pronto.
+  - Dos grupos activos del mismo turno y con días en común no pueden compartir conductor, ayudante ni vehículo; el listado de grupos marca a quien hoy no podría trabajar.
+  - Cambiar un grupo no modifica lo ya programado (es una plantilla): se avisa y se usa «Reemplazar».
+  - Lógica del turno en curso: no se finaliza un turno que aún no empezó, no se elimina una programación si alguien ya marcó asistencia (se finaliza) y no se cambia a quien ya registró su entrada ese día.
+  - Si dos usuarios guardan lo mismo a la vez (misma persona o mismo vehículo, fecha y turno), uno guarda y el otro recibe un mensaje claro para volver a validar.
+  - **Primeros pasos**: los formularios que dependen de otros datos (grupos, programaciones, contratos, vacaciones, asistencia, vehículos) avisan qué hay que registrar antes y dónde. Las cantidades se pueden escribir con coma decimal (`1,5`, `1.500,50`); las placas deben combinar letras y números y se guardan en mayúsculas.
+  - **Varias personas a la vez**: si dos usuarios guardan lo mismo en el mismo instante, uno guarda y el otro recibe un mensaje claro (no un error 500); las operaciones que se cruzan en la base de datos se reintentan solas, solo una persona puede resolver una solicitud de vacaciones y las zonas se guardan de una en una para que no queden superpuestas.
+  - Las vacaciones no cruzan de un año a otro (se dividen en dos solicitudes) y cambiar el horario de un turno con programaciones pendientes avisa.
+
 ## Producción y operación
 
 - **Entorno**: `.env.example` viene en modo `local`. En producción use `APP_ENV=production`, `APP_DEBUG=false` y cookies seguras (`SESSION_SECURE_COOKIE` se activa solo).

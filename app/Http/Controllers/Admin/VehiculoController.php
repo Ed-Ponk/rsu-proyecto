@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\BuscaEnCatalogo;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\ColorVehiculo;
@@ -10,6 +11,9 @@ use App\Models\Marca;
 use App\Models\Modelo;
 use App\Models\TipoVehiculo;
 use App\Models\Vehiculo;
+use App\Support\Numeros;
+use App\Support\Requisitos;
+use App\Support\UsoEnProgramacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -17,6 +21,7 @@ use Illuminate\Validation\ValidationException;
 
 class VehiculoController extends Controller
 {
+    use BuscaEnCatalogo;
     use RespondeAjax;
 
     /** Relaciones que necesita cada fila del listado. */
@@ -36,9 +41,34 @@ class VehiculoController extends Controller
         return response()->json(['data' => $filas]);
     }
 
+    /** Buscador de vehículos activos (grupos de personal y programaciones). */
+    public function buscar(Request $request)
+    {
+        return $this->respuestaDeBusqueda(
+            $request,
+            Vehiculo::where('status', true)->orderBy('name')->get(),
+            fn (Vehiculo $v) => "{$v->name} {$v->plate} {$v->code}",
+            fn (Vehiculo $v) => self::itemDeBuscador($v),
+        );
+    }
+
+    public static function itemDeBuscador(Vehiculo $vehiculo): array
+    {
+        $personas = (int) $vehiculo->occupant_capacity;
+
+        return [
+            'id' => $vehiculo->id,
+            'titulo' => "{$vehiculo->name} · {$vehiculo->plate}",
+            'detalle' => 'Capacidad: '.($personas === 1 ? '1 persona' : "{$personas} personas"),
+            'capacidad' => $personas,
+            'iniciales' => mb_strtoupper(mb_substr($vehiculo->name, 0, 2)),
+            'insignia' => null,
+        ];
+    }
+
     public function create()
     {
-        return view('admin.vehiculos.create', $this->catalogos());
+        return view('admin.vehiculos.create', $this->catalogos() + ['faltan' => Requisitos::paraVehiculo()]);
     }
 
     public function store(Request $request)
@@ -65,7 +95,9 @@ class VehiculoController extends Controller
     public function update(Request $request, string $id)
     {
         $vehiculo = Vehiculo::findOrFail($id);
-        $vehiculo->update($this->validado($request, $vehiculo->id));
+        $datos = $this->validado($request, $vehiculo->id);
+        UsoEnProgramacion::exigirVehiculoEditable($vehiculo, $datos);
+        $vehiculo->update($datos);
 
         return $this->exito('Vehículo actualizado', 'admin.vehiculos.index', [
             'vehiculo' => $this->fila($vehiculo->fresh(self::CON)),
@@ -76,7 +108,9 @@ class VehiculoController extends Controller
     {
         $vehiculo = Vehiculo::with('imagenes')->findOrFail($id);
 
-        // Avance 3: aquí también se impedirá borrar vehículos que ya estén en una programación.
+        if ($uso = UsoEnProgramacion::deVehiculo($vehiculo->id)) {
+            return $this->rechazo("No se puede eliminar: el vehículo está en {$uso}. Márquelo como inactivo.", 'admin.vehiculos.index');
+        }
 
         $rutas = $vehiculo->imagenes->pluck('image')->all();
         $vehiculo->delete();
@@ -219,6 +253,8 @@ class VehiculoController extends Controller
 
     private function validado(Request $request, ?int $ignorarId = null): array
     {
+        Numeros::enCampos($request, ['load_capacity', 'fuel_capacity', 'compact_capacity']);
+
         $request->merge([
             'code' => strtoupper(trim((string) $request->input('code'))),
             'plate' => strtoupper(trim((string) $request->input('plate'))),
@@ -231,7 +267,10 @@ class VehiculoController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'code' => ['required', 'string', 'max:50', 'regex:/^[A-Z0-9\-_]+$/', Rule::unique('vehicles', 'code')->ignore($ignorarId)],
-            'plate' => ['required', 'regex:'.Vehiculo::FORMATO_PLACA, Rule::unique('vehicles', 'plate')->ignore($ignorarId)],
+            'plate' => ['required', 'regex:'.Vehiculo::FORMATO_PLACA, Rule::unique('vehicles', 'plate')->ignore($ignorarId),
+                // Una placa real combina letras y números: "123-456" o "ABC-DEF" casi seguro son un error de tipeo.
+                fn ($campo, $valor, $fallar) => (preg_match('/[A-Z]/', (string) $valor) && preg_match('/\d/', (string) $valor))
+                    ? null : $fallar('La placa debe combinar letras y números (ejemplo: ABC-123).')],
             'year' => ['required', 'integer', "between:{$anioMin},{$anioMax}"],
             'load_capacity' => ['required', 'numeric', 'gt:0', 'max:999999'],
             'fuel_capacity' => ['required', 'numeric', 'gt:0', 'max:999999'],

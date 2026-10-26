@@ -34,6 +34,7 @@
     Tads.Modulos.vacaciones = {
         init: function (contenedor) {
             const urlRecurso = contenedor.dataset.urlRecurso;
+            const urlPersonal = contenedor.dataset.urlPersonal;
 
             const gestor = new Tads.Gestor({
                 entidad: 'solicitud de vacaciones',
@@ -60,6 +61,9 @@
 
             contenedor._gestor = gestor;
 
+            const botonHistorial = (fila) =>
+                `<button type="button" class="btn t-boton-icono t-info" data-historial="${fila.persona_id}" data-persona="${Tads.escapar(fila.empleado)}" data-bs-toggle="tooltip" title="Ver todas las vacaciones de ${Tads.escapar(fila.empleado)}"><i class="bi bi-calendar-week"></i></button>`;
+
             function acciones(fila) {
                 const quien = `${fila.empleado} · ${fila.inicio}`;
                 const ayuda = 'Solo las solicitudes pendientes se pueden modificar';
@@ -67,12 +71,14 @@
 
                 if (!fila.pendiente) {
                     return Tads.acciones(
+                        botonHistorial(fila),
                         bloqueado('bi-check-lg', 't-exito'), bloqueado('bi-x-lg', 't-eliminar'),
                         bloqueado('bi-pencil-square', 't-editar'), bloqueado('bi-trash3-fill', 't-eliminar'),
                     );
                 }
 
                 return Tads.acciones(
+                    botonHistorial(fila),
                     `<button type="button" class="btn t-boton-icono t-exito" data-aprobar="${fila.id}" data-nombre="${Tads.escapar(quien)}" data-bs-toggle="tooltip" title="Aprobar"><i class="bi bi-check-lg"></i></button>`,
                     `<button type="button" class="btn t-boton-icono t-eliminar" data-rechazar="${fila.id}" data-nombre="${Tads.escapar(quien)}" data-bs-toggle="tooltip" title="Rechazar"><i class="bi bi-x-lg"></i></button>`,
                     Tads.botonEditar(fila.id),
@@ -111,6 +117,15 @@
             document.getElementById('tabla').addEventListener('click', (evento) => {
                 const aprobar = evento.target.closest('[data-aprobar]');
                 const rechazar = evento.target.closest('[data-rechazar]');
+                const historial = evento.target.closest('[data-historial]');
+
+                if (historial) {
+                    bootstrap.Tooltip.getInstance(historial)?.hide();
+                    return gestor.abrirFormulario(
+                        `${urlPersonal}/${historial.dataset.historial}/vacaciones`,
+                        `<i class="bi bi-airplane-fill me-2"></i>Vacaciones de ${Tads.escapar(historial.dataset.persona)}`,
+                    );
+                }
 
                 if (aprobar) resolver(aprobar.dataset.aprobar, aprobar.dataset.nombre, 'aprobar');
                 else if (rechazar) resolver(rechazar.dataset.rechazar, rechazar.dataset.nombre, 'rechazar');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Feriado;
+use App\Models\Programacion;
 use App\Services\CargadorFeriados;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -46,7 +47,7 @@ class FeriadoController extends Controller
     {
         $feriado = Feriado::create($this->validado($request));
 
-        return $this->exito('Feriado registrado', 'admin.feriados.index', ['feriado' => $this->fila($feriado)]);
+        return $this->exito('Feriado registrado', 'admin.feriados.index', ['feriado' => $this->fila($feriado)] + $this->avisoDeProgramaciones($feriado));
     }
 
     public function show(string $id)
@@ -64,7 +65,7 @@ class FeriadoController extends Controller
         $feriado = Feriado::findOrFail($id);
         $feriado->update($this->validado($request, $feriado->id));
 
-        return $this->exito('Feriado actualizado', 'admin.feriados.index', ['feriado' => $this->fila($feriado->fresh())]);
+        return $this->exito('Feriado actualizado', 'admin.feriados.index', ['feriado' => $this->fila($feriado->fresh())] + $this->avisoDeProgramaciones($feriado->fresh()));
     }
 
     public function destroy(string $id)
@@ -72,6 +73,23 @@ class FeriadoController extends Controller
         Feriado::findOrFail($id)->delete();
 
         return $this->exito('Feriado eliminado', 'admin.feriados.index');
+    }
+
+    /**
+     * Un feriado activo sobre días ya programados no los quita solo: se avisa para que se revisen
+     * (en Programación están marcados y se pueden quitar de una vez).
+     */
+    private function avisoDeProgramaciones(Feriado $feriado): array
+    {
+        if (! $feriado->status) {
+            return [];
+        }
+
+        $cantidad = Programacion::where('status', Programacion::PROGRAMADO)->where('date', $feriado->date->toDateString())->count();
+
+        return $cantidad
+            ? ['aviso' => "El {$feriado->date->format('d/m/Y')} hay {$cantidad} programación(es) pendiente(s). No se quitaron solas: revíselas en Programación (están marcadas como feriado) y use «Quitar las de feriados»."]
+            : [];
     }
 
     /** Paso 1 de la carga con barra de progreso: consulta la fuente y devuelve los feriados sin guardarlos. */
@@ -107,7 +125,9 @@ class FeriadoController extends Controller
 
             $resultado = $cargador->guardar(collect($lote['feriados'])->pluck('description', 'date')->all());
 
-            return $this->exito('Lote guardado', 'admin.feriados.index', $resultado + ['resumen' => $this->resumen()]);
+            $afectadas = Programacion::where('status', Programacion::PROGRAMADO)->whereIn('date', array_keys(collect($lote['feriados'])->pluck('description', 'date')->all()))->count();
+
+            return $this->exito('Lote guardado', 'admin.feriados.index', $resultado + ['resumen' => $this->resumen(), 'afectadas' => $afectadas]);
         }
 
         $anio = today()->year;

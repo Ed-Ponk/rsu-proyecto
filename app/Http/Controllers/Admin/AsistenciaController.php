@@ -9,6 +9,7 @@ use App\Models\Personal;
 use App\Services\ResolverTurno;
 use App\Services\ServicioAsistencia;
 use App\Support\HashFicticio;
+use App\Support\Requisitos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -107,7 +108,7 @@ class AsistenciaController extends Controller
 
     public function create()
     {
-        return view('admin.asistencias.create');
+        return view('admin.asistencias.create', ['faltan' => Requisitos::paraAsistencia()]);
     }
 
     public function store(Request $request)
@@ -213,7 +214,7 @@ class AsistenciaController extends Controller
             if ($turnoAnterior !== [$asistencia->schedule_id, $asistencia->shift_date?->toDateString()]) {
                 Asistencia::renumerarTurno($asistencia->user_id, ...$turnoAnterior);
             }
-        });
+        }, 3);
 
         return $this->exito('Asistencia actualizada', 'admin.asistencias.index', [
             'asistencia' => $this->fila($asistencia->fresh(['personal.tipo', 'turno'])),
@@ -231,7 +232,7 @@ class AsistenciaController extends Controller
 
             $asistencia->delete();
             Asistencia::renumerarTurno($idPersonal, $idTurno, $jornada);
-        });
+        }, 3);
 
         return $this->exito('Asistencia eliminada', 'admin.asistencias.index');
     }

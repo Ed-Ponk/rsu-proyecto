@@ -2089,3 +2089,199 @@ a.t-funcion:hover .t-funcion-flecha {
 .t-boton-icono.t-bloqueado:hover {
     transform: none;
 }
+
+/* ---------- Avance 03: grupos de personal y programaciones ---------- */
+.t-boton.t-boton-peligro {
+    --bs-btn-bg: var(--rsu-red-600);
+    --bs-btn-border-color: var(--rsu-red-600);
+    --bs-btn-hover-bg: var(--rsu-red-700);
+    --bs-btn-hover-border-color: var(--rsu-red-700);
+}
+
+.t-boton-contorno {
+    color: var(--rsu-emerald-700);
+    background: #ffffff;
+    border: 1px solid var(--rsu-emerald-600);
+    border-radius: var(--t-radio);
+    font-weight: 600;
+    font-size: 0.88rem;
+    padding: 0.48rem 1.1rem;
+}
+
+.t-boton-contorno:hover {
+    color: #ffffff;
+    background: var(--rsu-emerald-700);
+}
+
+.t-dias-semana {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.t-dia {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--rsu-slate-300);
+    border-radius: 999px;
+    background: #ffffff;
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.t-dia:has(input:checked) {
+    color: var(--rsu-emerald-800);
+    background: var(--rsu-emerald-50);
+    border-color: var(--rsu-emerald-600);
+}
+
+.t-resumen-grupo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px 16px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio);
+    background: var(--rsu-slate-50);
+}
+
+.t-resumen-grupo small {
+    display: block;
+    color: var(--rsu-slate-500);
+    font-size: 0.72rem;
+}
+
+.t-validacion {
+    padding: 12px 16px;
+    border: 1px solid transparent;
+    border-radius: var(--t-radio);
+    font-size: 0.88rem;
+}
+
+.t-validacion ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+.t-validacion-ok {
+    color: var(--rsu-emerald-900);
+    background: var(--rsu-emerald-100);
+    border-color: var(--rsu-emerald-200);
+}
+
+.t-validacion-error {
+    color: #ffffff;
+    background: var(--rsu-red-600);
+}
+
+.t-validacion-info {
+    color: #0c4a6e;
+    background: #e0f2fe;
+    border-color: #bae6fd;
+}
+
+.t-pila {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.t-pila span {
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: var(--rsu-slate-100);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.t-lista-grupos {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 18rem;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.t-grupo-opcion {
+    display: grid;
+    grid-template-columns: auto minmax(9rem, 1.3fr) minmax(5rem, 0.7fr) minmax(8rem, 1.2fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio);
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.t-grupo-opcion[hidden] {
+    display: none;
+}
+
+.t-grupo-opcion:has(input:checked) {
+    border-color: var(--rsu-emerald-600);
+    background: var(--rsu-emerald-50);
+}
+
+.t-grupo-opcion small {
+    display: block;
+    color: var(--rsu-slate-500);
+    font-size: 0.72rem;
+}
+
+.t-grupo-dias {
+    display: flex;
+    gap: 3px;
+}
+
+.t-grupo-dias i {
+    font-style: normal;
+    font-size: 0.68rem;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--rsu-slate-400);
+    background: var(--rsu-slate-100);
+}
+
+.t-grupo-dias i.activo {
+    color: var(--rsu-emerald-800);
+    background: var(--rsu-emerald-100);
+    font-weight: 700;
+}
+
+.t-exportar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.t-exportar .dt-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.t-exportar .btn {
+    border-radius: var(--t-radio);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.t-exportar .t-excel { background: var(--rsu-emerald-700); border-color: var(--rsu-emerald-700); }
+.t-exportar .t-pdf { background: var(--rsu-red-600); border-color: var(--rsu-red-600); }
+.t-exportar .t-imprimir { background: var(--rsu-slate-800); border-color: var(--rsu-slate-800); }
+.t-exportar .t-columnas { background: var(--rsu-slate-600); border-color: var(--rsu-slate-600); }
+
+@media (max-width: 768px) {
+    .t-grupo-opcion {
+        grid-template-columns: auto 1fr;
+    }
+}

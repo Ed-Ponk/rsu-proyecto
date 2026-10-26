@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\BuscaEnCatalogo;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Zona;
 use App\Services\ReglasZona;
 use App\Services\Ubigeo;
+use App\Support\Numeros;
+use App\Support\UsoEnProgramacion;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +22,7 @@ use Throwable;
 
 class ZonaController extends Controller
 {
+    use BuscaEnCatalogo;
     use RespondeAjax;
 
     public function __construct(private readonly ReglasZona $reglas, private readonly Ubigeo $ubigeo) {}
@@ -64,12 +69,52 @@ class ZonaController extends Controller
         ]);
     }
 
+    /** Buscador de zonas activas (grupos de personal y programaciones). */
+    public function buscar(Request $request)
+    {
+        return $this->respuestaDeBusqueda(
+            $request,
+            Zona::where('status', true)->orderBy('name')->get(),
+            fn (Zona $z) => "{$z->name} {$z->district} {$z->province}",
+            fn (Zona $z) => self::itemDeBuscador($z),
+        );
+    }
+
+    public static function itemDeBuscador(Zona $zona): array
+    {
+        return [
+            'id' => $zona->id,
+            'titulo' => $zona->name,
+            'detalle' => collect([$zona->district, $zona->province])->filter()->implode(', ') ?: 'Sin ubicación',
+            'iniciales' => mb_strtoupper(mb_substr($zona->name, 0, 2)),
+            'insignia' => null,
+        ];
+    }
+
     public function create()
     {
         return view('admin.zonas.create', $this->catalogos());
     }
 
     public function store(Request $request)
+    {
+        return $this->conCandado(fn () => $this->crear($request));
+    }
+
+    /**
+     * La validación de superposición mira las zonas ya guardadas: si dos personas guardan zonas parecidas a la vez, ambas pasan.
+     * Un candado hace que las revisiones y los guardados de zonas se hagan de una en una.
+     */
+    private function conCandado(callable $operacion)
+    {
+        try {
+            return Cache::lock('zonas-perimetro', 20)->block(15, $operacion);
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages(['name' => 'Otra persona está guardando una zona en este momento. Inténtelo de nuevo en unos segundos.']);
+        }
+    }
+
+    private function crear(Request $request)
     {
         $datos = $this->validado($request);
 
@@ -78,7 +123,7 @@ class ZonaController extends Controller
             $this->guardarCoordenadas($zona, $datos['coordinates']);
 
             return $zona;
-        });
+        }, 3);
 
         return $this->exito('Zona registrada', 'admin.zonas.index', ['zona' => $this->fila($zona->loadCount('coordenadas'))]);
     }
@@ -98,26 +143,40 @@ class ZonaController extends Controller
 
     public function update(Request $request, string $id)
     {
+        return $this->conCandado(fn () => $this->modificar($request, $id));
+    }
+
+    private function modificar(Request $request, string $id)
+    {
         $zona = Zona::findOrFail($id);
         $datos = $this->validado($request, $zona->id);
+        UsoEnProgramacion::exigirZonaEditable($zona, $datos);
 
         DB::transaction(function () use ($zona, $datos) {
             $zona->update($this->campos($datos));
             $this->guardarCoordenadas($zona, $datos['coordinates']);
-        });
+        }, 3);
 
         return $this->exito('Zona actualizada', 'admin.zonas.index', ['zona' => $this->fila($zona->fresh()->loadCount('coordenadas'))]);
     }
 
     public function destroy(string $id)
     {
-        Zona::findOrFail($id)->delete();   // sus coordenadas se borran en cascada
+        $zona = Zona::findOrFail($id);
+
+        if ($uso = UsoEnProgramacion::deZona($zona->id)) {
+            return $this->rechazo("No se puede eliminar: la zona está en {$uso}. Márquela como inactiva.", 'admin.zonas.index');
+        }
+
+        $zona->delete();   // sus coordenadas se borran en cascada
 
         return $this->exito('Zona eliminada', 'admin.zonas.index');
     }
 
     private function validado(Request $request, ?int $ignorarId = null): array
     {
+        Numeros::enCampos($request, ['average_waste']);
+
         $datos = $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('zones', 'name')->ignore($ignorarId)],
             'department' => ['required', 'string'],

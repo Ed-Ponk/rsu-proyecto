@@ -9,6 +9,7 @@ use App\Models\Personal;
 use App\Models\TipoPersonal;
 use App\Models\Vacacion;
 use App\Services\ReglasVacacion;
+use App\Support\UsoEnProgramacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -64,7 +65,7 @@ class PersonalController extends Controller
     {
         $datos = $request->validate([
             'q' => ['nullable', 'string', 'max:60'],
-            'contexto' => ['required', Rule::in(['contrato', 'asistencia', 'vacaciones'])],
+            'contexto' => ['required', Rule::in(['contrato', 'asistencia', 'vacaciones', 'conductor', 'ayudante'])],
         ]);
 
         // Sin tildes ni mayúsculas: "perez" encuentra a "Pérez" (LIKE de SQLite no ignora las tildes).
@@ -72,15 +73,18 @@ class PersonalController extends Controller
         $palabras = array_filter(preg_split('/\s+/', $normalizar(trim((string) ($datos['q'] ?? '')))));
         $paraAsistencia = $datos['contexto'] === 'asistencia';
         $paraVacaciones = $datos['contexto'] === 'vacaciones';
+        $paraRuta = in_array($datos['contexto'], ['conductor', 'ayudante'], true);
+        $funcion = $datos['contexto'] === 'conductor' ? TipoPersonal::conductor() : TipoPersonal::ayudante();
         $anio = today()->year;
 
         // El personal activo es un conjunto acotado: se filtra en PHP para poder comparar sin tildes.
         $personas = Personal::with('tipo')
             ->activos()
+            ->when($paraRuta, fn ($q) => $q->where('users.usertype_id', $funcion?->id ?? 0))
             ->withExists([
                 'contratos as con_contrato' => fn ($c) => match (true) {
                     $paraVacaciones => $c->vigente()->whereIn('type', ReglasVacacion::CONTRATOS_CON_DERECHO),
-                    $paraAsistencia => $c->vigente(),
+                    $paraAsistencia, $paraRuta => $c->vigente(),
                     default => $c->noVencido(),
                 },
             ])
@@ -100,10 +104,11 @@ class PersonalController extends Controller
             ->take(8)
             ->values();
 
-        return response()->json(['data' => $personas->map(function (Personal $p) use ($paraAsistencia, $paraVacaciones, $anio) {
+        return response()->json(['data' => $personas->map(function (Personal $p) use ($paraAsistencia, $paraVacaciones, $paraRuta, $anio) {
             // En la lista solo se marca lo relevante; en la tarjeta elegida siempre se informa el estado.
             [$enLista, $elegido] = match (true) {
                 $paraVacaciones => $this->insigniasDeVacaciones($p, $anio),
+                $paraRuta => $this->insigniasDeRuta($p),
                 default => $this->insigniasDeContrato($p, $paraAsistencia),
             };
 
@@ -129,6 +134,16 @@ class PersonalController extends Controller
                 : ($p->con_contrato
                     ? [['texto' => 'Contrato activo', 'color' => 'ambar'], ['texto' => 'Contrato activo', 'color' => 'ambar']]
                     : [null, ['texto' => 'Sin contrato activo', 'color' => 'verde']]);
+    }
+
+    /** Conductores y ayudantes de las programaciones: se informa si hoy tienen contrato vigente. */
+    private function insigniasDeRuta(Personal $p): array
+    {
+        $insignia = $p->con_contrato
+            ? ['texto' => 'Disponible', 'color' => 'verde']
+            : ['texto' => 'Sin contrato vigente', 'color' => 'rojo'];
+
+        return [$p->con_contrato ? null : $insignia, $insignia];
     }
 
     /** Vacaciones: solo el personal nombrado o permanente puede pedirlas; se informa cuántos días le quedan. */
@@ -175,6 +190,7 @@ class PersonalController extends Controller
     {
         $persona = Personal::findOrFail($id);
         $datos = $this->validado($request, $persona);
+        UsoEnProgramacion::exigirPersonaEditable($persona, $datos);
 
         // Si el campo de clave llega vacío se conserva la actual.
         if (blank($datos['password'] ?? null)) {
@@ -198,6 +214,10 @@ class PersonalController extends Controller
 
         if ($persona->contratos_count > 0 || $persona->asistencias_count > 0 || $persona->vacaciones_count > 0) {
             return $this->rechazo('No se puede eliminar: tiene contratos, asistencias o vacaciones registradas. Márquelo como inactivo.', 'admin.personal.index');
+        }
+
+        if ($uso = UsoEnProgramacion::dePersona($persona->id)) {
+            return $this->rechazo("No se puede eliminar: figura en {$uso}. Márquelo como inactivo.", 'admin.personal.index');
         }
 
         $this->borrarArchivo($persona->profile_photo_path);
@@ -231,8 +251,8 @@ class PersonalController extends Controller
         $datos = $request->validate([
             'dni' => ['required', 'digits:8', Rule::unique('users', 'dni')->ignore($ignorarId)],
             'usertype_id' => ['required', 'exists:usertypes,id'],
-            'name' => ['required', 'string', 'max:100', "regex:/^[\pL\s'.\-]+$/u"],
-            'last_name' => ['required', 'string', 'max:100', "regex:/^[\pL\s'.\-]+$/u"],
+            'name' => ['required', 'string', 'min:2', 'max:100', "regex:/^[\pL\s'.\-]+$/u"],
+            'last_name' => ['required', 'string', 'min:2', 'max:100', "regex:/^[\pL\s'.\-]+$/u"],
             'birthdate' => ['required', 'date', 'after:1940-01-01', 'before_or_equal:'.now()->subYears($edadMinima)->toDateString()],
             'phone' => ['nullable', 'regex:/^9\d{8}$/'],
             'email' => ['required', 'email:rfc', 'max:150', Rule::unique('users', 'email')->ignore($ignorarId)],
@@ -246,6 +266,8 @@ class PersonalController extends Controller
             'dni.unique' => 'Ya hay personal registrado con ese DNI.',
             'usertype_id.required' => 'Seleccione el tipo de personal.',
             'name.regex' => 'Los nombres solo pueden tener letras y espacios.',
+            'name.min' => 'Escriba el nombre completo (al menos 2 letras).',
+            'last_name.min' => 'Escriba el apellido completo (al menos 2 letras).',
             'last_name.regex' => 'Los apellidos solo pueden tener letras y espacios.',
             'birthdate.before_or_equal' => "La persona debe ser mayor de {$edadMinima} años.",
             'birthdate.after' => 'La fecha de nacimiento no es válida.',
