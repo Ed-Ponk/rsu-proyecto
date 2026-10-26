@@ -816,6 +816,8 @@ return [
                 ['text' => 'Turnos', 'route' => 'admin.turnos.index', 'icon' => 'bi bi-clock-fill'],
                 ['text' => 'Zonas', 'route' => 'admin.zonas.index', 'icon' => 'bi bi-geo-alt-fill'],
                 ['text' => 'Feriados', 'route' => 'admin.feriados.index', 'icon' => 'bi bi-flag-fill'],
+                ['text' => 'Grupos de personal', 'route' => 'admin.grupos.index', 'icon' => 'bi bi-people-fill'],
+                ['text' => 'Programación', 'route' => 'admin.programaciones.index', 'icon' => 'bi bi-clock-history'],
             ],
         ],
         // Seguridad (Usuarios del sistema y Bitácora): implementado pero oculto, aún no se pide en los avances 01 y 02.
@@ -892,6 +894,7 @@ return [
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/programacion.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/vacaciones.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/zonas.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/rutas.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/app-admin.js'],
             ],
         ],
@@ -935,22 +938,27 @@ return [
                 [
                     'type' => 'js',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/js/dataTables.buttons.min.js',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/dataTables.buttons.min.js',
                 ],
                 [
                     'type' => 'js',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/js/buttons.bootstrap5.min.js',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/buttons.bootstrap5.min.js',
                 ],
                 [
                     'type' => 'js',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/js/buttons.html5.min.js',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/buttons.html5.min.js',
                 ],
                 [
                     'type' => 'js',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/js/buttons.print.min.js',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/buttons.colVis.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => false,
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/buttons.print.min.js',
                 ],
                 [
                     'type' => 'js',
@@ -970,7 +978,7 @@ return [
                 [
                     'type' => 'css',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/css/buttons.bootstrap5.min.css',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/css/buttons.bootstrap5.min.css',
                 ],
             ],
         ],

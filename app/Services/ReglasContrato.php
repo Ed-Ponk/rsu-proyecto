@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Asistencia;
 use App\Models\Contrato;
 use App\Models\Personal;
+use App\Models\Programacion;
 use App\Models\Vacacion;
 use Illuminate\Support\Carbon;
 
@@ -137,6 +138,19 @@ class ReglasContrato
                 return 'Tiene vacaciones '.strtolower(Vacacion::ESTADOS[$vacacion->status]).' del '.$vacacion->start_date->format('d/m/Y')
                     .' al '.$vacacion->end_date->format('d/m/Y').' que dependen de este contrato. Rechace o elimine esas solicitudes primero.';
             }
+        }
+
+        // Programaciones pendientes: las fechas que quedarían sin ningún contrato vigente.
+        $cubre = fn (Carbon $dia): bool => ($activo && $inicio->lte($dia) && (! $fin || $fin->gte($dia)))
+            || $otros->contains(fn (Contrato $c) => $c->is_active && $c->start_date->lte($dia) && (! $c->end_date || $c->end_date->gte($dia)));
+
+        $sinContrato = Programacion::dePersona($actual->user_id)->where('status', Programacion::PROGRAMADO)
+            ->where('date', '>=', today()->toDateString())->orderBy('date')->get()
+            ->map(fn (Programacion $p) => $p->date)->filter(fn (Carbon $dia) => ! $cubre($dia))
+            ->map(fn (Carbon $dia) => $dia->toDateString())->values()->all();
+
+        if ($sinContrato) {
+            return 'Está programado en '.ReglasProgramacion::resumenDeFechas($sinContrato).' y esas fechas quedarían sin contrato vigente. Modifique o elimine esas programaciones primero.';
         }
 
         if (! $revisarAsistencias) {

@@ -15,6 +15,7 @@
          data-tads-modulo="vacaciones"
          data-url-listado="{{ route('admin.vacaciones.index') }}"
          data-url-recurso="{{ url('admin/vacaciones') }}"
+         data-url-personal="{{ url('admin/personal') }}"
          data-url-crear="{{ route('admin.vacaciones.create') }}">
         <div class="t-tarjeta-cuerpo">
             <div class="table-responsive">

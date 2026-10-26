@@ -100,11 +100,12 @@ class ColorController extends Controller
         $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
 
         return $request->validate([
-            'name' => ['required', 'string', 'max:100', Rule::unique('vehiclecolors', 'name')->ignore($ignorarId)],
+            'name' => ['required', 'string', 'max:100', 'regex:/\p{L}/u', Rule::unique('vehiclecolors', 'name')->ignore($ignorarId)],
             'code' => ['required', 'regex:/^#[0-9A-F]{6}$/', Rule::unique('vehiclecolors', 'code')->ignore($ignorarId)],
             'description' => ['nullable', 'string', 'max:500'],
         ], [
             'name.unique' => 'Ya existe un color con ese nombre.',
+            'name.regex' => 'El nombre debe contener letras (no puede ser solo números o símbolos).',
             'code.regex' => 'Escriba un código hexadecimal válido, por ejemplo #104CAD.',
             'code.unique' => 'Ya existe un color con ese código.',
         ]);

@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\BuscaEnCatalogo;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
+use App\Models\Programacion;
 use App\Models\Turno;
+use App\Support\UsoEnProgramacion;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class TurnoController extends Controller
 {
+    use BuscaEnCatalogo;
     use RespondeAjax;
 
     public function index()
@@ -25,6 +29,28 @@ class TurnoController extends Controller
             ->map(fn (Turno $turno) => $this->fila($turno));
 
         return response()->json(['data' => $filas, 'huecos' => Turno::huecos()]);
+    }
+
+    /** Buscador de turnos (grupos de personal). */
+    public function buscar(Request $request)
+    {
+        return $this->respuestaDeBusqueda(
+            $request,
+            Turno::orderBy('time_start')->get(),
+            fn (Turno $t) => $t->name,
+            fn (Turno $t) => self::itemDeBuscador($t),
+        );
+    }
+
+    public static function itemDeBuscador(Turno $turno): array
+    {
+        return [
+            'id' => $turno->id,
+            'titulo' => $turno->name,
+            'detalle' => substr($turno->time_start, 0, 5).' - '.substr($turno->time_end, 0, 5),
+            'iniciales' => mb_strtoupper(mb_substr($turno->name, 0, 2)),
+            'insignia' => null,
+        ];
     }
 
     public function create()
@@ -52,9 +78,15 @@ class TurnoController extends Controller
     public function update(Request $request, string $id)
     {
         $turno = Turno::findOrFail($id);
+        $antes = [$turno->time_start, $turno->time_end];
         $turno->update($this->validado($request, $turno->id));
 
-        return $this->exito('Turno actualizado', 'admin.turnos.index', ['turno' => $this->fila($turno->fresh())]);
+        // Las programaciones pendientes siguen apuntando a este turno: con otro horario cambia su descanso y su asistencia.
+        $pendientes = Programacion::where('shift_id', $turno->id)->where('status', Programacion::PROGRAMADO)->where('date', '>=', today()->toDateString())->count();
+        $cambioHorario = $antes !== [$turno->fresh()->time_start, $turno->fresh()->time_end];
+
+        return $this->exito('Turno actualizado', 'admin.turnos.index', ['turno' => $this->fila($turno->fresh())]
+            + ($pendientes && $cambioHorario ? ['aviso' => "Hay {$pendientes} programación(es) pendiente(s) con este turno: ahora usan el nuevo horario. Revise que sigan respetando el descanso entre turnos."] : []));
     }
 
     public function destroy(string $id)
@@ -63,6 +95,10 @@ class TurnoController extends Controller
 
         if ($turno->asistencias_count > 0) {
             return $this->rechazo('No se puede eliminar el turno porque tiene asistencias registradas.', 'admin.turnos.index');
+        }
+
+        if ($uso = UsoEnProgramacion::deTurno($turno->id)) {
+            return $this->rechazo("No se puede eliminar el turno porque está en {$uso}.", 'admin.turnos.index');
         }
 
         $turno->delete();

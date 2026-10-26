@@ -43,6 +43,12 @@ class ReglasVacacion
 
         $fin = Vacacion::fechaFin($inicio, $dias);
 
+        // Los días se descuentan del año en que empiezan: unas vacaciones que cruzan el año permitirían tomar más del cupo.
+        if ($fin->year !== $inicio->year) {
+            $errores['start_date'] ??= 'Las vacaciones no pueden cruzar de un año a otro: se terminan el '.$fin->format('d/m/Y')
+                .'. Divídalas en dos solicitudes (hasta el 31/12 y desde el 01/01).';
+        }
+
         $choque = Vacacion::ocupaFechas()
             ->where('user_id', $persona->id)
             ->when($actual, fn ($q) => $q->whereKeyNot($actual->id))

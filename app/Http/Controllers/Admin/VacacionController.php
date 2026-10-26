@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Personal;
+use App\Models\Programacion;
 use App\Models\Vacacion;
+use App\Services\ReglasProgramacion;
 use App\Services\ReglasVacacion;
+use App\Support\Requisitos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -36,9 +39,27 @@ class VacacionController extends Controller
         return response()->json(['data' => $filas]);
     }
 
+    /** Historial de vacaciones de una persona (se abre en una ventana emergente, igual que sus contratos). */
+    public function deLaPersona(string $id)
+    {
+        $persona = Personal::with('tipo')->findOrFail($id);
+        $vacaciones = Vacacion::where('user_id', $persona->id)->orderByDesc('start_date')->get();
+        $anio = today()->year;
+
+        return view('admin.vacaciones.persona', [
+            'persona' => $persona,
+            'vacaciones' => $vacaciones,
+            'anio' => $anio,
+            'cupo' => (int) config('proyecto.vacaciones.dias_por_anio'),
+            'aprobados' => Vacacion::diasAprobados($persona->id, $anio),
+            'disponibles' => Vacacion::diasDisponibles($persona->id, $anio),
+            'enCurso' => Vacacion::estaDeVacaciones($persona->id, today()),
+        ]);
+    }
+
     public function create()
     {
-        return view('admin.vacaciones.create', ['cupo' => config('proyecto.vacaciones.dias_por_anio')]);
+        return view('admin.vacaciones.create', ['cupo' => config('proyecto.vacaciones.dias_por_anio'), 'faltan' => Requisitos::paraVacaciones()]);
     }
 
     public function store(Request $request)
@@ -51,9 +72,13 @@ class VacacionController extends Controller
             $this->exigirReglas($datos);
 
             return Vacacion::create($this->paraGuardar($datos) + ['status' => Vacacion::PENDIENTE]);
-        });
+        }, 3);
 
-        return $this->exito('Solicitud de vacaciones registrada', 'admin.vacaciones.index', ['vacacion' => $this->fila($vacacion->load('personal'))]);
+        $programadas = Programacion::dePersona($vacacion->user_id)->where('status', Programacion::PROGRAMADO)
+            ->entre($vacacion->start_date->toDateString(), $vacacion->end_date->toDateString())->count();
+
+        return $this->exito('Solicitud de vacaciones registrada', 'admin.vacaciones.index', ['vacacion' => $this->fila($vacacion->load('personal'))]
+            + ($programadas ? ['aviso' => "La persona está programada en {$programadas} día(s) de esas fechas. Para poder aprobar las vacaciones, antes reemplácela en Programación (botón «Reemplazar»)."] : []));
     }
 
     public function show(string $id)
@@ -85,7 +110,7 @@ class VacacionController extends Controller
 
         $resultado = DB::transaction(function () use ($vacacion, $datos) {
             Personal::whereKey($vacacion->user_id)->lockForUpdate()->first();
-            $vacacion->refresh();
+            $vacacion = Vacacion::lockForUpdate()->findOrFail($vacacion->id);
 
             if (! $vacacion->esPendiente()) {
                 return false;   // otra persona la resolvió mientras se editaba
@@ -95,7 +120,7 @@ class VacacionController extends Controller
             $vacacion->update($this->paraGuardar($datos));
 
             return true;
-        });
+        }, 3);
 
         if (! $resultado) {
             return $this->rechazo('Esta solicitud ya fue resuelta y no se puede editar.', 'admin.vacaciones.index');
@@ -125,7 +150,7 @@ class VacacionController extends Controller
         // Con la persona bloqueada, dos aprobaciones simultáneas no pueden pasarse del cupo anual.
         $error = DB::transaction(function () use ($vacacion) {
             Personal::whereKey($vacacion->user_id)->lockForUpdate()->first();
-            $vacacion->refresh();
+            $vacacion = Vacacion::lockForUpdate()->findOrFail($vacacion->id);
 
             if (! $vacacion->esPendiente()) {
                 return 'Esta solicitud ya fue resuelta.';
@@ -141,6 +166,16 @@ class VacacionController extends Controller
                 return 'No se puede aprobar: la persona ya no es personal nombrado o con contrato permanente vigente.';
             }
 
+            // Quien ya está programado en esas fechas no puede salir de vacaciones sin antes reprogramarlo.
+            $programadas = Programacion::dePersona($vacacion->user_id)->where('status', Programacion::PROGRAMADO)
+                ->entre($vacacion->start_date->toDateString(), $vacacion->end_date->toDateString())
+                ->orderBy('date')->get()->map(fn (Programacion $p) => $p->date->toDateString())->all();
+
+            if ($programadas) {
+                return 'No se puede aprobar: la persona está programada en '.ReglasProgramacion::resumenDeFechas($programadas)
+                    .'. Antes cúbrala con «Reemplazar» en Programación, o modifique o elimine esas programaciones.';
+            }
+
             $anio = $vacacion->start_date->year;
             $disponibles = $this->reglas->disponiblesParaAprobar($vacacion->user_id, $anio);
 
@@ -151,7 +186,7 @@ class VacacionController extends Controller
             $vacacion->update(['status' => Vacacion::APROBADA, 'resolved_by' => auth()->id(), 'resolved_at' => now()]);
 
             return null;
-        });
+        }, 3);
 
         if ($error) {
             return $this->rechazo($error, 'admin.vacaciones.index');
@@ -166,7 +201,7 @@ class VacacionController extends Controller
         $vacacion = Vacacion::findOrFail($id);
 
         $resuelta = DB::transaction(function () use ($vacacion) {
-            $vacacion->refresh();
+            $vacacion = Vacacion::lockForUpdate()->findOrFail($vacacion->id);
 
             if (! $vacacion->esPendiente()) {
                 return true;
@@ -175,7 +210,7 @@ class VacacionController extends Controller
             $vacacion->update(['status' => Vacacion::RECHAZADA, 'resolved_by' => auth()->id(), 'resolved_at' => now()]);
 
             return false;
-        });
+        }, 3);
 
         if ($resuelta) {
             return $this->rechazo('Esta solicitud ya fue resuelta.', 'admin.vacaciones.index');
@@ -238,6 +273,7 @@ class VacacionController extends Controller
 
         return [
             'id' => $vacacion->id,
+            'persona_id' => $vacacion->user_id,
             'dni' => $persona?->dni,
             'empleado' => $persona?->nombre_completo,
             'solicitud' => $vacacion->created_at?->format('d/m/Y'),

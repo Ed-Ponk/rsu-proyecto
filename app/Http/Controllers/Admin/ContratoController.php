@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Contrato;
 use App\Services\ReglasContrato;
+use App\Support\Numeros;
+use App\Support\Requisitos;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -61,7 +63,7 @@ class ContratoController extends Controller
     {
         Contrato::cerrarVencidos();
 
-        return view('admin.contratos.create', $this->catalogos());
+        return view('admin.contratos.create', $this->catalogos() + ['faltan' => Requisitos::paraContrato()]);
     }
 
     public function store(Request $request)
@@ -162,6 +164,8 @@ class ContratoController extends Controller
 
     private function validado(Request $request, ?Contrato $actual = null): array
     {
+        Numeros::enCampos($request, ['salary']);
+
         $request->merge([
             'is_active' => $request->boolean('is_active'),
             'probation_months' => $request->filled('probation_months') ? $request->input('probation_months') : null,

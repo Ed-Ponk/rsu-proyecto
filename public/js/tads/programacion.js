@@ -181,6 +181,7 @@
 
                 let creados = 0;
                 let existentes = 0;
+                let afectadas = 0;
 
                 for (let i = 0; i < feriados.length; i += TAMANO_LOTE) {
                     const lote = feriados.slice(i, i + TAMANO_LOTE);
@@ -199,6 +200,7 @@
 
                     creados += json.creados;
                     existentes += json.existentes;
+                    afectadas += json.afectadas ?? 0;
                     const hechos = Math.min(i + TAMANO_LOTE, feriados.length);
                     fijar(45 + (55 * hechos) / feriados.length, `Guardando feriados: ${hechos} de ${feriados.length}`);
                     pintarResumen(json.resumen);
@@ -216,6 +218,7 @@
                     html: (creados > 0
                         ? `Se cargaron <strong>${creados}</strong> feriado(s) de ${anio}${existentes ? `; ${existentes} ya existían` : ''}.`
                         : `Los feriados de ${anio} ya estaban cargados.`)
+                        + (afectadas ? `<div class="alert alert-warning small mt-3 mb-0">Hay <strong>${afectadas}</strong> programación(es) pendiente(s) en esos feriados. Revíselas en Programación (aparecen marcadas).</div>` : '')
                         + `<div class="small text-muted mt-2">Fuente: ${Tads.escapar(fuente)}</div>`,
                     confirmButtonText: 'Entendido',
                 });

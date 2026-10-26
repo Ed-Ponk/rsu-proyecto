@@ -99,10 +99,11 @@ class TipoVehiculoController extends Controller
     private function validado(Request $request, ?int $ignorarId = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:100', Rule::unique('vehicletypes', 'name')->ignore($ignorarId)],
+            'name' => ['required', 'string', 'max:100', 'regex:/\p{L}/u', Rule::unique('vehicletypes', 'name')->ignore($ignorarId)],
             'description' => ['nullable', 'string', 'max:500'],
         ], [
             'name.unique' => 'Ya existe un tipo de vehículo con ese nombre.',
+            'name.regex' => 'El nombre debe contener letras (no puede ser solo números o símbolos).',
         ]);
     }
 

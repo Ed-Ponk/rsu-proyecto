@@ -29,6 +29,10 @@ class PersonalSeeder extends Seeder
                 'license' => null, 'email' => 'alvaro@ayudante.test', 'phone' => null],
             ['dni' => '10000002', 'name' => 'Raúl', 'last_name' => 'Quiroz Jiménez', 'tipo' => $ayudante, 'birthdate' => '1993-09-17',
                 'license' => null, 'email' => 'raul.quiroz@ayudante.test', 'phone' => null],
+            ['dni' => '70000020', 'name' => 'Luis', 'last_name' => 'Torres Vega', 'tipo' => $ayudante, 'birthdate' => '1994-04-12',
+                'license' => null, 'email' => 'luis.torres@ayudante.test', 'phone' => '987000020'],
+            ['dni' => '70000021', 'name' => 'Rosa', 'last_name' => 'Díaz Campos', 'tipo' => $ayudante, 'birthdate' => '1996-08-25',
+                'license' => null, 'email' => 'rosa.diaz@ayudante.test', 'phone' => '987000021'],
         ];
 
         $porDni = [];
@@ -57,6 +61,8 @@ class PersonalSeeder extends Seeder
             '70000008' => [Contrato::PERMANENTE, '2021-03-16', null, 3351, true],
             '80000019' => [Contrato::NOMBRADO, '2024-04-16', null, 1963, true],
             '70000007' => [Contrato::TEMPORAL, '2025-12-18', '2026-02-18', 3370, false],   // vencido: puede recontratarse desde el 18/04/2026
+            '70000020' => [Contrato::PERMANENTE, '2025-06-02', null, 1650, true],
+            '70000021' => [Contrato::PERMANENTE, '2025-09-15', null, 1650, true],
         ];
 
         foreach ($contratos as $dni => [$tipo, $inicio, $fin, $salario, $activo]) {

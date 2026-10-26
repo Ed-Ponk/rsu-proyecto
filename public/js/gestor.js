@@ -125,10 +125,11 @@
             const campo = candidatos.find((el) => el.type !== 'hidden')
                 ?? oculto?.closest('.t-buscador').querySelector('input[type="search"]');
 
-            if (!campo) { sueltos.push(mensajes[0]); return; }
+            if (!campo) { sueltos.push(...mensajes); return; }
 
             campo.classList.add('is-invalid');
-            const referencia = campo.closest('.t-buscador') ?? campo.closest('.input-group') ?? campo;
+            // Un grupo de casillas (días, grupos) marca su contenedor: el mensaje va debajo de todo el grupo, no dentro de una casilla.
+            const referencia = campo.closest('[data-error-destino]') ?? campo.closest('.t-buscador') ?? campo.closest('.input-group') ?? campo;
             const aviso = document.createElement('div');
             aviso.className = 'invalid-feedback t-error d-block';
             aviso.textContent = mensajes[0];
@@ -140,7 +141,7 @@
 
         const alerta = formulario.querySelector('.t-alerta-form');
         if (sueltos.length && alerta) {
-            alerta.textContent = sueltos.join(' ');
+            alerta.textContent = sueltos.join(' · ');
             alerta.classList.add('visible');
         }
 
@@ -353,6 +354,7 @@
 
         /** silencioso: al precargar un valor (formulario de edición) no se emite "change". */
         function elegir(item, silencioso = false) {
+            raiz._tadsItem = item;   // quien escuche "change" puede leer los datos extra del elegido (ej. la capacidad de un vehículo)
             oculto.value = item.id;
             campo.value = item.titulo;
             campo.classList.remove('is-invalid');
@@ -365,12 +367,16 @@
                 <button type="button" class="btn t-boton-icono t-neutro" data-cambiar-eleccion data-bs-toggle="tooltip" title="${Tads.escapar(textos.cambiar)}"><i class="bi bi-arrow-repeat"></i></button>`;
             elegido.hidden = false;
             entrada.hidden = true;
-            bootstrap.Tooltip.getOrCreateInstance(elegido.querySelector('[data-cambiar-eleccion]'));
+            const botonCambiar = elegido.querySelector('[data-cambiar-eleccion]');
+            bootstrap.Tooltip.getOrCreateInstance(botonCambiar);
             abrir(false);
+            // El campo de texto se oculta: sin esto el foco cae al <body> y Esc deja de cerrar la ventana.
+            if (!silencioso) botonCambiar.focus();
             if (!silencioso) avisarCambio();
         }
 
         function limpiar() {
+            raiz._tadsItem = null;
             oculto.value = '';
             campo.value = '';
             elegido.hidden = true;
@@ -380,8 +386,11 @@
             campo.focus();
         }
 
+        // Para elegir o limpiar desde código (ej. al traer los datos de un grupo de personal).
+        raiz.tadsElegir = (item) => (item ? elegir(item) : limpiar());
+
         campo.addEventListener('input', () => {
-            if (oculto.value) { oculto.value = ''; avisarCambio(); }
+            if (oculto.value) { raiz._tadsItem = null; oculto.value = ''; avisarCambio(); }
             marcarValidez();
             clearTimeout(espera);
             espera = setTimeout(buscar, 250);
@@ -613,6 +622,35 @@
                     this.tablaEl.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => bootstrap.Tooltip.getOrCreateInstance(el));
                 },
             });
+
+            if (c.exportar) this.#crearBotonesDeExportar(c.exportar);
+        }
+
+        /**
+         * Botones Excel / PDF / Imprimir / Columnas (extensión Buttons de DataTables).
+         * config.exportar = { contenedor: '#selector', titulo: 'Programaciones', columnas: [0, 1, ...] }
+         * Las columnas devuelven texto plano cuando no es "display", así lo exportado no lleva HTML.
+         */
+        #crearBotonesDeExportar(opciones) {
+            const destino = document.querySelector(opciones.contenedor);
+            if (!destino || !$.fn.dataTable.Buttons) return;
+
+            const exportOptions = { columns: opciones.columnas };
+            const boton = (extend, icono, texto, clase, extra = {}) => ({
+                extend, text: `<i class="bi ${icono} me-1"></i>${texto}`, className: `btn btn-sm ${clase}`,
+                title: opciones.titulo, exportOptions, ...extra,
+            });
+
+            new $.fn.dataTable.Buttons(this.tabla, {
+                buttons: [
+                    boton('excelHtml5', 'bi-file-earmark-excel-fill', 'Excel', 't-excel'),
+                    boton('pdfHtml5', 'bi-file-earmark-pdf-fill', 'PDF', 't-pdf', { orientation: 'landscape' }),
+                    boton('print', 'bi-printer-fill', 'Imprimir', 't-imprimir'),
+                    { extend: 'colvis', text: '<i class="bi bi-layout-three-columns me-1"></i>Columnas', className: 'btn btn-sm t-columnas', columns: opciones.columnas },
+                ],
+            });
+
+            this.tabla.buttons().container().appendTo(destino);
         }
 
         /** Modo servidor: se pide solo la página visible, ya ordenada y filtrada, con los totales. */
@@ -736,7 +774,14 @@
                 Tads.ventana(this.selectorVentana).hide();
                 this.recargar();
                 this.config.alGuardar?.(json);
-                return Tads.aviso(json?.mensaje ?? 'Operación realizada correctamente.');
+                Tads.aviso(json?.mensaje ?? 'Operación realizada correctamente.');
+
+                // Se guardó, pero hay algo que conviene revisar (por ejemplo, programaciones pendientes afectadas).
+                if (json?.aviso) {
+                    Swal.fire({ icon: 'warning', title: 'Revise esto', text: json.aviso, confirmButtonText: 'Entendido' });
+                }
+
+                return;
             }
 
             if (estado === 422) Tads.mostrarErrores(formulario, json);

@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
             ImagenVehiculoSeeder::class,
             PersonalSeeder::class,
             VacacionSeeder::class,
+            GrupoPersonalSeeder::class,
         ]);
     }
 

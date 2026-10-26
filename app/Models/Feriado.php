@@ -29,6 +29,11 @@ class Feriado extends Model
         return $consulta->where('status', true);
     }
 
+    public function scopeEntre(Builder $consulta, string $desde, string $hasta): Builder
+    {
+        return $consulta->where('date', '>=', $desde)->where('date', '<=', $hasta);
+    }
+
     /** ¿La fecha es un feriado activo? */
     public static function esFeriado(Carbon|string $fecha): bool
     {

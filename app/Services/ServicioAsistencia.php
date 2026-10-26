@@ -213,7 +213,7 @@ class ServicioAsistencia
                 Asistencia::renumerarTurno($persona->id, $marcacion['turno']->id, $marcacion['jornada']);
 
                 return $asistencia->fresh();
-            });
+            }, 3);
         } catch (UniqueConstraintViolationException) {
             // Última defensa: el índice único (usuario, turno, jornada, tipo) impidió una marcación repetida.
             throw ValidationException::withMessages([$campoError => 'Esa marcación ya fue registrada. Actualice la pantalla.']);
