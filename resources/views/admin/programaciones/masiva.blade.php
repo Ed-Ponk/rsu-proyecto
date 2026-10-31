@@ -1,69 +1,77 @@
 @php
-    $nombresDias = [1 => 'Lun', 2 => 'Mar', 3 => 'Mié', 4 => 'Jue', 5 => 'Vie', 6 => 'Sáb', 7 => 'Dom'];
+    $datosGrupos = $grupos->map(fn ($g) => [
+        'id' => $g->id, 'nombre' => $g->name, 'zona' => $g->zona?->name, 'turno_id' => $g->shift_id, 'turno' => $g->turno?->name,
+        'vehiculo' => $g->vehiculo ? ['codigo' => $g->vehiculo->code, 'placa' => $g->vehiculo->plate, 'capacidad' => (int) $g->vehiculo->occupant_capacity] : null,
+        'dias' => $g->dias_ordenados, 'conductor' => $g->driver_id, 'ayudantes' => $g->ayudantes->pluck('id')->values()->all(),
+    ])->values();
 @endphp
 
 <form method="POST" action="{{ route('admin.programaciones.masiva.guardar') }}" class="t-formulario" autocomplete="off" novalidate
     data-programacion-formulario data-masiva
-    data-url-validar="{{ route('admin.programaciones.masiva.validar') }}">
+    data-grupos="{{ json_encode($datosGrupos) }}"
+    data-conductores="{{ json_encode($conductores) }}"
+    data-ayudantes="{{ json_encode($ayudantes) }}"
+    data-url-validar="{{ route('admin.programaciones.masiva.validar') }}"
+    data-url-feriados="{{ route('admin.programaciones.masiva.feriados') }}"
+    data-url-grupo="{{ url('admin/programaciones/grupo') }}">
     @csrf
 
     <div class="t-alerta-form"></div>
 
     <div class="t-nota t-nota-ambar mb-3">
         <strong><i class="bi bi-info-circle-fill me-1"></i> Programación masiva:</strong>
-        cada grupo elegido se programa tal como está definido (turno, zona, vehículo, días, conductor y ayudantes) en el rango de fechas indicado.
-        Si necesita cambiar a alguien, use «Nueva programación» o edite el grupo.
+        elija el rango de fechas; cada grupo se programa como está definido y, si hace falta, cambie aquí a su conductor o ayudantes solo para esta programación.
+        Al validar se revisa grupo por grupo.
     </div>
 
     <div class="row g-3 align-items-end">
-        <div class="col-md-4">
+        <div class="col-sm-6 col-lg-4">
             <label for="masivaInicio" class="form-label t-obligatorio">Fecha de inicio</label>
             <input type="date" name="inicio" id="masivaInicio" class="form-control" required min="{{ today()->toDateString() }}">
         </div>
-        <div class="col-md-4">
+        <div class="col-sm-6 col-lg-4">
             <label for="masivaFin" class="form-label t-obligatorio">Fecha de fin</label>
             <input type="date" name="fin" id="masivaFin" class="form-control" required min="{{ today()->toDateString() }}">
         </div>
-        <div class="col-md-4">
+        <div class="col-lg-4">
             <button type="button" class="btn t-boton-contorno w-100" data-validar><i class="bi bi-check2 me-1"></i> Validar disponibilidad</button>
         </div>
+    </div>
 
-        <div class="col-12" data-resultado></div>
-
-        <div class="col-12">
-            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
-                <label class="form-label t-obligatorio mb-0">Grupos de personal <span class="text-muted fw-normal">(<span data-contador-grupos>0</span> de {{ $grupos->count() }} elegidos)</span></label>
-                <div class="d-flex gap-2 align-items-center">
-                    <input type="search" class="form-control form-control-sm" style="width: 14rem" placeholder="Filtrar grupos..." data-filtro-grupos aria-label="Filtrar grupos">
-                    <label class="t-dia mb-0"><input type="checkbox" data-todos-grupos><span>Todos</span></label>
-                </div>
-            </div>
-
-            @if ($grupos->isEmpty())
-                <div class="t-vacio">
-                    <i class="bi bi-people"></i>
-                    <h6>No hay grupos de personal activos</h6>
-                    <p>Cree sus grupos en «Grupos de personal» para poder programar de forma masiva.</p>
-                </div>
-            @else
-                <div class="t-lista-grupos" data-error-destino>
-                    @foreach ($grupos as $grupo)
-                        <label class="t-grupo-opcion" data-grupo-opcion data-texto="{{ \Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii($grupo->name.' '.$grupo->zona?->name.' '.$grupo->turno?->name.' '.$grupo->vehiculo?->plate.' '.$grupo->conductor?->nombre_completo)) }}">
-                            <input type="checkbox" name="grupos[]" value="{{ $grupo->id }}">
-                            <span class="t-grupo-nombre"><strong>{{ $grupo->name }}</strong><small>{{ $grupo->zona?->name }} · {{ $grupo->turno?->name }}</small></span>
-                            <span class="t-grupo-dato"><small>Vehículo</small>{{ $grupo->vehiculo?->plate }}</span>
-                            <span class="t-grupo-dato"><small>Conductor</small>{{ $grupo->conductor?->nombre_completo }}</span>
-                            <span class="t-grupo-dias">
-                                @foreach ($nombresDias as $numero => $abreviatura)
-                                    <i @class(['activo' => in_array($numero, $grupo->dias_ordenados, true)])>{{ $abreviatura }}</i>
-                                @endforeach
-                            </span>
-                        </label>
-                    @endforeach
-                </div>
-            @endif
+    <div class="mt-3">
+        <div class="small fw-semibold text-muted mb-1">Mostrar los grupos del turno:</div>
+        <div class="t-atajos" data-filtro-turnos>
+            <button type="button" class="t-atajo" data-turno="" aria-pressed="true">Todos los turnos</button>
+            @foreach ($turnos as $turno)
+                <button type="button" class="t-atajo" data-turno="{{ $turno->id }}" aria-pressed="false">{{ $turno->name }}</button>
+            @endforeach
         </div>
     </div>
+
+    <div class="t-nota mt-3">
+        <div class="fw-semibold mb-1"><i class="bi bi-flag-fill text-danger me-1"></i> Feriados en el rango</div>
+        <div class="small text-muted mb-2">Los marcados <strong>no se programan</strong>, aunque el grupo trabaje ese día. Desmarque los que sí quiera trabajar.</div>
+        <div class="small" data-feriados-caja>Elija las fechas para ver los feriados.</div>
+    </div>
+
+    <div class="mt-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <h6 class="t-seccion-titulo mb-0"><i class="bi bi-people-fill"></i> Grupos de trabajo <span class="text-muted fw-normal">(<span data-contador-grupos>0</span> de {{ $grupos->count() }} incluidos)</span></h6>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-3" data-restaurar hidden><i class="bi bi-arrow-counterclockwise me-1"></i> Volver a incluir los grupos quitados</button>
+        </div>
+
+        @if ($grupos->isEmpty())
+            <div class="t-vacio">
+                <i class="bi bi-people"></i>
+                <h6>No hay grupos de personal activos</h6>
+                <p>Cree sus grupos en «Grupos de personal» para poder programar de forma masiva.</p>
+            </div>
+        @else
+            <div class="av-grupos" data-grupos-grid data-error-destino></div>
+        @endif
+    </div>
+
+    <div data-resultado class="mt-3"></div>
 
     <div class="t-pie-form">
         <button type="button" class="btn t-boton-cancelar" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i> Cancelar</button>

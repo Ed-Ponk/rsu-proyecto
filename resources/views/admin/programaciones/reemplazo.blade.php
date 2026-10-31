@@ -73,6 +73,10 @@
         </div>
     </div>
 
+    <div class="mt-3">
+        @include('admin.cambios._motivo', ['motivos' => $motivos])
+    </div>
+
     <div class="mt-3" data-resultado></div>
 
     <div class="t-pie-form">

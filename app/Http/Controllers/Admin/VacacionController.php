@@ -74,7 +74,7 @@ class VacacionController extends Controller
             return Vacacion::create($this->paraGuardar($datos) + ['status' => Vacacion::PENDIENTE]);
         }, 3);
 
-        $programadas = Programacion::dePersona($vacacion->user_id)->where('status', Programacion::PROGRAMADO)
+        $programadas = Programacion::dePersona($vacacion->user_id)->pendientes()
             ->entre($vacacion->start_date->toDateString(), $vacacion->end_date->toDateString())->count();
 
         return $this->exito('Solicitud de vacaciones registrada', 'admin.vacaciones.index', ['vacacion' => $this->fila($vacacion->load('personal'))]
@@ -167,12 +167,12 @@ class VacacionController extends Controller
             }
 
             // Quien ya está programado en esas fechas no puede salir de vacaciones sin antes reprogramarlo.
-            $programadas = Programacion::dePersona($vacacion->user_id)->where('status', Programacion::PROGRAMADO)
+            $programadas = Programacion::dePersona($vacacion->user_id)->pendientes()
                 ->entre($vacacion->start_date->toDateString(), $vacacion->end_date->toDateString())
                 ->orderBy('date')->get()->map(fn (Programacion $p) => $p->date->toDateString())->all();
 
             if ($programadas) {
-                return 'No se puede aprobar: la persona está programada en '.ReglasProgramacion::resumenDeFechas($programadas)
+                return 'No se puede aprobar: la persona está programada '.ReglasProgramacion::diasTexto($programadas)
                     .'. Antes cúbrala con «Reemplazar» en Programación, o modifique o elimine esas programaciones.';
             }
 

@@ -52,7 +52,7 @@ class UsoEnProgramacion
     /** Programaciones que todavía no se cumplieron (programadas desde hoy en adelante). */
     private static function pendientes()
     {
-        return Programacion::where('status', Programacion::PROGRAMADO)->where('date', '>=', today()->toDateString());
+        return Programacion::pendientes()->where('date', '>=', today()->toDateString());
     }
 
     /** No se desactiva ni se reduce la capacidad de un vehículo que tiene programaciones pendientes o grupos que no cabrían. */

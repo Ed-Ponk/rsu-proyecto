@@ -2,13 +2,16 @@
 
 use App\Http\Controllers\Admin\AsistenciaController;
 use App\Http\Controllers\Admin\BitacoraController;
+use App\Http\Controllers\Admin\CambioController;
 use App\Http\Controllers\Admin\ColorController;
 use App\Http\Controllers\Admin\ContratoController;
+use App\Http\Controllers\Admin\DashboardProgramacionController;
 use App\Http\Controllers\Admin\FeriadoController;
 use App\Http\Controllers\Admin\GrupoPersonalController;
 use App\Http\Controllers\Admin\InicioController;
 use App\Http\Controllers\Admin\MarcaController;
 use App\Http\Controllers\Admin\ModeloController;
+use App\Http\Controllers\Admin\MotivoController;
 use App\Http\Controllers\Admin\PersonalController;
 use App\Http\Controllers\Admin\ProgramacionController;
 use App\Http\Controllers\Admin\TipoPersonalController;
@@ -97,10 +100,24 @@ Route::middleware($protegidas)->prefix('admin')->group(function () {
     Route::post('programaciones/reemplazo/validar', [ProgramacionController::class, 'validarReemplazo'])->name('admin.programaciones.reemplazo.validar');
     Route::post('programaciones/reemplazo', [ProgramacionController::class, 'guardarReemplazo'])->name('admin.programaciones.reemplazo.guardar');
     Route::post('programaciones/feriados/quitar', [ProgramacionController::class, 'quitarEnFeriados'])->name('admin.programaciones.feriados.quitar');
+    Route::get('programaciones/dashboard', [DashboardProgramacionController::class, 'index'])->name('admin.programaciones.dashboard');
+    Route::get('programaciones/masiva/feriados', [ProgramacionController::class, 'feriadosDelRango'])->name('admin.programaciones.masiva.feriados');
+    Route::get('programaciones/grupo/{grupo}/detalle', [ProgramacionController::class, 'detalleDeGrupo'])->name('admin.programaciones.grupo');
+    Route::get('programaciones/{programacion}/candidatos', [ProgramacionController::class, 'candidatos'])->name('admin.programaciones.candidatos');
     Route::post('programaciones/{programacion}/validar', [ProgramacionController::class, 'validarCambio'])->name('admin.programaciones.validar.cambio');
     Route::patch('programaciones/{programacion}/finalizar', [ProgramacionController::class, 'finalizar'])->name('admin.programaciones.finalizar');
     Route::get('programaciones/{programacion}/historial', [ProgramacionController::class, 'historial'])->name('admin.programaciones.historial');
     Route::resource('programaciones', ProgramacionController::class)->names('admin.programaciones')->parameters(['programaciones' => 'programacion']);
+
+    // ---- Gestión de cambios (Avance 04): motivos y cambios de programación
+    Route::resource('motivos', MotivoController::class)->names('admin.motivos')->parameters(['motivos' => 'motivo']);
+    Route::get('cambios/nuevo', [CambioController::class, 'create'])->name('admin.cambios.create');
+    Route::post('cambios/validar', [CambioController::class, 'validar'])->name('admin.cambios.validar');
+    Route::get('cambios', [CambioController::class, 'index'])->name('admin.cambios.index');
+    Route::post('cambios', [CambioController::class, 'store'])->name('admin.cambios.store');
+    Route::get('cambios/detalle/{cambio}', [CambioController::class, 'detalle'])->name('admin.cambios.detalle');
+    Route::get('cambios/{lote}', [CambioController::class, 'show'])->name('admin.cambios.show');
+    Route::delete('cambios/{lote}', [CambioController::class, 'destroy'])->name('admin.cambios.destroy');
 
     Route::get('feriados/cargar/consultar', [FeriadoController::class, 'consultar'])->middleware('throttle:10,1')->name('admin.feriados.consultar');
     Route::post('feriados/cargar', [FeriadoController::class, 'cargar'])->name('admin.feriados.cargar');

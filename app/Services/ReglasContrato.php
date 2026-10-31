@@ -144,13 +144,13 @@ class ReglasContrato
         $cubre = fn (Carbon $dia): bool => ($activo && $inicio->lte($dia) && (! $fin || $fin->gte($dia)))
             || $otros->contains(fn (Contrato $c) => $c->is_active && $c->start_date->lte($dia) && (! $c->end_date || $c->end_date->gte($dia)));
 
-        $sinContrato = Programacion::dePersona($actual->user_id)->where('status', Programacion::PROGRAMADO)
+        $sinContrato = Programacion::dePersona($actual->user_id)->pendientes()
             ->where('date', '>=', today()->toDateString())->orderBy('date')->get()
             ->map(fn (Programacion $p) => $p->date)->filter(fn (Carbon $dia) => ! $cubre($dia))
             ->map(fn (Carbon $dia) => $dia->toDateString())->values()->all();
 
         if ($sinContrato) {
-            return 'Está programado en '.ReglasProgramacion::resumenDeFechas($sinContrato).' y esas fechas quedarían sin contrato vigente. Modifique o elimine esas programaciones primero.';
+            return 'No se puede cambiar el contrato: la persona está programada '.ReglasProgramacion::diasTexto($sinContrato).' y esos días quedarían sin contrato vigente. Antes cúbrala con «Reemplazar» en Programación, o modifique o elimine esas programaciones.';
         }
 
         if (! $revisarAsistencias) {

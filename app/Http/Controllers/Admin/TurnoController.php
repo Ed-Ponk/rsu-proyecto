@@ -82,7 +82,7 @@ class TurnoController extends Controller
         $turno->update($this->validado($request, $turno->id));
 
         // Las programaciones pendientes siguen apuntando a este turno: con otro horario cambia su descanso y su asistencia.
-        $pendientes = Programacion::where('shift_id', $turno->id)->where('status', Programacion::PROGRAMADO)->where('date', '>=', today()->toDateString())->count();
+        $pendientes = Programacion::where('shift_id', $turno->id)->pendientes()->where('date', '>=', today()->toDateString())->count();
         $cambioHorario = $antes !== [$turno->fresh()->time_start, $turno->fresh()->time_end];
 
         return $this->exito('Turno actualizado', 'admin.turnos.index', ['turno' => $this->fila($turno->fresh())]

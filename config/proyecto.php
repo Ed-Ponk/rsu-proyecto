@@ -56,8 +56,6 @@ return [
     ],
 
     'programacion' => [
-        // Descanso mínimo entre dos turnos de la misma persona (también impide dos turnos el mismo día).
-        'descanso_minimo_horas' => 8,
         // Aviso al programar a quien tiene al menos N faltas en los últimos X días.
         'faltas_alerta' => 3,
         'faltas_dias' => 30,

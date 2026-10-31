@@ -111,7 +111,7 @@ class GrupoPersonalController extends Controller
 
         // El grupo es una plantilla: lo ya programado conserva los datos anteriores. Se avisa para que no se asuma lo contrario.
         $despues = [(int) $datos['driver_id'], (int) $datos['vehicle_id'], array_map('intval', $datos['ayudantes']), (bool) $datos['status']];
-        $pendientes = $grupo->programaciones()->where('status', 'programado')->where('date', '>=', today()->toDateString())->count();
+        $pendientes = $grupo->programaciones()->pendientes()->where('date', '>=', today()->toDateString())->count();
         $aviso = $pendientes && $antes !== $despues
             ? ['aviso' => "El grupo tiene {$pendientes} programación(es) pendiente(s) que conservan los datos anteriores. Para cambiarlas use «Reemplazar» en Programación."]
             : [];
@@ -123,7 +123,7 @@ class GrupoPersonalController extends Controller
     {
         $grupo = GrupoPersonal::withCount('programaciones')->findOrFail($id);
 
-        $pendientes = $grupo->programaciones()->where('status', 'programado')->where('date', '>=', today()->toDateString())->count();
+        $pendientes = $grupo->programaciones()->pendientes()->where('date', '>=', today()->toDateString())->count();
 
         // Las programaciones ya generadas se conservan: solo pierden el enlace con la plantilla.
         $grupo->delete();

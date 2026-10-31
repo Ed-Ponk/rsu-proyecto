@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             TipoPersonalSeeder::class,
             TurnoSeeder::class,
+            MotivoSeeder::class,
             UbigeoSeeder::class,
         ]);
 
@@ -44,6 +45,7 @@ class DatabaseSeeder extends Seeder
             PersonalSeeder::class,
             VacacionSeeder::class,
             GrupoPersonalSeeder::class,
+            CambiosDemoSeeder::class,
         ]);
     }
 

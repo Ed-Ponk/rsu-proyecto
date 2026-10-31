@@ -818,6 +818,15 @@ return [
                 ['text' => 'Feriados', 'route' => 'admin.feriados.index', 'icon' => 'bi bi-flag-fill'],
                 ['text' => 'Grupos de personal', 'route' => 'admin.grupos.index', 'icon' => 'bi bi-people-fill'],
                 ['text' => 'Programación', 'route' => 'admin.programaciones.index', 'icon' => 'bi bi-clock-history'],
+                ['text' => 'Dashboard', 'route' => 'admin.programaciones.dashboard', 'icon' => 'bi bi-speedometer2'],
+            ],
+        ],
+        [
+            'text' => 'Gestión de cambios',
+            'icon' => 'bi bi-arrow-left-right',
+            'submenu' => [
+                ['text' => 'Motivos', 'route' => 'admin.motivos.index', 'icon' => 'bi bi-chat-left-text-fill'],
+                ['text' => 'Cambios', 'route' => 'admin.cambios.index', 'icon' => 'bi bi-arrow-left-right'],
             ],
         ],
         // Seguridad (Usuarios del sistema y Bitácora): implementado pero oculto, aún no se pide en los avances 01 y 02.
@@ -882,6 +891,7 @@ return [
             'files' => [
                 ['type' => 'css', 'asset' => true, 'location' => 'css/tads-menu.css'],
                 ['type' => 'css', 'asset' => true, 'location' => 'css/tads.css'],
+                ['type' => 'css', 'asset' => true, 'location' => 'css/tads-cambios.css'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/gestor.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/vehiculos.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/asistencias.js'],
@@ -894,6 +904,7 @@ return [
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/programacion.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/vacaciones.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/zonas.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/cambios.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/rutas.js'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/tads/app-admin.js'],
             ],

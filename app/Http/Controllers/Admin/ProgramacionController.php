@@ -6,14 +6,19 @@ use App\Http\Controllers\Admin\Concerns\RespondeAjax;
 use App\Http\Controllers\Controller;
 use App\Models\Asistencia;
 use App\Models\Bitacora;
+use App\Models\Cambio;
 use App\Models\Feriado;
 use App\Models\GrupoPersonal;
+use App\Models\Motivo;
 use App\Models\Personal;
 use App\Models\Programacion;
+use App\Models\TipoPersonal;
 use App\Models\Turno;
 use App\Models\Vehiculo;
 use App\Models\Zona;
+use App\Services\MonitorDeProgramacion;
 use App\Services\ReglasProgramacion;
+use App\Services\ServicioCambios;
 use App\Support\Requisitos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -30,7 +35,7 @@ class ProgramacionController extends Controller
     /** Filas máximas que devuelve el listado de una consulta. */
     private const TOPE_LISTADO = 2000;
 
-    public function __construct(private readonly ReglasProgramacion $reglas) {}
+    public function __construct(private readonly ReglasProgramacion $reglas, private readonly ServicioCambios $cambios) {}
 
     public function index(Request $request)
     {
@@ -77,7 +82,7 @@ class ProgramacionController extends Controller
             return response()->json(['data' => $this->resumenPorGrupo($consulta)]);
         }
 
-        $filas = $consulta->with(['zona', 'turno', 'vehiculo', 'conductor', 'ayudantes'])
+        $filas = $consulta->with(['grupo', 'zona', 'turno', 'vehiculo', 'conductor', 'ayudantes'])
             ->orderBy('date')->orderBy('shift_id')->orderBy('id')
             ->limit(self::TOPE_LISTADO)->get();
 
@@ -155,9 +160,42 @@ class ProgramacionController extends Controller
 
     public function masiva()
     {
-        $grupos = GrupoPersonal::with(['turno', 'zona', 'vehiculo', 'conductor'])->where('status', true)->orderBy('name')->get();
+        $grupos = GrupoPersonal::with(['turno', 'zona', 'vehiculo', 'conductor', 'ayudantes.tipo'])->where('status', true)->orderBy('name')->get();
 
-        return view('admin.programaciones.masiva', ['grupos' => $grupos]);
+        $lista = fn (?TipoPersonal $tipo) => Personal::activos()->where('users.usertype_id', $tipo?->id)->orderBy('users.last_name')->orderBy('users.name')->get()
+            ->map(fn (Personal $p) => ['id' => $p->id, 'nombre' => $p->nombre_completo])->values();
+
+        return view('admin.programaciones.masiva', [
+            'grupos' => $grupos,
+            'turnos' => Turno::orderBy('time_start')->get(['id', 'name']),
+            'conductores' => $lista(TipoPersonal::conductor()),
+            'ayudantes' => $lista(TipoPersonal::ayudante()),
+        ]);
+    }
+
+    /** Feriados activos dentro del rango, para que el usuario elija cuáles trabajar. */
+    public function feriadosDelRango(Request $request)
+    {
+        $datos = $request->validate(['inicio' => ['required', 'date'], 'fin' => ['required', 'date', 'after_or_equal:inicio']]);
+
+        $feriados = Feriado::activo()->entre($datos['inicio'], $datos['fin'])->orderBy('date')->get()
+            ->map(fn (Feriado $f) => ['fecha' => $f->date->toDateString(), 'texto' => $f->date->format('d/m/Y'), 'dia' => $f->date->translatedFormat('l'), 'descripcion' => $f->description]);
+
+        return response()->json(['data' => $feriados]);
+    }
+
+    /** «Detalles del grupo»: su personal y el historial de cambios (individuales y masivos) de sus programaciones. */
+    public function detalleDeGrupo(string $grupo)
+    {
+        $grupo = GrupoPersonal::with(['turno', 'zona', 'vehiculo', 'conductor', 'ayudantes'])->findOrFail($grupo);
+
+        $cambios = Cambio::with(['usuario', 'programacion:id,date'])->where('group_id', $grupo->id)->orderByDesc('id')->limit(200)->get();
+
+        return view('admin.programaciones.grupo', [
+            'grupo' => $grupo,
+            'cambios' => $cambios,
+            'programaciones' => Programacion::where('group_id', $grupo->id)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
+        ]);
     }
 
     public function validarMasiva(Request $request)
@@ -176,27 +214,27 @@ class ProgramacionController extends Controller
 
     public function reemplazo()
     {
-        return view('admin.programaciones.reemplazo', ['desde' => today()->toDateString(), 'hasta' => today()->addDays(30)->toDateString()]);
+        return view('admin.programaciones.reemplazo', ['desde' => today()->toDateString(), 'hasta' => today()->addDays(30)->toDateString(), 'motivos' => Motivo::orderBy('name')->get()]);
     }
 
     public function validarReemplazo(Request $request)
     {
-        $revision = $this->reglas->revisarReemplazo($this->validadoReemplazo($request));
+        $revision = $this->reglas->revisarReemplazo($this->validadoReemplazo($request, false));
 
         return response()->json([
             'ok' => $revision['ok'], 'errores' => $revision['errores'], 'sugerencias' => $revision['sugerencias'],
-            'avisos' => $revision['avisos'], 'total' => $revision['total'],
+            'avisos' => $revision['avisos'], 'total' => $revision['total'], 'problemas' => $revision['problemas'], 'notas' => $revision['notas'],
         ]);
     }
 
     public function guardarReemplazo(Request $request)
     {
-        $total = $this->reglas->reemplazar($this->validadoReemplazo($request));
+        $total = $this->reglas->reemplazar($this->validadoReemplazo($request) + ['usuario_id' => auth()->id()]);
 
         return $this->exito($total === 1 ? 'Se reemplazó en 1 programación' : "Se reemplazó en {$total} programaciones", 'admin.programaciones.index');
     }
 
-    private function validadoReemplazo(Request $request): array
+    private function validadoReemplazo(Request $request, bool $exigirMotivo = true): array
     {
         $rol = $request->input('rol');
 
@@ -206,7 +244,11 @@ class ProgramacionController extends Controller
             'entrante_id' => ['required', 'integer', 'exists:'.($rol === 'vehiculo' ? 'vehicles' : 'users').',id'],
             'desde' => ['required', 'date'],
             'hasta' => ['required', 'date', 'after_or_equal:desde'],
+            'motivo_id' => ['nullable', 'integer', 'exists:change_reasons,id', ...($exigirMotivo ? ['required_without:descripcion'] : [])],
+            'descripcion' => ['nullable', 'string', 'max:500', ...($exigirMotivo ? ['required_without:motivo_id'] : [])],
         ], [
+            'motivo_id.required_without' => 'Elija un motivo o escriba el detalle del cambio.',
+            'descripcion.required_without' => 'Elija un motivo o escriba el detalle del cambio.',
             'rol.required' => 'Elija qué desea reemplazar.',
             'saliente_id.required' => 'Seleccione a quién o qué sale.',
             'entrante_id.required' => 'Seleccione a quién o qué entra.',
@@ -225,7 +267,7 @@ class ProgramacionController extends Controller
     {
         $datos = $request->validate(['desde' => ['required', 'date'], 'hasta' => ['required', 'date', 'after_or_equal:desde']]);
 
-        $filas = Programacion::where('status', Programacion::PROGRAMADO)->enFeriado()
+        $filas = Programacion::pendientes()->enFeriado()
             ->where('date', '>=', max($datos['desde'], today()->toDateString()))->where('date', '<=', $datos['hasta'])
             ->limit(self::TOPE_LISTADO)->get();
 
@@ -246,7 +288,7 @@ class ProgramacionController extends Controller
         $programacion = Programacion::with(['zona', 'turno', 'vehiculo', 'conductor.tipo', 'ayudantes.tipo'])->findOrFail($id);
 
         if (! $programacion->esProgramado()) {
-            return $this->rechazo('Solo las programaciones en estado «Programado» se pueden modificar.', 'admin.programaciones.index');
+            return $this->rechazo('Una programación finalizada ya no se puede modificar.', 'admin.programaciones.index');
         }
 
         if ($programacion->date->lt(today())) {
@@ -255,6 +297,11 @@ class ProgramacionController extends Controller
 
         return view('admin.programaciones.edit', [
             'programacion' => $programacion,
+            'motivos' => Motivo::orderBy('name')->get(),
+            'turnos' => Turno::orderBy('time_start')->get(),
+            'vehiculos' => Vehiculo::where('status', true)->orWhere('id', $programacion->vehicle_id)->orderBy('name')->get(),
+            'estadoPersonal' => collect(app(MonitorDeProgramacion::class)->deProgramacion($programacion)['personal'])->keyBy('id'),
+            'cambios' => $programacion->cambios()->with('usuario')->orderByDesc('id')->get(),
             'vehiculoItem' => VehiculoController::itemDeBuscador($programacion->vehiculo),
             'conductorItem' => GrupoPersonalController::itemDePersona($programacion->conductor),
             'ayudantesItems' => $programacion->ayudantes->map(fn (Personal $p) => GrupoPersonalController::itemDePersona($p))->all(),
@@ -267,9 +314,7 @@ class ProgramacionController extends Controller
         $programacion = Programacion::findOrFail($id);
         $datos = $this->validadoCambio($request);
 
-        $revision = $this->reglas->revisar([$this->solicitudDeCambio($programacion, $datos)]);
-
-        return response()->json($this->respuestaDeRevision($revision));
+        return response()->json($this->respuestaDeRevision($this->cambios->revisar($programacion, $datos)));
     }
 
     public function update(Request $request, string $id)
@@ -277,12 +322,12 @@ class ProgramacionController extends Controller
         $programacion = Programacion::findOrFail($id);
 
         if (! $programacion->esProgramado()) {
-            return $this->rechazo('Solo las programaciones en estado «Programado» se pueden modificar.', 'admin.programaciones.index');
+            return $this->rechazo('Una programación finalizada ya no se puede modificar.', 'admin.programaciones.index');
         }
 
-        $this->reglas->actualizar($programacion, $this->validadoCambio($request));
+        $cantidad = $this->cambios->modificar($programacion, $this->validadoCambio($request), auth()->id());
 
-        return $this->exito('Programación actualizada', 'admin.programaciones.index');
+        return $this->exito($cantidad ? 'Programación reprogramada' : 'Programación actualizada', 'admin.programaciones.index');
     }
 
     public function destroy(string $id)
@@ -347,6 +392,17 @@ class ProgramacionController extends Controller
         return view('admin.programaciones.historial', ['programacion' => $programacion, 'cambios' => $cambios]);
     }
 
+    /* ---------------------------- candidatos para el editor ---------------------------- */
+
+    /** Personas que pueden tomar el lugar de otra en una programación, con el motivo si no están disponibles. */
+    public function candidatos(Request $request, string $id)
+    {
+        $datos = $request->validate(['rol' => ['required', 'in:conductor,ayudante'], 'saliente_id' => ['required', 'integer', 'exists:users,id'], 'turno_id' => ['nullable', 'integer', 'exists:schedules,id']]);
+        $programacion = Programacion::with('ayudantes')->findOrFail($id);
+
+        return response()->json(['data' => $this->reglas->candidatos($programacion, $datos['rol'], (int) $datos['saliente_id'], filled($datos['turno_id'] ?? null) ? (int) $datos['turno_id'] : null)]);
+    }
+
     /* ---------------------------- ayudas ---------------------------- */
 
     private function grupoActivo(int $id): GrupoPersonal
@@ -393,11 +449,16 @@ class ProgramacionController extends Controller
         $request->merge(['ayudantes' => array_values(array_filter((array) $request->input('ayudantes'), 'filled'))]);
 
         return $request->validate([
+            'turno_id' => ['nullable', 'integer', 'exists:schedules,id'],
             'vehiculo_id' => ['required', 'integer', 'exists:vehicles,id'],
             'conductor_id' => ['required', 'integer', 'exists:users,id'],
             'ayudantes' => ['required', 'array', 'min:1'],
             'ayudantes.*' => ['required', 'integer', 'exists:users,id'],
             'notas' => ['nullable', 'string', 'max:500'],
+            'motivos' => ['nullable', 'array'],
+            'motivos.*' => ['array'],
+            'motivos.*.motivo_id' => ['nullable', 'integer', 'exists:change_reasons,id'],
+            'motivos.*.descripcion' => ['nullable', 'string', 'max:500'],
         ], [
             'vehiculo_id.required' => 'Seleccione el vehículo.',
             'conductor_id.required' => 'Seleccione al conductor.',
@@ -416,27 +477,13 @@ class ProgramacionController extends Controller
             'dias' => $datos['dias'] ?? $grupo->dias_ordenados,
             'turno_id' => $grupo->shift_id,
             'zona_id' => $grupo->zone_id,
-            'vehiculo_id' => $grupo->vehicle_id,
+            'vehiculo_id' => $datos['vehiculo_id'] ?? $grupo->vehicle_id,
+            'usar_feriados' => $datos['usar_feriados'] ?? [],
             'conductor_id' => $datos['conductor_id'] ?? $grupo->driver_id,
             'ayudantes' => $datos['ayudantes'] ?? $grupo->ayudantes()->pluck('users.id')->all(),
             'grupo_id' => $grupo->id,
             'etiqueta' => $grupo->name,
             'notas' => $datos['notas'] ?? null,
-        ];
-    }
-
-    private function solicitudDeCambio(Programacion $programacion, array $datos): array
-    {
-        return [
-            'inicio' => $programacion->date->toDateString(),
-            'fin' => $programacion->date->toDateString(),
-            'dias' => [$programacion->date->dayOfWeekIso],
-            'turno_id' => $programacion->shift_id,
-            'zona_id' => $programacion->zone_id,
-            'vehiculo_id' => $datos['vehiculo_id'],
-            'conductor_id' => $datos['conductor_id'],
-            'ayudantes' => $datos['ayudantes'],
-            'ignorar_id' => $programacion->id,
         ];
     }
 
@@ -448,6 +495,14 @@ class ProgramacionController extends Controller
             'fin' => ['required', 'date', 'after_or_equal:inicio'],
             'grupos' => ['required', 'array', 'min:1'],
             'grupos.*' => ['integer', 'distinct', 'exists:staffgroups,id'],
+            // Feriados que el usuario decide trabajar (los demás se omiten) y ajustes de cada grupo.
+            'usar_feriados' => ['nullable', 'array'],
+            'usar_feriados.*' => ['date'],
+            'detalle' => ['nullable', 'array'],
+            'detalle.*.vehiculo_id' => ['nullable', 'integer', 'exists:vehicles,id'],
+            'detalle.*.conductor_id' => ['nullable', 'integer', 'exists:users,id'],
+            'detalle.*.ayudantes' => ['nullable', 'array'],
+            'detalle.*.ayudantes.*' => ['nullable', 'integer', 'exists:users,id'],
         ], [
             'inicio.required' => 'Indique la fecha de inicio.',
             'fin.required' => 'Indique la fecha de fin.',
@@ -464,21 +519,41 @@ class ProgramacionController extends Controller
             throw ValidationException::withMessages(['grupos' => 'Grupo(s) inactivo(s): '.$inactivos->implode(', ').'. Quítelos de la selección o actívelos.']);
         }
 
-        return $grupos->map(fn (GrupoPersonal $g) => $this->solicitudDeGrupo(
-            ['inicio' => $datos['inicio'], 'fin' => $datos['fin']],
-            $g,
-        ))->all();
+        return $grupos->map(function (GrupoPersonal $g) use ($datos) {
+            $ajuste = $datos['detalle'][$g->id] ?? [];
+            $ayudantes = array_values(array_filter($ajuste['ayudantes'] ?? [], 'filled'));
+
+            return $this->solicitudDeGrupo(array_filter([
+                'inicio' => $datos['inicio'],
+                'fin' => $datos['fin'],
+                'usar_feriados' => $datos['usar_feriados'] ?? [],
+                'vehiculo_id' => $ajuste['vehiculo_id'] ?? null,
+                'conductor_id' => $ajuste['conductor_id'] ?? null,
+                'ayudantes' => $ayudantes ?: null,
+            ], fn ($v) => $v !== null), $g);
+        })->all();
     }
 
     private function respuestaDeRevision(array $revision): array
     {
         $total = array_sum(array_map(fn (array $p) => count($p['fechas']), $revision['plan']));
+        $unico = count($revision['plan']) === 1;
+
+        // Un resumen por grupo (programación masiva): cuántos días generaría y cuántos problemas tiene.
+        $grupos = collect($revision['plan'])->filter(fn (array $p) => isset($p['grupo_id']))->map(function (array $p) use ($revision, $unico) {
+            $suyos = collect($revision['problemas'])->filter(fn (array $x) => $x['grupo'] === ($p['etiqueta'] ?? null) || ($unico && $x['grupo'] === null));
+
+            return ['id' => $p['grupo_id'], 'nombre' => $p['etiqueta'] ?? '', 'dias' => count($p['fechas']), 'problemas' => $suyos->count()];
+        })->values()->all();
 
         return [
+            'grupos' => $grupos,
             'ok' => $revision['ok'],
             'errores' => $revision['errores'],
             'sugerencias' => $revision['sugerencias'],
             'avisos' => $revision['avisos'],
+            'problemas' => $revision['problemas'],
+            'notas' => $revision['notas'],
             'total' => $total,
         ];
     }
@@ -542,6 +617,8 @@ class ProgramacionController extends Controller
             'feriado' => $contexto['feriados'][$p->date->toDateString()] ?? null,
             'sin_asistencia' => $this->sinAsistencia($p, $contexto['presentes']),
             'id' => $p->id,
+            'grupo_id' => $p->group_id,
+            'grupo' => $p->grupo?->name,
             'fecha' => $p->date->format('d/m/Y'),
             'estado' => $p->status,
             'estado_texto' => Programacion::ESTADOS[$p->status] ?? $p->status,

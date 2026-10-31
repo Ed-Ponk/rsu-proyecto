@@ -27,7 +27,9 @@
 
     Tads.idioma = {
         processing: 'Cargando...',
-        search: 'Buscar:',
+        search: '',
+        searchPlaceholder: 'Buscar en la lista...',
+        lengthMenu: 'Mostrar _MENU_',
         info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
         infoEmpty: 'Mostrando 0 a 0 de 0 registros',
         infoFiltered: '(filtrado de _MAX_ registros)',
@@ -582,6 +584,7 @@
      *   urlListado, urlRecurso, urlCrear,
      *   columnas, orden, filtros,      // columnas DataTables, orden inicial, función que devuelve parámetros extra
      *   alCargarFormulario(cuerpo),    // para activar comportamientos propios del formulario
+     *   confirmarEnvio(formulario),    // opcional: promesa que devuelve false para cancelar el envío
      * })
      */
     Tads.Gestor = class {
@@ -613,11 +616,13 @@
                 columns: c.columnas,
                 order: c.orden ?? [[0, 'asc']],
                 pageLength: c.porPagina ?? 10,
-                lengthChange: false,
+                // Barra de herramientas: buscador grande con lupa a la izquierda y «Mostrar N» a la derecha (se apilan en el móvil).
+                layout: { topStart: 'search', topEnd: 'pageLength', bottomStart: 'info', bottomEnd: 'paging' },
+                lengthMenu: [10, 15, 25, 50, 100],
                 pagingType: 'simple_numbers',
                 autoWidth: false,
                 processing: true,
-                language: Tads.idioma,
+                language: { ...Tads.idioma, searchPlaceholder: c.buscar ?? Tads.idioma.searchPlaceholder },
                 drawCallback: () => {
                     this.tablaEl.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => bootstrap.Tooltip.getOrCreateInstance(el));
                 },
@@ -758,6 +763,9 @@
             Tads.limpiarErrores(formulario);
 
             if (!formulario.checkValidity()) return formulario.reportValidity();
+
+            // Operaciones delicadas piden confirmación antes de enviar (config.confirmarEnvio devuelve una promesa de true/false).
+            if (this.config.confirmarEnvio && !(await this.config.confirmarEnvio(formulario))) return;
 
             const boton = formulario.querySelector('[type="submit"]');
             const textoOriginal = boton.innerHTML;

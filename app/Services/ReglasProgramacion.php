@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Asistencia;
 use App\Models\Bitacora;
+use App\Models\Cambio;
 use App\Models\Contrato;
 use App\Models\Feriado;
 use App\Models\Personal;
@@ -50,6 +51,12 @@ class ReglasProgramacion
         return $fechas;
     }
 
+    /** "el día 02/12/2026" o "los días 02/12/2026, 04/12/2026 y 07/12/2026": para completar frases. */
+    public static function diasTexto(array $fechas): string
+    {
+        return (count($fechas) === 1 ? 'el día ' : 'los días ').self::resumenDeFechas($fechas);
+    }
+
     /** "01/04/2026, 03/04/2026, 05/04/2026 y 4 días más" */
     public static function resumenDeFechas(array $fechas, int $mostrar = 3): string
     {
@@ -65,20 +72,77 @@ class ReglasProgramacion
         return implode(', ', array_slice($formateadas, 0, $mostrar)).' y '.$resto.' '.($resto === 1 ? 'día más' : 'días más');
     }
 
+    /*
+     * Cada problema se guarda también de forma estructurada (quién, qué pasa, qué días, solución y, si aplica, una acción que
+     * la pantalla puede ejecutar con un botón). Los textos largos de `errores` se mantienen para quien los necesite; la pantalla
+     * pinta tarjetas cortas con esto.
+     */
+
+    /** @var list<array<string, mixed>> */
+    private array $problemas = [];
+
+    /** @var list<array{tipo: string, grupo: ?string, texto: string}> */
+    private array $notas = [];
+
+    private ?string $grupoActual = null;
+
+    /** @var array<int, string> persona => 'conductor'|'ayudante' en la solicitud que se está revisando */
+    private array $rolesActuales = [];
+
+    private function problema(string $tipo, ?string $quien, string $que, array $fechas = [], ?string $solucion = null, ?int $personaId = null): void
+    {
+        $this->problemas[] = [
+            'tipo' => $tipo, 'grupo' => $this->grupoActual, 'quien' => $quien, 'que' => $que, 'fechas' => array_values($fechas),
+            'solucion' => $solucion, 'persona_id' => $personaId, 'rol' => $personaId ? ($this->rolesActuales[$personaId] ?? null) : null, 'accion' => null,
+        ];
+    }
+
+    private function nota(string $tipo, string $texto): void
+    {
+        $this->notas[] = ['tipo' => $tipo, 'grupo' => $this->grupoActual, 'texto' => $texto];
+    }
+
+    /** "02/12, 04/12 y 07/12": cortas, para las notas. */
+    private static function fechasCortas(array $fechas, int $mostrar = 3): string
+    {
+        $c = array_map(fn (string $f) => Carbon::parse($f)->format('d/m'), array_values($fechas));
+        $resto = count($c) - $mostrar;
+
+        return $resto > 0 ? implode(', ', array_slice($c, 0, $mostrar)).' y '.$resto.' más' : (count($c) > 1 ? implode(', ', array_slice($c, 0, -1)).' y '.end($c) : ($c[0] ?? ''));
+    }
+
+    /** Forma que espera el buscador de la pantalla (para poder poner a la persona sugerida con un clic). */
+    private function itemDePersona(Personal $p): array
+    {
+        return [
+            'id' => $p->id, 'titulo' => $p->nombre_completo, 'detalle' => "DNI {$p->dni} · ".($p->tipo?->name ?? 'Sin función'), 'foto' => $p->url_foto,
+            'iniciales' => mb_strtoupper(mb_substr($p->name, 0, 1).mb_substr((string) $p->last_name, 0, 1)), 'insignia' => null,
+        ];
+    }
+
     /**
      * @param  array<int, array>  $solicitudes
-     * @return array{ok: bool, errores: list<string>, sugerencias: list<string>, avisos: list<string>, plan: list<array>}
+     * @return array{ok: bool, errores: list<string>, sugerencias: list<string>, avisos: list<string>, plan: list<array>, problemas: list<array>, notas: list<array>}
      */
-    public function revisar(array $solicitudes): array
+    public function revisar(array $solicitudes, bool $reiniciar = true): array
     {
         $this->horasDeTurnos = null;
+
+        if ($reiniciar) {
+            $this->problemas = [];
+            $this->notas = [];
+        }
+
         $errores = $sugerencias = $avisos = $plan = [];
         $ocupado = [];   // lo que ya tomaron los grupos anteriores del mismo lote
         $varios = count($solicitudes) > 1;
 
         foreach ($solicitudes as $solicitud) {
             $prefijo = $varios && filled($solicitud['etiqueta'] ?? null) ? '['.$solicitud['etiqueta'].'] ' : '';
+            $this->grupoActual = $varios ? ($solicitud['etiqueta'] ?? null) : null;
             $resultado = $this->revisarUna($solicitud, $ocupado);
+
+            $yaDiceElGrupo = fn (string $t) => filled($solicitud['etiqueta'] ?? null) && str_starts_with($t, $solicitud['etiqueta'].' ');
 
             foreach ($resultado['errores'] as $texto) {
                 // Los errores de fechas valen para todos los grupos: se dicen una sola vez y sin prefijo.
@@ -88,7 +152,7 @@ class ReglasProgramacion
                     continue;
                 }
 
-                $errores[] = $prefijo.$texto;
+                $errores[] = ($yaDiceElGrupo($texto) ? '' : $prefijo).$texto;
             }
             foreach ($resultado['sugerencias'] as $texto) {
                 $sugerencias[] = $prefijo.$texto;
@@ -100,19 +164,37 @@ class ReglasProgramacion
             $plan[] = ['etiqueta' => $solicitud['etiqueta'] ?? null, 'fechas' => $resultado['fechas']] + $solicitud;
         }
 
+        $this->grupoActual = null;
         $errores = array_values(array_unique($errores));
         $avisos = array_values(array_unique($avisos));
         $total = array_sum(array_map(fn (array $p) => count($p['fechas']), $plan));
 
         if ($errores === [] && $total === 0) {
             $errores[] = 'No hay nada que generar: ningún día del rango coincide con los días de trabajo elegidos.';
+            $this->problema('fechas', 'Sin días de trabajo', 'ningún día del rango coincide con los días elegidos', [], 'Amplíe el rango o marque más días.');
         }
 
         if ($total > self::MAX_PROGRAMACIONES) {
             $errores[] = "Se generarían {$total} programaciones y el máximo por vez es ".self::MAX_PROGRAMACIONES.'. Reduzca el rango de fechas o la cantidad de grupos.';
+            $this->problema('limite', 'Demasiadas programaciones', "se generarían {$total} (el máximo por vez es ".self::MAX_PROGRAMACIONES.')', [], 'Reduzca el rango o la cantidad de grupos.');
         }
 
-        return ['ok' => $errores === [], 'errores' => $errores, 'sugerencias' => $sugerencias, 'avisos' => $avisos, 'plan' => $plan];
+        // Los problemas de fechas valen para todos los grupos: se muestran una sola vez y sin grupo.
+        $vistos = [];
+        $problemas = [];
+        foreach ($this->problemas as $p) {
+            if (in_array($p['tipo'], ['fechas', 'dias', 'limite'], true)) {
+                $p['grupo'] = null;
+                $clave = $p['tipo'].'|'.$p['quien'].'|'.$p['que'];
+                if (isset($vistos[$clave])) {
+                    continue;
+                }
+                $vistos[$clave] = true;
+            }
+            $problemas[] = $p;
+        }
+
+        return ['ok' => $errores === [], 'errores' => $errores, 'sugerencias' => $sugerencias, 'avisos' => $avisos, 'plan' => $plan, 'problemas' => $problemas, 'notas' => $this->notas];
     }
 
     /**
@@ -195,7 +277,7 @@ class ReglasProgramacion
      * @param  list<int>  $personas
      * @param  list<int>  $vehiculos
      */
-    private function bloquear(array $personas, array $vehiculos): void
+    public function bloquear(array $personas, array $vehiculos): void
     {
         Personal::whereIn('users.id', $personas)->orderBy('users.id')->lockForUpdate()->get(['users.id']);
         Vehiculo::whereIn('id', $vehiculos)->orderBy('id')->lockForUpdate()->get(['id']);
@@ -205,77 +287,13 @@ class ReglasProgramacion
      * Si a pesar de todo la base de datos detecta un duplicado (otro usuario guardó lo mismo en el mismo instante),
      * el usuario recibe un mensaje claro y no un error 500.
      */
-    private function sinChoques(callable $operacion): mixed
+    public function sinChoques(callable $operacion): mixed
     {
         try {
             return $operacion();
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages(['programacion' => ['Otro usuario acaba de programar a esa persona o ese vehículo en la misma fecha y turno. Vuelva a validar la disponibilidad.']]);
         }
-    }
-
-    /**
-     * Cambia el conductor, los ayudantes, el vehículo y las observaciones de una programación (solo si sigue "programado").
-     * Se vuelven a aplicar todas las reglas; el cambio de ayudantes queda en el historial.
-     *
-     * @throws ValidationException
-     */
-    public function actualizar(Programacion $programacion, array $datos): void
-    {
-        $this->sinChoques(fn () => DB::transaction(function () use ($programacion, $datos) {
-            $programacion = Programacion::lockForUpdate()->findOrFail($programacion->id);
-
-            if (! $programacion->esProgramado()) {
-                throw ValidationException::withMessages(['programacion' => ['Esta programación ya fue finalizada y no se puede modificar.']]);
-            }
-
-            if ($programacion->date->lt(today())) {
-                throw ValidationException::withMessages(['programacion' => ['Esta programación ya pasó su fecha: solo se puede finalizar o eliminar.']]);
-            }
-
-            $personas = collect([$datos['conductor_id'], ...$datos['ayudantes']])->filter()->unique()->sort()->values();
-            $this->bloquear($personas->all(), [(int) $datos['vehiculo_id']]);
-
-            // Quien ya registró asistencia ese día está trabajando: no se lo puede quitar de la programación.
-            $nuevos = array_map('intval', [$datos['conductor_id'], ...$datos['ayudantes']]);
-            $quitados = $programacion->personasConAsistencia()->reject(fn (Personal $p) => in_array($p->id, $nuevos, true));
-            if ($quitados->isNotEmpty()) {
-                throw ValidationException::withMessages(['programacion' => [$quitados->map->nombre_completo->implode(', ').' ya registró asistencia ese día y no se puede quitar de la programación.']]);
-            }
-
-            $revision = $this->revisar([[
-                'inicio' => $programacion->date->toDateString(),
-                'fin' => $programacion->date->toDateString(),
-                'dias' => [$programacion->date->dayOfWeekIso],
-                'turno_id' => $programacion->shift_id,
-                'zona_id' => $programacion->zone_id,
-                'vehiculo_id' => $datos['vehiculo_id'],
-                'conductor_id' => $datos['conductor_id'],
-                'ayudantes' => $datos['ayudantes'],
-                'ignorar_id' => $programacion->id,
-            ]]);
-
-            if (! $revision['ok']) {
-                throw ValidationException::withMessages(['programacion' => $revision['errores']]);
-            }
-
-            $antes = $programacion->ayudantes()->get()->map->nombre_completo->implode(', ');
-
-            $programacion->update([
-                'vehicle_id' => $datos['vehiculo_id'],
-                'driver_id' => $datos['conductor_id'],
-                'notes' => filled($datos['notas'] ?? null) ? trim($datos['notas']) : null,
-            ]);
-
-            $ids = array_map('intval', $datos['ayudantes']);
-            $actuales = $programacion->ayudantes()->pluck('users.id')->map(fn ($i) => (int) $i)->all();
-
-            if ($ids !== $actuales) {
-                $programacion->asignarAyudantes($ids);
-                $despues = $programacion->ayudantes()->get()->map->nombre_completo->implode(', ');
-                Bitacora::registrar('modificado', $programacion, ['ayudantes' => $antes], ['ayudantes' => $despues]);
-            }
-        }, 3));
     }
 
     /** @return array{errores: list<string>, sugerencias: list<string>, avisos: list<string>, fechas: list<string>} */
@@ -300,22 +318,31 @@ class ReglasProgramacion
         $sinFechas = fn (array $e, array $a) => ['errores' => $e, 'sugerencias' => [], 'avisos' => $a, 'fechas' => []];
 
         if (! $inicio || ! $fin) {
+            $this->problema('fechas', 'Fechas', 'falta la fecha de inicio o la de fin', [], 'Complete las dos fechas.');
+
             return $sinFechas(['Indique la fecha de inicio y la fecha de fin.'], $avisos);
         }
 
         if ($fin->lt($inicio)) {
+            $this->problema('fechas', 'Fecha de fin', 'es anterior a la de inicio', [], 'Elija una fecha de fin igual o posterior.');
+
             return $sinFechas(['La fecha de fin no puede ser anterior a la fecha de inicio.'], $avisos);
         }
 
         if (! $ignorar && $inicio->lt(today())) {
             $errores[] = 'La fecha de inicio no puede ser anterior a hoy.';
+            $this->problema('fechas', 'Fecha de inicio', 'ya pasó', [], 'Elija hoy o una fecha futura.');
         }
 
         if ($inicio->diffInDays($fin) + 1 > self::MAX_DIAS_RANGO) {
+            $this->problema('fechas', 'Rango de fechas', 'supera los '.self::MAX_DIAS_RANGO.' días', [], 'Use un rango más corto.');
+
             return $sinFechas([...$errores, 'El rango no puede superar '.self::MAX_DIAS_RANGO.' días.'], $avisos);
         }
 
         if ($dias === []) {
+            $this->problema('dias', 'Días de trabajo', 'no hay ninguno marcado', [], 'Marque al menos un día.');
+
             return $sinFechas([...$errores, 'Seleccione al menos un día de trabajo.'], $avisos);
         }
 
@@ -324,17 +351,33 @@ class ReglasProgramacion
         $feriados = $ignorar
             ? collect()
             : Feriado::activo()->entre($inicio->toDateString(), $fin->toDateString())->get()->keyBy(fn (Feriado $f) => $f->date->toDateString());
-        $omitidas = array_values(array_filter($fechas, fn (string $f) => $feriados->has($f)));
+        $enFeriado = array_values(array_filter($fechas, fn (string $f) => $feriados->has($f)));
+        // El usuario puede decidir trabajar algunos feriados: esos se programan; el resto se omite.
+        $usados = array_values(array_intersect($enFeriado, array_map('strval', (array) ($s['usar_feriados'] ?? []))));
+        $omitidas = array_values(array_diff($enFeriado, $usados));
         $fechas = array_values(array_diff($fechas, $omitidas));
+
+        if ($usados) {
+            $this->nota('feriado', (count($usados) === 1 ? 'Se programa el feriado ' : 'Se programan los feriados ').implode(', ', array_map(
+                fn (string $f) => Carbon::parse($f)->format('d/m').' ('.$feriados[$f]->description.')',
+                array_slice($usados, 0, 2),
+            )).(count($usados) > 2 ? ' y '.(count($usados) - 2).' más' : ''));
+        }
 
         if ($omitidas) {
             $avisos[] = 'Se omitirán los feriados: '.implode(', ', array_map(
                 fn (string $f) => Carbon::parse($f)->format('d/m/Y').' ('.$feriados[$f]->description.')',
                 array_slice($omitidas, 0, 3),
             )).(count($omitidas) > 3 ? ' y '.(count($omitidas) - 3).' más' : '').'.';
+            $this->nota('feriado', (count($omitidas) === 1 ? 'Se omite el feriado ' : 'Se omiten los feriados ').implode(', ', array_map(
+                fn (string $f) => Carbon::parse($f)->format('d/m').' ('.$feriados[$f]->description.')',
+                array_slice($omitidas, 0, 2),
+            )).(count($omitidas) > 2 ? ' y '.(count($omitidas) - 2).' más' : ''));
         }
 
         if ($fechas === []) {
+            $this->problema('fechas', 'Sin días de trabajo', 'ningún día del rango coincide con los días elegidos (o todos son feriados)', [], 'Amplíe el rango o cambie los días.');
+
             return $sinFechas([...$errores, 'El rango no incluye ningún día de trabajo: los días elegidos no caen en el rango o son feriados.'], $avisos);
         }
 
@@ -355,39 +398,55 @@ class ReglasProgramacion
 
         if (! $turno) {
             $errores[] = 'Seleccione un turno válido.';
+            $this->problema('recurso', 'Turno', 'no es válido', [], 'Elija un grupo que tenga turno.');
         }
 
         if (! $zona) {
             $errores[] = 'Seleccione una zona válida.';
+            $this->problema('recurso', 'Zona', 'no es válida', [], 'Elija un grupo que tenga zona.');
         } elseif (! $zona->status) {
             $errores[] = "La zona «{$zona->name}» está inactiva.";
+            $this->problema('recurso', "La zona «{$zona->name}»", 'está inactiva', [], 'Active la zona o cambie la del grupo.');
         }
 
         if (! $vehiculo) {
             $errores[] = 'Seleccione un vehículo válido.';
+            $this->problema('recurso', 'Vehículo', 'no es válido', [], 'Elija un grupo que tenga vehículo.');
         } elseif (! $vehiculo->status) {
             $errores[] = "El vehículo {$vehiculo->name} ({$vehiculo->plate}) está inactivo.";
+            $this->problema('vehiculo_estado', "Vehículo {$vehiculo->plate}", 'está inactivo', [], 'Active el vehículo o cambie el del grupo.');
         }
 
         $idConductor = (int) ($s['conductor_id'] ?? 0);
         $idsAyudantes = array_values(array_filter(array_map('intval', (array) ($s['ayudantes'] ?? []))));
         $todos = array_values(array_filter([$idConductor, ...$idsAyudantes]));
+        $this->rolesActuales = array_fill_keys($idsAyudantes, 'ayudante') + ($idConductor ? [$idConductor => 'conductor'] : []);
 
         if (count($todos) !== count(array_unique($todos))) {
-            $errores[] = 'Una misma persona no puede ocupar dos puestos en la programación.';
+            $repetidos = Personal::whereIn('users.id', array_keys(array_filter(array_count_values($todos), fn ($n) => $n > 1)))->get()->map->nombre_completo->implode(', ');
+            $errores[] = ($repetidos !== '' ? "{$repetidos} aparece más de una vez" : 'Hay una persona repetida').' en la programación: una persona no puede ocupar dos puestos (conductor y ayudante, o dos veces de ayudante).';
+            $this->problema('duplicado', $repetidos !== '' ? $repetidos : 'Persona repetida', 'aparece más de una vez', [], 'Cada persona ocupa un solo puesto: quite la repetida.');
         }
 
         if (! $idConductor) {
             $errores[] = 'Seleccione al conductor.';
+            $this->problema('rol', 'Conductor', 'falta elegirlo', [], 'Elija un conductor.');
         }
 
         if (! $idsAyudantes) {
             $errores[] = 'Seleccione al menos un ayudante.';
+            $this->problema('rol', 'Ayudantes', 'falta elegir al menos uno', [], 'Elija un ayudante.');
         }
 
         if ($vehiculo && 1 + count($idsAyudantes) > $vehiculo->occupant_capacity) {
-            $errores[] = "El vehículo {$vehiculo->name} tiene capacidad para {$vehiculo->occupant_capacity} persona(s) (1 conductor y "
-                .max(0, $vehiculo->occupant_capacity - 1).' ayudante(s)).';
+            $cabe = (int) $vehiculo->occupant_capacity;
+            $ayudantesQueCaben = max(0, $cabe - 1);
+            $llevan = count($idsAyudantes);
+            $errores[] = "El vehículo {$vehiculo->name} ({$vehiculo->plate}) solo tiene lugar para {$cabe} ".($cabe === 1 ? 'persona' : 'personas')
+                .": 1 conductor y {$ayudantesQueCaben} ".($ayudantesQueCaben === 1 ? 'ayudante' : 'ayudantes').". Aquí van 1 conductor y {$llevan} "
+                .($llevan === 1 ? 'ayudante' : 'ayudantes').': quite ayudantes o elija otro vehículo.';
+            $this->problema('capacidad', "Vehículo {$vehiculo->plate}", "solo lleva {$cabe} ".($cabe === 1 ? 'persona' : 'personas')." (1 conductor y {$ayudantesQueCaben} ".($ayudantesQueCaben === 1 ? 'ayudante' : 'ayudantes').") y aquí van {$llevan}", [],
+                'Quite ayudantes o elija otro vehículo.');
         }
 
         $personas = Personal::with('tipo')->whereIn('users.id', $todos)->get()->keyBy('id');
@@ -395,20 +454,25 @@ class ReglasProgramacion
         foreach ($todos as $id) {
             if (! $personas->has($id)) {
                 $errores[] = 'Una de las personas elegidas ya no existe.';
+                $this->problema('rol', 'Persona', 'ya no existe', [], 'Elíjala de nuevo.');
             }
         }
 
         $conductor = $personas->get($idConductor);
         if ($conductor && $conductor->usertype_id !== TipoPersonal::conductor()?->id) {
-            $errores[] = "{$conductor->nombre_completo}: no es conductor.";
+            $errores[] = "{$conductor->nombre_completo} no es conductor: en ese puesto elija a un conductor.";
+            $this->problema('rol', $conductor->nombre_completo, 'no es conductor', [], 'En ese puesto elija a un conductor.', $conductor->id);
         }
 
         foreach ($idsAyudantes as $id) {
             $ayudante = $personas->get($id);
             if ($ayudante && $ayudante->usertype_id !== TipoPersonal::ayudante()?->id) {
-                $errores[] = "{$ayudante->nombre_completo}: no es ayudante.";
+                $errores[] = "{$ayudante->nombre_completo} no es ayudante: en ese puesto elija a un ayudante.";
+                $this->problema('rol', $ayudante->nombre_completo, 'no es ayudante', [], 'En ese puesto elija a un ayudante.', $ayudante->id);
             }
         }
+
+        $fechasAComprobar = $fechas;
 
         // Lo más común al empezar: volver a programar días que el grupo ya tiene. Se dice primero y en claro, porque
         // si no, cada persona y el vehículo aparecen "ocupados" sin que se entienda por qué.
@@ -423,6 +487,10 @@ class ReglasProgramacion
                     ? "{$nombre} ya está programado en todos esos días (".self::resumenDeFechas($repetidas).'). Ya aparecen en la lista de programaciones: no hace falta volver a generarlos.'
                     : "{$nombre} ya está programado en ".count($repetidas).' de esos días ('.self::resumenDeFechas($repetidas).').';
 
+                $todas = count($repetidas) === count($fechas);
+                $this->problema('grupo', $nombre, $todas ? 'ya está programado en todos esos días' : 'ya está programado en '.count($repetidas).' de esos días', $repetidas,
+                    $todas ? 'Ya aparecen en la lista. Para cambiar personas use «Reemplazar».' : 'Empiece el rango el '.Carbon::parse(end($repetidas))->addDay()->format('d/m').' o use «Reemplazar» para cambiar personas.');
+
                 if (count($repetidas) === count($fechas)) {
                     return ['errores' => [...$errores, $mensaje], 'avisos' => $avisos, 'fechas' => $fechas, 'sugerencias' => [
                         'Para ver esos días, filtre la lista de programaciones por esas fechas.',
@@ -431,12 +499,14 @@ class ReglasProgramacion
                 }
 
                 $errores[] = $mensaje;
+                // Esos días ya quedaron explicados: no se repiten como "persona ocupada" ni "vehículo en uso".
+                $fechasAComprobar = array_values(array_diff($fechas, $repetidas));
                 $sugerencias[] = 'Empiece el rango después del '.Carbon::parse(end($repetidas))->format('d/m/Y').' para programar solo los días que faltan, o use «Reemplazar» para cambiar personas en los días ya programados.';
             }
         }
 
         if ($turno && $personas->isNotEmpty()) {
-            [$mensajes, $malas, $avisosPersonas] = $this->disponibilidad($personas, $fechas, $turno->id, $vehiculo, $ignorarIds, $ocupado);
+            [$mensajes, $malas, $avisosPersonas] = $this->disponibilidad($personas, $fechasAComprobar, $turno->id, $vehiculo, $ignorarIds, $ocupado);
             $errores = [...$errores, ...$mensajes];
             $avisos = [...$avisos, ...$avisosPersonas];
             // Un reemplazo sugerido se reserva: no se ofrece a la misma persona para dos ausentes. Tampoco se sugiere a
@@ -456,6 +526,15 @@ class ReglasProgramacion
                 $sugerencias[] = $reemplazo
                     ? "Cambie a {$persona->nombre_completo} por {$reemplazo->nombre_completo}: es {$funcion} y está libre en esos días."
                     : "No hay otro {$funcion} libre para cubrir a {$persona->nombre_completo} en esos días: los demás ya están programados, de vacaciones o sin contrato vigente.";
+
+                // La misma sugerencia, pero colgada de los problemas de esa persona (con botón si hay reemplazo).
+                foreach ($this->problemas as &$problema) {
+                    if (($problema['persona_id'] ?? null) === $id && $problema['grupo'] === $this->grupoActual && $problema['solucion'] === null) {
+                        $problema['solucion'] = $reemplazo ? "Cambiar por {$reemplazo->nombre_completo}" : "No hay otro {$funcion} libre: revise contratos y vacaciones";
+                        $problema['accion'] = $reemplazo ? ['tipo' => 'cambiar', 'persona_id' => $id, 'rol' => $problema['rol'], 'por' => $this->itemDePersona($reemplazo)] : null;
+                    }
+                }
+                unset($problema);
             }
         }
 
@@ -487,29 +566,26 @@ class ReglasProgramacion
     }
 
     /**
-     * Cómo choca un turno con otro de la misma persona:
-     *   'igual'    = el mismo turno el mismo día,
-     *   'dia'      = otro turno el mismo día (más de un turno por día),
-     *   'descanso' = turnos de días distintos con menos descanso del mínimo (p. ej. noche y luego mañana),
-     *   null       = no chocan.
+     * Cómo choca un turno con otro de la misma persona. Trabajar dos turnos el mismo día (incluso seguidos) está permitido;
+     * solo se rechaza:
+     *   'igual' = el mismo turno el mismo día,
+     *   'cruce' = turnos cuyos horarios se pisan (un nocturno que termina a las 06:00 no pisa a uno que empieza a las 06:00),
+     *   null    = no chocan.
      */
     private function choqueDeHorario(string $fecha, int $turnoId, string $otraFecha, int $otroTurno): ?string
     {
-        if ($fecha === $otraFecha) {
-            return $turnoId === $otroTurno ? 'igual' : 'dia';
+        if ($fecha === $otraFecha && $turnoId === $otroTurno) {
+            return 'igual';
         }
 
         [$aInicio, $aFin] = $this->ventana($fecha, $turnoId);
         [$bInicio, $bFin] = $this->ventana($otraFecha, $otroTurno);
-        $minimo = (int) config('proyecto.programacion.descanso_minimo_horas', 8) * 60;
 
-        $hueco = $aInicio->gte($bFin) ? abs($bFin->diffInMinutes($aInicio)) : ($bInicio->gte($aFin) ? abs($aFin->diffInMinutes($bInicio)) : -1);
-
-        return $hueco < $minimo ? 'descanso' : null;
+        return $aInicio->lt($bFin) && $bInicio->lt($aFin) ? 'cruce' : null;
     }
 
     /**
-     * Turnos ya programados de cada persona (cualquier turno, con un día de margen a cada lado para los descansos).
+     * Turnos ya programados de cada persona (cualquier turno, con un día de margen a cada lado: un turno de noche termina al día siguiente).
      *
      * @return array<int, list<array{0: string, 1: int}>> persona => [[fecha, turno], ...]
      */
@@ -545,8 +621,8 @@ class ReglasProgramacion
         $ids = $personas->keys()->all();
         $desde = $fechas[0];
         $hasta = end($fechas);
-        $descanso = (int) config('proyecto.programacion.descanso_minimo_horas', 8);
         $nombresDeTurnos = Turno::pluck('name', 'id')->all();
+        $turnoActual = $nombresDeTurnos[$turnoId] ?? 'de este grupo';
 
         $contratos = Contrato::where('is_active', true)->whereIn('user_id', $ids)
             ->where('start_date', '<=', $hasta)
@@ -566,8 +642,8 @@ class ReglasProgramacion
             ->selectRaw('user_id, count(*) as total')->groupBy('user_id')->pluck('total', 'user_id');
 
         foreach ($personas as $id => $persona) {
-            $porContrato = $porVacaciones = $porOcupacion = $porLote = $porDia = $porDescanso = [];
-            $choque = [];   // primer turno con el que choca, para explicar el porqué: ['dia' => [fecha, turno], 'descanso' => ...]
+            $porContrato = $porVacaciones = $porOcupacion = $porLote = $porCruce = [];
+            $choque = null;   // primer turno con el que se cruza, para explicar el porqué: [fecha, turno]
 
             foreach ($fechas as $fecha) {
                 if (! ($contratos[$id] ?? collect())->contains(fn (Contrato $c) => $c->start_date->toDateString() <= $fecha
@@ -583,12 +659,11 @@ class ReglasProgramacion
                     $tipo = $this->choqueDeHorario($fecha, $turnoId, $otraFecha, $otroTurno);
                     match ($tipo) {
                         'igual' => $porOcupacion[] = $fecha,
-                        'dia' => $porDia[] = $fecha,
-                        'descanso' => $porDescanso[] = $fecha,
+                        'cruce' => $porCruce[] = $fecha,
                         default => null,
                     };
-                    if ($tipo) {
-                        $choque[$tipo] ??= [$otraFecha, $otroTurno];
+                    if ($tipo === 'cruce') {
+                        $choque ??= [$otraFecha, $otroTurno];
                     }
                 }
 
@@ -596,12 +671,11 @@ class ReglasProgramacion
                     $tipo = $this->choqueDeHorario($fecha, $turnoId, $otraFecha, $otroTurno);
                     match ($tipo) {
                         'igual' => $porLote[] = $fecha,
-                        'dia' => $porDia[] = $fecha,
-                        'descanso' => $porDescanso[] = $fecha,
+                        'cruce' => $porCruce[] = $fecha,
                         default => null,
                     };
-                    if ($tipo && $tipo !== 'igual') {
-                        $choque[$tipo] ??= [$otraFecha, $otroTurno];
+                    if ($tipo === 'cruce') {
+                        $choque ??= [$otraFecha, $otroTurno];
                     }
                 }
 
@@ -609,44 +683,55 @@ class ReglasProgramacion
             }
 
             if (! $persona->status) {
-                $mensajes[] = "{$persona->nombre_completo}: el empleado está inactivo.";
+                $mensajes[] = "{$persona->nombre_completo} está inactivo y no se puede programar.";
+                $this->problema('inactivo', $persona->nombre_completo, 'está inactivo', [], 'Elija a otra persona.', $id);
                 $malas[$id] = $fechas;
             }
 
             // Si el contrato existe pero termina dentro del rango, se dice cuándo vence en vez de un mensaje genérico.
             $vence = ($contratos[$id] ?? collect())->filter(fn (Contrato $c) => $c->end_date)->map(fn (Contrato $c) => $c->end_date->toDateString())->max();
             $textoContrato = $porContrato && $vence && $vence >= $desde && $vence < end($porContrato)
-                ? 'su contrato vence el '.Carbon::parse($vence)->format('d/m/Y').' y no cubre'
-                : 'no tiene contrato vigente para';
+                ? 'tiene el contrato vigente hasta el '.Carbon::parse($vence)->format('d/m/Y').': no cubre {fechas}'
+                : 'no tiene contrato vigente {fechas}';
 
-            $turnoDe = fn (string $tipo) => isset($choque[$tipo])
-                ? ' (ya tiene turno '.($nombresDeTurnos[$choque[$tipo][1]] ?? '').' el '.Carbon::parse($choque[$tipo][0])->format('d/m/Y').')'
-                : '';
+            $textoCruce = $choque
+                ? 'ya tiene el turno '.($nombresDeTurnos[$choque[1]] ?? '').' el '.Carbon::parse($choque[0])->format('d/m/Y').', que se cruza con el turno '.$turnoActual.' {fechas}'
+                : 'tiene otro turno que se cruza con el turno '.$turnoActual.' {fechas}';
 
-            $detalles = [
-                [$porVacaciones, 'está de vacaciones aprobadas en'],
-                [$porContrato, $textoContrato],
-                [array_values(array_unique($porOcupacion)), 'ya está programado en este mismo turno en'],
-                [array_values(array_unique($porLote)), 'está en dos de los grupos elegidos, en el mismo turno, en'],
-                [array_values(array_unique($porDia)), 'ya trabaja otro turno'.$turnoDe('dia').' en'],
-                [array_values(array_unique($porDescanso)), "no llega a descansar {$descanso} h entre turnos".$turnoDe('descanso').' en'],
+            $queCorto = [
+                'vacaciones' => 'está de vacaciones',
+                'contrato' => $porContrato && $vence && $vence >= $desde && $vence < end($porContrato) ? 'su contrato vence el '.Carbon::parse($vence)->format('d/m') : 'no tiene contrato vigente',
+                'ocupado' => "ya está programado en el turno {$turnoActual}",
+                'lote' => 'está en dos grupos a la vez (mismo turno)',
+                'cruce' => $choque ? 'ya tiene el turno '.($nombresDeTurnos[$choque[1]] ?? '').' el '.Carbon::parse($choque[0])->format('d/m').', que se cruza' : 'tiene otro turno que se cruza',
             ];
 
-            foreach ($detalles as [$afectadas, $texto]) {
+            $detalles = [
+                ['vacaciones', $porVacaciones, 'tiene vacaciones aprobadas {fechas}'],
+                ['contrato', $porContrato, $textoContrato],
+                ['ocupado', array_values(array_unique($porOcupacion)), "ya está programado en el turno {$turnoActual} {fechas}"],
+                ['lote', array_values(array_unique($porLote)), "está en dos de los grupos elegidos, en el turno {$turnoActual}, {fechas}"],
+                ['cruce', array_values(array_unique($porCruce)), $textoCruce],
+            ];
+
+            foreach ($detalles as [$tipoProblema, $afectadas, $texto]) {
                 if ($afectadas) {
                     sort($afectadas);
-                    $mensajes[] = "{$persona->nombre_completo} {$texto} ".self::resumenDeFechas($afectadas).'.';
+                    $mensajes[] = "{$persona->nombre_completo} ".str_replace('{fechas}', self::diasTexto($afectadas), $texto).'.';
+                    $this->problema($tipoProblema, $persona->nombre_completo, $queCorto[$tipoProblema], $afectadas, null, $id);
                     $malas[$id] = array_values(array_unique([...($malas[$id] ?? []), ...$afectadas]));
                 }
             }
 
             if (($faltas[$id] ?? 0) >= (int) config('proyecto.programacion.faltas_alerta', 3)) {
                 $avisos[] = "{$persona->nombre_completo} tiene {$faltas[$id]} falta(s) en los últimos {$diasFaltas} días.";
+                $this->nota('faltas', "{$persona->nombre_completo} tiene {$faltas[$id]} faltas en los últimos {$diasFaltas} días");
             }
 
             $limite = Carbon::parse($hasta)->addDays((int) config('proyecto.programacion.contrato_por_vencer_dias', 15))->toDateString();
             if ($vence && $vence >= $hasta && $vence <= $limite && ! $porContrato) {
                 $avisos[] = "El contrato de {$persona->nombre_completo} vence el ".Carbon::parse($vence)->format('d/m/Y').', pocos días después del último día programado.';
+                $this->nota('contrato', "El contrato de {$persona->nombre_completo} vence el ".Carbon::parse($vence)->format('d/m').', poco después del último día');
             }
         }
 
@@ -666,7 +751,8 @@ class ReglasProgramacion
             sort($afectadas);
 
             if ($afectadas) {
-                $mensajes[] = "El vehículo {$vehiculo->name} ({$vehiculo->plate}) ya sale en otra programación de este mismo turno en ".self::resumenDeFechas($afectadas).'.';
+                $mensajes[] = "El vehículo {$vehiculo->name} ({$vehiculo->plate}) ya está en otra programación del turno {$turnoActual} ".self::diasTexto($afectadas).'.';
+                $this->problema('vehiculo', "Vehículo {$vehiculo->plate}", 'ya está en otra programación de este turno', $afectadas, 'Elija otro vehículo o cambie el turno.');
             }
         }
 
@@ -715,19 +801,86 @@ class ReglasProgramacion
         });
     }
 
+    /** ¿Quien entra a cubrir tiene que haber marcado asistencia? Sí, si es hoy y el turno ya empezó. */
+    public function exigeAsistencia(Programacion $programacion): bool
+    {
+        return $programacion->date->isToday() && now()->hour * 60 + now()->minute >= $programacion->minutoDeInicio();
+    }
+
+    /**
+     * Personas que podrían tomar el lugar de `$salienteId` en una programación, con el motivo si no están disponibles:
+     * vacaciones, sin contrato, ocupadas en ese turno u otro que se cruza y, si el turno de hoy ya empezó, sin asistencia.
+     * Con `$turnoId` se evalúa para ese turno (el editor puede estar cambiando el turno a la vez).
+     *
+     * @return list<array{persona: array, disponible: bool, motivo: ?string}>
+     */
+    public function candidatos(Programacion $programacion, string $rol, int $salienteId, ?int $turnoId = null): array
+    {
+        $this->horasDeTurnos = null;
+        $this->problemas = [];
+        $this->notas = [];
+        $this->grupoActual = null;
+        $this->rolesActuales = [];
+
+        $funcion = $rol === 'conductor' ? TipoPersonal::conductor() : TipoPersonal::ayudante();
+        $enLaProgramacion = [$programacion->driver_id, ...$programacion->ayudantes->pluck('id')->all()];
+
+        $personas = Personal::activos()->with('tipo')->where('users.usertype_id', $funcion?->id)
+            ->whereNotIn('users.id', [...$enLaProgramacion, $salienteId])
+            ->orderBy('users.last_name')->orderBy('users.name')->limit(100)->get();
+
+        if ($personas->isEmpty()) {
+            return [];
+        }
+
+        $fecha = $programacion->date->toDateString();
+        $ocupado = [];
+        $this->disponibilidad($personas->keyBy('id'), [$fecha], $turnoId ?? (int) $programacion->shift_id, null, [$programacion->id], $ocupado);
+
+        $motivos = collect($this->problemas)->groupBy('persona_id')->map(fn (Collection $l) => $l->pluck('que')->unique()->implode('; '));
+
+        // Si el turno de hoy ya empezó, quien va a cubrir tiene que estar presente.
+        $exigeAsistencia = $this->exigeAsistencia($programacion);
+        $presentes = $exigeAsistencia
+            ? Asistencia::where('status', Asistencia::PRESENTE)->where('shift_date', $fecha)->whereIn('user_id', $personas->pluck('id'))->pluck('user_id')->all()
+            : [];
+
+        $lista = $personas->map(function (Personal $p) use ($motivos, $exigeAsistencia, $presentes) {
+            $motivo = $motivos[$p->id] ?? null;
+
+            if (! $motivo && $exigeAsistencia && ! in_array($p->id, $presentes, true)) {
+                $motivo = 'no registró asistencia hoy';
+            }
+
+            return ['persona' => $this->itemDePersona($p), 'disponible' => $motivo === null, 'motivo' => $motivo];
+        });
+
+        return $lista->sortBy(fn (array $c) => $c['disponible'] ? 0 : 1)->values()->all();
+    }
+
     /* ------------------------------------------------------------------ reemplazo masivo */
 
+    /** Zonas a las que se limita un cambio masivo (vacío = todas). Acepta `zona_ids` (lista) y `zona_id` (una sola). @return list<int> */
+    private function zonasDe(array $d): array
+    {
+        return array_values(array_unique(array_filter(array_map('intval', [...(array) ($d['zona_ids'] ?? []), ...(array) ($d['zona_id'] ?? [])]))));
+    }
+
     /** Programaciones pendientes (desde hoy) afectadas por un reemplazo. */
-    private function afectadasPorReemplazo(array $d)
+    private function afectadasPorReemplazo(array $d, bool $bloquear = false)
     {
         $desde = max($d['desde'], today()->toDateString());
 
-        return Programacion::with('ayudantes')->where('status', Programacion::PROGRAMADO)
+        // Con $bloquear la lectura es con bloqueo (FOR UPDATE): ve lo último confirmado y frena a quien quiera cambiar las mismas
+        // programaciones a la vez. Una lectura normal vería la «foto» anterior y dos cambios simultáneos se pisarían.
+        return Programacion::query()->when(! $bloquear, fn ($q) => $q->with('ayudantes'))->pendientes()
             ->entre($desde, $d['hasta'])
+            ->when($this->zonasDe($d) !== [], fn ($q) => $q->whereIn('zone_id', $this->zonasDe($d)))
+            ->when($d['rol'] === 'turno', fn ($q) => $q->where('shift_id', $d['saliente_id']))
             ->when($d['rol'] === 'conductor', fn ($q) => $q->where('driver_id', $d['saliente_id']))
             ->when($d['rol'] === 'vehiculo', fn ($q) => $q->where('vehicle_id', $d['saliente_id']))
             ->when($d['rol'] === 'ayudante', fn ($q) => $q->whereHas('ayudantes', fn ($a) => $a->where('users.id', $d['saliente_id'])))
-            ->orderBy('date')->get();
+            ->when($bloquear, fn ($q) => $q->orderBy('id')->lockForUpdate(), fn ($q) => $q->orderBy('date'))->get();
     }
 
     /**
@@ -736,22 +889,38 @@ class ReglasProgramacion
      * @param  array{rol: string, saliente_id: int, entrante_id: int, desde: string, hasta: string}  $d
      * @return array{ok: bool, errores: list<string>, sugerencias: list<string>, avisos: list<string>, total: int, filas: Collection}
      */
+    /** Lote (batch_id) de los cambios que dejó el último `reemplazar`. */
+    private ?string $ultimoLote = null;
+
+    public function ultimoLote(): ?string
+    {
+        return $this->ultimoLote;
+    }
+
     public function revisarReemplazo(array $d): array
     {
         $this->horasDeTurnos = null;
+        $this->problemas = [];
+        $this->notas = [];
+        $this->grupoActual = null;
+        $fin = fn (array $r) => $r + ['problemas' => $this->problemas, 'notas' => $this->notas];
 
         if ((int) $d['saliente_id'] === (int) $d['entrante_id']) {
-            return ['ok' => false, 'errores' => ['Quien sale y quien entra no pueden ser el mismo.'], 'sugerencias' => [], 'avisos' => [], 'total' => 0, 'filas' => collect()];
+            $this->problema('reemplazo', 'Reemplazo', 'quien sale y quien entra son lo mismo', [], 'Elija a otra persona (u otro vehículo) para entrar.');
+
+            return $fin(['ok' => false, 'errores' => ['Quien sale y quien entra no pueden ser el mismo.'], 'sugerencias' => [], 'avisos' => [], 'total' => 0, 'filas' => collect()]);
         }
 
         $filas = $this->afectadasPorReemplazo($d);
 
         if ($filas->isEmpty()) {
-            return ['ok' => false, 'errores' => ['No hay programaciones pendientes con esa persona o vehículo en el rango elegido.'], 'sugerencias' => [], 'avisos' => [], 'total' => 0, 'filas' => $filas];
+            $this->problema('reemplazo', 'Sin programaciones', 'no hay programaciones pendientes con esa persona o vehículo en el rango', [], 'Amplíe el rango de fechas.');
+
+            return $fin(['ok' => false, 'errores' => ['No hay programaciones pendientes con esa persona o vehículo en el rango elegido.'], 'sugerencias' => [], 'avisos' => [], 'total' => 0, 'filas' => $filas]);
         }
 
         // Quien ya registró asistencia ese día está trabajando: se reemplaza desde el día siguiente.
-        if ($d['rol'] !== 'vehiculo') {
+        if (in_array($d['rol'], ['conductor', 'ayudante'], true)) {
             $yaTrabajo = Asistencia::where('status', Asistencia::PRESENTE)->where('user_id', $d['saliente_id'])
                 ->whereIn('shift_date', $filas->map(fn (Programacion $p) => $p->date->toDateString())->all())
                 ->orderBy('shift_date')->get(['shift_date'])->map(fn (Asistencia $a) => $a->shift_date->toDateString())->all();
@@ -759,8 +928,10 @@ class ReglasProgramacion
             if ($yaTrabajo) {
                 $nombre = Personal::find($d['saliente_id'])?->nombre_completo ?? 'La persona';
 
-                return ['ok' => false, 'errores' => ["{$nombre} ya registró asistencia el ".self::resumenDeFechas($yaTrabajo).': no se la puede reemplazar ese día. Elija «Desde» a partir del día siguiente.'],
-                    'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas];
+                $this->problema('asistencia', $nombre, 'ya registró asistencia', $yaTrabajo, 'Elija «Desde» a partir del día siguiente.');
+
+                return $fin(['ok' => false, 'errores' => ["{$nombre} ya registró asistencia el ".self::resumenDeFechas($yaTrabajo).': no se la puede reemplazar ese día. Elija «Desde» a partir del día siguiente.'],
+                    'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas]);
             }
         }
 
@@ -771,8 +942,11 @@ class ReglasProgramacion
             $ayudantes = $p->ayudantes->pluck('id')->map(fn ($i) => (int) $i)->all();
             $vehiculo = $p->vehicle_id;
             $conductor = $p->driver_id;
+            $turnoId = $p->shift_id;
 
-            if ($d['rol'] === 'conductor') {
+            if ($d['rol'] === 'turno') {
+                $turnoId = (int) $d['entrante_id'];
+            } elseif ($d['rol'] === 'conductor') {
                 $conductor = (int) $d['entrante_id'];
             } elseif ($d['rol'] === 'vehiculo') {
                 $vehiculo = (int) $d['entrante_id'];
@@ -780,21 +954,26 @@ class ReglasProgramacion
                 $ayudantes = array_map(fn (int $i) => $i === (int) $d['saliente_id'] ? (int) $d['entrante_id'] : $i, $ayudantes);
             }
 
-            $clave = implode('|', [$p->shift_id, $p->zone_id, $vehiculo, $conductor, implode(',', $ayudantes)]);
-            $grupos[$clave]['solicitud'] ??= ['turno_id' => $p->shift_id, 'zona_id' => $p->zone_id, 'vehiculo_id' => $vehiculo, 'conductor_id' => $conductor, 'ayudantes' => $ayudantes, 'fechas' => [], 'ignorar_ids' => [],
-                'excluir' => $d['rol'] === 'vehiculo' ? [] : [(int) $d['saliente_id']]];
+            $clave = implode('|', [$turnoId, $p->zone_id, $vehiculo, $conductor, implode(',', $ayudantes)]);
+            $grupos[$clave]['solicitud'] ??= ['turno_id' => $turnoId, 'zona_id' => $p->zone_id, 'vehiculo_id' => $vehiculo, 'conductor_id' => $conductor, 'ayudantes' => $ayudantes, 'fechas' => [], 'ignorar_ids' => [],
+                'excluir' => in_array($d['rol'], ['conductor', 'ayudante'], true) ? [(int) $d['saliente_id']] : []];
             $grupos[$clave]['solicitud']['fechas'][] = $p->date->toDateString();
             $grupos[$clave]['solicitud']['ignorar_ids'][] = $p->id;
         }
 
-        $revision = $this->revisar(array_map(fn (array $g) => $g['solicitud'], array_values($grupos)));
+        $revision = $this->revisar(array_map(fn (array $g) => $g['solicitud'], array_values($grupos)), false);
 
         $avisos = $revision['avisos'];
         if ($d['desde'] < today()->toDateString()) {
             $avisos[] = 'Solo se reemplazan las programaciones desde hoy en adelante.';
         }
 
-        return ['ok' => $revision['ok'], 'errores' => $revision['errores'], 'sugerencias' => $revision['sugerencias'], 'avisos' => $avisos, 'total' => $filas->count(), 'filas' => $filas];
+        if ($d['desde'] < today()->toDateString()) {
+            $this->nota('reemplazo', 'Solo se reemplazan las programaciones desde hoy en adelante');
+        }
+
+        return ['ok' => $revision['ok'], 'errores' => $revision['errores'], 'sugerencias' => $revision['sugerencias'], 'avisos' => $avisos, 'total' => $filas->count(), 'filas' => $filas,
+            'problemas' => $revision['problemas'], 'notas' => $revision['notas']];
     }
 
     /**
@@ -807,14 +986,16 @@ class ReglasProgramacion
     public function reemplazar(array $d): int
     {
         return $this->sinChoques(fn () => DB::transaction(function () use ($d) {
-            $filas = $this->afectadasPorReemplazo($d);
+            // Lo primero que se lee son las programaciones con bloqueo: así las lecturas siguientes parten de lo ya confirmado.
+            $filas = $this->afectadasPorReemplazo($d, true);
+            $ayudantes = DB::table('programming_helpers')->whereIn('programming_id', $filas->pluck('id'))->lockForUpdate()->pluck('user_id');
 
-            $personas = $filas->flatMap(fn (Programacion $p) => [$p->driver_id, ...$p->ayudantes->pluck('id')->all()]);
+            $personas = $filas->pluck('driver_id')->merge($ayudantes);
             $vehiculos = $filas->pluck('vehicle_id');
 
             if ($d['rol'] === 'vehiculo') {
                 $vehiculos = $vehiculos->push((int) $d['entrante_id']);
-            } else {
+            } elseif ($d['rol'] !== 'turno') {
                 $personas = $personas->push((int) $d['entrante_id']);
             }
 
@@ -826,17 +1007,31 @@ class ReglasProgramacion
                 throw ValidationException::withMessages(['programacion' => $revision['errores']]);
             }
 
+            $this->ultimoLote = (string) Str::uuid();
+            $tipo = $d['rol'];
+            $antes = Cambio::modeloDe($tipo, (int) $d['saliente_id']);
+            $despues = Cambio::modeloDe($tipo, (int) $d['entrante_id']);
+            $motivo = ['id' => $d['motivo_id'] ?? null, 'descripcion' => $d['descripcion'] ?? null];
+
             foreach ($revision['filas'] as $p) {
-                if ($d['rol'] === 'conductor') {
-                    $p->update(['driver_id' => (int) $d['entrante_id']]);
-                } elseif ($d['rol'] === 'vehiculo') {
-                    $p->update(['vehicle_id' => (int) $d['entrante_id']]);
+                $estado = ['status' => Programacion::REPROGRAMADO];
+
+                if ($tipo === 'turno') {
+                    $p->update($estado);
+                    $p->moverATurno((int) $d['entrante_id']);
+                } elseif ($tipo === 'conductor') {
+                    $p->update($estado + ['driver_id' => (int) $d['entrante_id']]);
+                } elseif ($tipo === 'vehiculo') {
+                    $p->update($estado + ['vehicle_id' => (int) $d['entrante_id']]);
                 } else {
-                    $antes = $p->ayudantes->map->nombre_completo->implode(', ');
+                    $anteriores = $p->ayudantes->map->nombre_completo->implode(', ');
                     DB::table('programming_helpers')->where('programming_id', $p->id)->where('user_id', (int) $d['saliente_id'])->update(['user_id' => (int) $d['entrante_id']]);
-                    $despues = $p->ayudantes()->get()->map->nombre_completo->implode(', ');
-                    Bitacora::registrar('modificado', $p, ['ayudantes' => $antes], ['ayudantes' => $despues]);
+                    $despuesDeAyudantes = $p->ayudantes()->get()->map->nombre_completo->implode(', ');
+                    Bitacora::registrar('modificado', $p, ['ayudantes' => $anteriores], ['ayudantes' => $despuesDeAyudantes]);
+                    $p->update($estado);
                 }
+
+                Cambio::registrar($p, $tipo, $antes, $despues, $motivo, $this->ultimoLote, $d['usuario_id'] ?? null, Cambio::MASIVO);
             }
 
             return $revision['total'];

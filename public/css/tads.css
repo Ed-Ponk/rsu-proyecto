@@ -2417,3 +2417,206 @@ a.t-funcion:hover .t-funcion-flecha {
     display: block;
     color: var(--rsu-slate-500);
 }
+
+
+/* ---------- Resultado de «Validar disponibilidad»: tarjetas cortas en vez de bloques de texto ---------- */
+.t-veredicto {
+    border-radius: var(--t-radio);
+    font-size: 0.88rem;
+}
+
+.t-veredicto-ok {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    color: var(--rsu-emerald-900);
+    background: var(--rsu-emerald-50);
+    border: 1px solid var(--rsu-emerald-200);
+}
+
+.t-veredicto-ok > i {
+    font-size: 1.15rem;
+    color: var(--rsu-emerald-600);
+}
+
+.t-veredicto-error {
+    background: #ffffff;
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    overflow: hidden;
+}
+
+.t-veredicto-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    color: var(--rsu-red-800);
+    background: var(--rsu-red-50);
+    border-bottom: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.t-veredicto-cabecera > i {
+    color: var(--rsu-red-600);
+}
+
+.t-veredicto-contador {
+    margin-left: auto;
+    padding: 1px 9px;
+    border-radius: 999px;
+    color: var(--rsu-red-700);
+    background: #ffffff;
+    border: 1px solid rgba(220, 38, 38, 0.25);
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.t-problemas {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.t-problema {
+    display: flex;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rsu-slate-100);
+}
+
+.t-problema:last-child {
+    border-bottom: 0;
+}
+
+.t-problema-oculto {
+    display: none;
+}
+
+.t-problema-icono {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: var(--rsu-red-600);
+    background: var(--rsu-red-50);
+    font-size: 0.9rem;
+}
+
+.t-problema-cuerpo {
+    min-width: 0;
+    flex: 1;
+}
+
+.t-problema-linea {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--rsu-slate-800);
+}
+
+.t-problema-que {
+    color: var(--rsu-slate-600);
+}
+
+.t-problema-grupo {
+    padding: 0 7px;
+    border-radius: 6px;
+    color: var(--rsu-slate-700);
+    background: var(--rsu-slate-100);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.t-problema-fechas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.t-chip-fecha {
+    padding: 0 7px;
+    border-radius: 6px;
+    color: var(--rsu-slate-700);
+    background: var(--rsu-slate-100);
+    border: 1px solid var(--rsu-slate-200);
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.t-chip-mas {
+    color: var(--rsu-slate-500);
+    background: transparent;
+    cursor: help;
+}
+
+.t-problema-solucion {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    color: var(--rsu-emerald-800);
+    font-size: 0.84rem;
+}
+
+.t-problema-solucion > i {
+    color: var(--rsu-amber-500);
+}
+
+.t-aplicar {
+    padding: 2px 10px;
+    border: 1px solid var(--rsu-emerald-600);
+    border-radius: 999px;
+    color: var(--rsu-emerald-800);
+    background: var(--rsu-emerald-50);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+}
+
+.t-aplicar:hover {
+    color: #ffffff;
+    background: var(--rsu-emerald-700);
+}
+
+.t-ver-mas {
+    display: block;
+    width: 100%;
+    padding: 7px;
+    border: 0;
+    border-top: 1px solid var(--rsu-slate-100);
+    color: var(--rsu-slate-600);
+    background: var(--rsu-slate-50);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.t-ver-mas:hover {
+    color: var(--rsu-slate-800);
+    background: var(--rsu-slate-100);
+}
+
+.t-notas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.t-nota-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    color: #0c4a6e;
+    background: #e0f2fe;
+    border: 1px solid #bae6fd;
+    font-size: 0.78rem;
+}

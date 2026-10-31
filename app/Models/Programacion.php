@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /** Un día de trabajo programado: quién va, en qué vehículo, a qué zona y en qué turno. */
 class Programacion extends Model
@@ -16,9 +18,14 @@ class Programacion extends Model
 
     public const PROGRAMADO = 'programado';
 
+    public const REPROGRAMADO = 'reprogramado';
+
     public const FINALIZADO = 'finalizado';
 
-    public const ESTADOS = [self::PROGRAMADO => 'Programado', self::FINALIZADO => 'Finalizado'];
+    /** Estados en los que todavía se puede modificar, eliminar o finalizar (aún no se cumplió). */
+    public const PENDIENTES = [self::PROGRAMADO, self::REPROGRAMADO];
+
+    public const ESTADOS = [self::PROGRAMADO => 'Programado', self::REPROGRAMADO => 'Reprogramado', self::FINALIZADO => 'Finalizado'];
 
     protected $table = 'programmings';
 
@@ -60,9 +67,20 @@ class Programacion extends Model
             ->withPivot('position')->orderByPivot('position');
     }
 
+    /** ¿Sigue pendiente (programada o reprogramada)? Una finalizada ya no se toca. */
     public function esProgramado(): bool
     {
-        return $this->status === self::PROGRAMADO;
+        return in_array($this->status, self::PENDIENTES, true);
+    }
+
+    public function scopePendientes(Builder $consulta): Builder
+    {
+        return $consulta->whereIn('status', self::PENDIENTES);
+    }
+
+    public function cambios(): HasMany
+    {
+        return $this->hasMany(Cambio::class, 'programming_id');
     }
 
     /**
@@ -104,6 +122,13 @@ class Programacion extends Model
     public function scopeEntre(Builder $consulta, string $desde, string $hasta): Builder
     {
         return $consulta->where('date', '>=', $desde)->where('date', '<=', $hasta);
+    }
+
+    /** Cambia el turno de la programación y el que llevan copiado sus ayudantes (la clave única es persona + fecha + turno). */
+    public function moverATurno(int $turnoId): void
+    {
+        $this->update(['shift_id' => $turnoId]);
+        DB::table('programming_helpers')->where('programming_id', $this->id)->update(['shift_id' => $turnoId]);
     }
 
     /** Cambia los ayudantes (con su fecha y turno copiados, para el único por persona). */

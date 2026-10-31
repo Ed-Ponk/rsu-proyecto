@@ -85,7 +85,7 @@ class FeriadoController extends Controller
             return [];
         }
 
-        $cantidad = Programacion::where('status', Programacion::PROGRAMADO)->where('date', $feriado->date->toDateString())->count();
+        $cantidad = Programacion::pendientes()->where('date', $feriado->date->toDateString())->count();
 
         return $cantidad
             ? ['aviso' => "El {$feriado->date->format('d/m/Y')} hay {$cantidad} programación(es) pendiente(s). No se quitaron solas: revíselas en Programación (están marcadas como feriado) y use «Quitar las de feriados»."]
@@ -125,7 +125,7 @@ class FeriadoController extends Controller
 
             $resultado = $cargador->guardar(collect($lote['feriados'])->pluck('description', 'date')->all());
 
-            $afectadas = Programacion::where('status', Programacion::PROGRAMADO)->whereIn('date', array_keys(collect($lote['feriados'])->pluck('description', 'date')->all()))->count();
+            $afectadas = Programacion::pendientes()->whereIn('date', array_keys(collect($lote['feriados'])->pluck('description', 'date')->all()))->count();
 
             return $this->exito('Lote guardado', 'admin.feriados.index', $resultado + ['resumen' => $this->resumen(), 'afectadas' => $afectadas]);
         }

@@ -195,7 +195,10 @@ Notas:
   - Aprobar vacaciones de alguien programado en esas fechas se bloquea hasta reprogramarlo.
 - Los datos de demostración (`php artisan db:seed` en local) incluyen «Grupo A» y «Grupo B».
 - **Reglas para situaciones reales** (ajustables en `config/proyecto.php`, bloque `programacion`):
-  - Nadie trabaja dos turnos el mismo día y entre dos turnos debe haber un descanso mínimo (8 h por defecto): un turno de noche no puede seguir con uno de mañana.
+  - Una persona puede trabajar dos turnos el mismo día, incluso seguidos; lo único que se rechaza es el mismo turno dos veces o turnos cuyos horarios se cruzan.
+  - Los mensajes de la validación dicen quién, qué turno y qué días («Carlos Guerrero tiene vacaciones aprobadas los días 02/12/2026, 04/12/2026 y 07/12/2026.») y proponen qué hacer. Cambiar o desactivar un contrato, o aprobar vacaciones, se bloquea si deja días programados sin cobertura (se resuelve con «Reemplazar»).
+  - El resultado de «Validar disponibilidad» se muestra en tarjetas cortas (quién · qué pasa · qué días · solución en una línea) y, cuando hay un reemplazo libre, con un botón «Cambiar por…» que lo aplica al formulario y vuelve a validar solo. La API entrega `problemas` y `notas` estructurados además de los textos.
+  - Pruebas combinatorias (lentas, aparte de la suite normal): `php artisan test tests/Combinatorias` cruza cientos de situaciones y compara el validador contra un cálculo independiente.
   - **Reemplazar** (botón en Programación): cambia a un conductor, un ayudante o un vehículo (por ejemplo, al taller) en todas las programaciones pendientes de un rango, con las mismas validaciones y con historial.
   - Un feriado nuevo sobre días ya programados avisa; el listado marca esas filas y «Quitar las de feriados» las elimina de una vez.
   - Aprobar vacaciones de quien está programado se bloquea hasta reemplazarlo; al solicitarlas ya se avisa.
@@ -207,6 +210,21 @@ Notas:
   - **Primeros pasos**: los formularios que dependen de otros datos (grupos, programaciones, contratos, vacaciones, asistencia, vehículos) avisan qué hay que registrar antes y dónde. Las cantidades se pueden escribir con coma decimal (`1,5`, `1.500,50`); las placas deben combinar letras y números y se guardan en mayúsculas.
   - **Varias personas a la vez**: si dos usuarios guardan lo mismo en el mismo instante, uno guarda y el otro recibe un mensaje claro (no un error 500); las operaciones que se cruzan en la base de datos se reintentan solas, solo una persona puede resolver una solicitud de vacaciones y las zonas se guardan de una en una para que no queden superpuestas.
   - Las vacaciones no cruzan de un año a otro (se dividen en dos solicitudes) y cambiar el horario de un turno con programaciones pendientes avisa.
+
+## Avance 04: modificar programaciones, gestión de cambios y dashboard
+
+Después de `git pull` ejecute `php artisan migrate` (crea `change_reasons` y `programming_changes`) y, en local, `php artisan db:seed --class=CambiosDemoSeeder` (motivos básicos, dos grupos que trabajan todos los días con programaciones desde hoy, una vacación que deja incompleta una programación y cambios individuales y masivos de ejemplo para ver el dashboard y la lista de cambios con datos).
+
+- **Programación masiva** (Programación → Programación → «Programación masiva»): rango de fechas, filtro de grupos por turno y por texto. Los **feriados del rango se listan** y el usuario marca cuáles quiere trabajar (los demás se omiten). Cada grupo tiene **Editar** (conductor, vehículo y ayudantes solo para esa programación) y **Detalles del grupo** (su personal y su historial de cambios individuales y masivos). «Validar disponibilidad» aplica la validación individual **grupo por grupo** y marca cada tarjeta («Sin problemas · 6 días» / «2 problemas»); el grupo con problemas se abre solo y el botón «Cambiar por…» lo corrige.
+- **Modificar programación**: tres paneles (turno, vehículo, personal) con el valor actual y el nuevo. **Cada cambio pide su motivo**: uno predefinido y/o un texto. Debajo, la tabla de cambios de esa programación, donde cada uno se puede **deshacer**. Al cambiar algo, la programación pasa a **Reprogramado** (sigue siendo pendiente: se puede modificar, eliminar y finalizar).
+- **Dashboard** (Programación → Dashboard): para una fecha y turno, total de programaciones, **completas, incompletas y personal faltante**, con una tarjeta por zona. «Ver detalles» lista cada programación con su personal; el faltante (vacaciones, sin contrato, faltó o sin asistencia con el turno ya iniciado) se cambia por alguien **disponible**: la lista solo permite a quien no esté de vacaciones, tenga contrato, no tenga ese turno (ni uno que se cruce) y, si el turno de hoy ya empezó, haya marcado asistencia.
+- **Diseño**: las pantallas del Avance 04 usan el mismo lenguaje visual que el resto del sistema (paleta RSU pizarra/esmeralda/ámbar, tarjetas `t-tarjeta`, insignias `t-insignia`, botones `t-boton`, `x-admin.kpi-card`, tarjetas de problema de la validación). El dashboard muestra cuatro indicadores, filtros y una tarjeta por programación con «Presentes / Faltantes» y «Ver detalles»; «Ver detalles» abre el *Editor de programación* (turno, vehículo y personal, cada cambio con su motivo y la tabla «Cambios registrados»). La programación masiva muestra una tarjeta por grupo con selects de conductor y ayudantes, filtro por turno, feriados a omitir y resultado por grupo. El cambio masivo pide confirmación con un resumen y cada cambio tiene su ventana de detalle. Todas las listas tienen buscador con lupa y «Mostrar N registros», y todo se adapta al móvil (las ventanas pasan a pantalla completa).
+- **Gestión de cambios**:
+  - *Motivos*: CRUD de motivos (nombre y descripción). Un motivo eliminado no borra el historial: los cambios conservan su nombre.
+  - *Cambios*: lista con filtros (fecha inicio/fin y tipo), detalle con valores previos y nuevos (programación, usuario, fecha, motivo) y **cambio masivo** en un rango de fechas y zona: turno, vehículo, conductor u ocupante, con validación previa y confirmación.
+  - Los cambios de una misma modificación comparten lote: en la lista se ven como una fila («Varios» si mezclan tipos) y se deshacen juntos; desde la ventana de modificar se puede deshacer un solo cambio.
+  - Todo cambio pide motivo, también el antiguo «Reemplazar»; para solo validar la disponibilidad no hace falta.
+  - **Eliminar un cambio restablece los valores iniciales** (todo o nada): solo se puede si la programación sigue pendiente, no hay un cambio posterior del mismo dato y el valor anterior sigue disponible; si ya no queda ningún cambio, la programación vuelve a «Programado».
 
 ## Producción y operación
 
