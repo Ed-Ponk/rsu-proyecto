@@ -2285,3 +2285,135 @@ a.t-funcion:hover .t-funcion-flecha {
         grid-template-columns: auto 1fr;
     }
 }
+
+/* ---------- Lista de programaciones: atajos de fechas, vistas y resumen por grupo ---------- */
+.t-atajos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.t-atajo {
+    padding: 5px 12px;
+    border: 1px solid var(--rsu-slate-300);
+    border-radius: var(--t-radio-pill);
+    background: #ffffff;
+    color: var(--rsu-slate-700);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.t-atajo:hover {
+    border-color: var(--rsu-emerald-600);
+}
+
+.t-atajo[aria-pressed="true"] {
+    color: var(--rsu-emerald-800);
+    background: var(--rsu-emerald-50);
+    border-color: var(--rsu-emerald-600);
+}
+
+.t-vistas {
+    display: inline-flex;
+    padding: 3px;
+    gap: 3px;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio);
+    background: var(--rsu-slate-100);
+}
+
+.t-vista {
+    padding: 6px 14px;
+    border: 0;
+    border-radius: var(--t-radio-sm);
+    background: transparent;
+    color: var(--rsu-slate-600);
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.t-vista[aria-selected="true"] {
+    background: #ffffff;
+    color: var(--rsu-emerald-800);
+    box-shadow: var(--t-sombra);
+}
+
+.t-fichas-grupo {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+}
+
+.t-fichas-cargando {
+    padding: 24px;
+    color: var(--rsu-slate-500);
+}
+
+.t-ficha-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 18px;
+    background: #ffffff;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio-lg);
+    box-shadow: var(--t-sombra);
+}
+
+.t-ficha-grupo header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.t-ficha-grupo h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--rsu-slate-900);
+}
+
+.t-ficha-grupo header small {
+    color: var(--rsu-slate-500);
+}
+
+.t-ficha-grupo dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+    margin: 0;
+}
+
+.t-ficha-grupo dt {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--rsu-slate-500);
+}
+
+.t-ficha-grupo dd {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--rsu-slate-800);
+}
+
+.t-ficha-grupo footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding-top: 10px;
+    margin-top: auto;
+    border-top: 1px solid var(--rsu-slate-100);
+}
+
+.t-ficha-cuenta strong {
+    font-size: 1.15rem;
+    color: var(--rsu-slate-900);
+}
+
+.t-ficha-cuenta small {
+    display: block;
+    color: var(--rsu-slate-500);
+}

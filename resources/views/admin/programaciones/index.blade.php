@@ -34,6 +34,13 @@
 
         <div class="t-tarjeta mb-3">
             <div class="t-tarjeta-cuerpo">
+                <div class="t-atajos mb-3" role="group" aria-label="Rangos rápidos de fechas">
+                    <span class="small fw-semibold text-muted me-1">Ver:</span>
+                    <button type="button" class="t-atajo" data-atajo="hoy">Hoy</button>
+                    <button type="button" class="t-atajo" data-atajo="semana">Esta semana</button>
+                    <button type="button" class="t-atajo" data-atajo="mes">Este mes</button>
+                    <button type="button" class="t-atajo" data-atajo="tres" aria-pressed="true">Próximos 3 meses</button>
+                </div>
                 <div class="t-filtros">
                     <div>
                         <label class="form-label fw-semibold small" for="filtroDesde">Fecha de inicio</label>
@@ -42,6 +49,34 @@
                     <div>
                         <label class="form-label fw-semibold small" for="filtroHasta">Fecha de fin</label>
                         <input type="date" id="filtroHasta" class="form-control" value="{{ $hasta }}">
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold small" for="filtroGrupo">Grupo</label>
+                        <select id="filtroGrupo" class="form-select">
+                            <option value="">Todos los grupos</option>
+                            @foreach ($grupos as $grupo)
+                                <option value="{{ $grupo->id }}">{{ $grupo->name }}</option>
+                            @endforeach
+                            <option value="sin">Sin grupo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold small" for="filtroPersona">Persona</label>
+                        <select id="filtroPersona" class="form-select">
+                            <option value="">Todo el personal</option>
+                            @foreach ($personas as $persona)
+                                <option value="{{ $persona->id }}">{{ $persona->nombre_completo }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold small" for="filtroEstado">Estado</label>
+                        <select id="filtroEstado" class="form-select">
+                            <option value="">Todos</option>
+                            @foreach (\App\Models\Programacion::ESTADOS as $valor => $texto)
+                                <option value="{{ $valor }}">{{ $texto }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div>
                         <label class="form-label fw-semibold small" for="filtroZona">Zona</label>
@@ -69,7 +104,19 @@
             </div>
         </div>
 
-        <div class="t-tarjeta">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div class="t-vistas" role="tablist" aria-label="Forma de ver las programaciones">
+                <button type="button" class="t-vista" data-vista="resumen" role="tab" aria-selected="true"><i class="bi bi-grid-3x2-gap-fill me-1"></i> Resumen por grupo</button>
+                <button type="button" class="t-vista" data-vista="detalle" role="tab" aria-selected="false"><i class="bi bi-list-ul me-1"></i> Detalle por día</button>
+            </div>
+            <span class="small text-muted" id="textoVista"></span>
+        </div>
+
+        <div id="panelResumen">
+            <div class="t-fichas-grupo" id="resumenGrupos"></div>
+        </div>
+
+        <div class="t-tarjeta" id="panelDetalle" hidden>
             <div class="t-tarjeta-cuerpo">
                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
                     <div class="t-exportar" id="botonesExportar"></div>

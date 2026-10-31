@@ -34,10 +34,16 @@ class ProgramacionController extends Controller
 
     public function index(Request $request)
     {
+        // Por defecto se ve el mes actual y los dos siguientes: lo que se programa suele ser a futuro.
+        $porDefectoDesde = today()->startOfMonth();
+        $porDefectoHasta = today()->addMonthsNoOverflow(2)->endOfMonth();
+
         if (! $request->ajax()) {
             return view('admin.programaciones.index', [
-                'desde' => today()->startOfMonth()->toDateString(),
-                'hasta' => today()->endOfMonth()->toDateString(),
+                'desde' => $porDefectoDesde->toDateString(),
+                'hasta' => $porDefectoHasta->toDateString(),
+                'grupos' => GrupoPersonal::orderBy('name')->get(['id', 'name']),
+                'personas' => Personal::activos()->whereNotNull('users.usertype_id')->orderBy('users.name')->orderBy('users.last_name')->get(),
             ]);
         }
 
@@ -46,19 +52,32 @@ class ProgramacionController extends Controller
             'hasta' => ['nullable', 'date'],
             'zona_id' => ['nullable', 'integer'],
             'turno_id' => ['nullable', 'integer'],
+            // "sin" = programaciones que ya no tienen grupo (se eliminó su plantilla).
+            'grupo_id' => ['nullable', 'regex:/^(\d+|sin)$/'],
+            'estado' => ['nullable', 'in:'.implode(',', array_keys(Programacion::ESTADOS))],
+            'persona_id' => ['nullable', 'integer'],
+            'vista' => ['nullable', 'in:detalle,resumen'],
         ], ['desde.date' => 'La fecha inicial no es válida.', 'hasta.date' => 'La fecha final no es válida.']);
 
-        $desde = Carbon::parse($filtro['desde'] ?? today()->startOfMonth());
-        $hasta = Carbon::parse($filtro['hasta'] ?? today()->endOfMonth());
+        $desde = Carbon::parse($filtro['desde'] ?? $porDefectoDesde);
+        $hasta = Carbon::parse($filtro['hasta'] ?? $porDefectoHasta);
 
         if ($hasta->lt($desde)) {
             [$desde, $hasta] = [$hasta, $desde];
         }
 
-        $filas = Programacion::with(['zona', 'turno', 'vehiculo', 'conductor', 'ayudantes'])
-            ->entre($desde->toDateString(), $hasta->toDateString())
+        $consulta = Programacion::entre($desde->toDateString(), $hasta->toDateString())
             ->when($filtro['zona_id'] ?? null, fn ($q, $v) => $q->where('zone_id', $v))
             ->when($filtro['turno_id'] ?? null, fn ($q, $v) => $q->where('shift_id', $v))
+            ->when($filtro['grupo_id'] ?? null, fn ($q, $v) => $v === 'sin' ? $q->whereNull('group_id') : $q->where('group_id', $v))
+            ->when($filtro['estado'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($filtro['persona_id'] ?? null, fn ($q, $v) => $q->dePersona((int) $v));
+
+        if (($filtro['vista'] ?? null) === 'resumen') {
+            return response()->json(['data' => $this->resumenPorGrupo($consulta)]);
+        }
+
+        $filas = $consulta->with(['zona', 'turno', 'vehiculo', 'conductor', 'ayudantes'])
             ->orderBy('date')->orderBy('shift_id')->orderBy('id')
             ->limit(self::TOPE_LISTADO)->get();
 
@@ -66,6 +85,44 @@ class ProgramacionController extends Controller
         $filas = $filas->map(fn (Programacion $p) => $this->fila($p, $contexto));
 
         return response()->json(['data' => $filas, 'truncado' => $filas->count() >= self::TOPE_LISTADO]);
+    }
+
+    /**
+     * Una tarjeta por grupo con lo esencial (rango, cantidades, próximo día). Es la vista de entrada: decenas de
+     * filas diarias se leen como 3 o 4 tarjetas, y el detalle día por día se abre solo cuando hace falta.
+     */
+    private function resumenPorGrupo($consulta): array
+    {
+        $filas = $consulta->with(['grupo', 'zona', 'turno', 'vehiculo', 'conductor'])->orderBy('date')->get();
+        $hoy = today()->toDateString();
+
+        return $filas->groupBy(fn (Programacion $p) => $p->group_id ?? 'sin')->map(function ($dias, $clave) use ($hoy) {
+            $primera = $dias->first();
+            $pendientes = $dias->filter->esProgramado();
+            $proxima = $pendientes->first(fn (Programacion $p) => $p->date->toDateString() >= $hoy);
+            // Pendientes de días ya pasados: hay que finalizarlas (o eliminarlas si no se trabajó).
+            $atrasadas = $pendientes->filter(fn (Programacion $p) => $p->date->toDateString() < $hoy)->count();
+            $lista = fn (string $relacion, string $campo) => $dias->map(fn (Programacion $p) => $p->{$relacion}?->{$campo})->filter()->unique()->values()->all();
+            // Con cuántos días: si hubo un reemplazo (vacaciones, taller), se ve que fueron días distintos y no dos a la vez.
+            $conDias = fn (string $relacion, string $campo) => $dias->groupBy(fn (Programacion $p) => $p->{$relacion}?->{$campo} ?? '—')
+                ->map(fn ($grupo, $nombre) => ['nombre' => $nombre, 'dias' => $grupo->count()])->sortByDesc('dias')->values()->all();
+
+            return [
+                'grupo_id' => $clave,
+                'grupo' => $primera->grupo?->name ?? 'Sin grupo (plantilla eliminada)',
+                'zonas' => $lista('zona', 'name'),
+                'turnos' => $lista('turno', 'name'),
+                'placas' => $conDias('vehiculo', 'plate'),
+                'conductores' => $conDias('conductor', 'nombre_completo'),
+                'desde' => $dias->first()->date->format('d/m/Y'),
+                'hasta' => $dias->last()->date->format('d/m/Y'),
+                'total' => $dias->count(),
+                'programadas' => $pendientes->count(),
+                'finalizadas' => $dias->count() - $pendientes->count(),
+                'atrasadas' => $atrasadas,
+                'proxima' => $proxima?->date->format('d/m/Y'),
+            ];
+        })->sortBy('grupo')->values()->all();
     }
 
     /* ---------------------------- programación individual ---------------------------- */

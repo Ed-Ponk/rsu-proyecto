@@ -48,7 +48,7 @@
             @else
                 <div class="t-lista-grupos" data-error-destino>
                     @foreach ($grupos as $grupo)
-                        <label class="t-grupo-opcion" data-grupo-opcion data-texto="{{ \Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii($grupo->name.' '.$grupo->zona?->name.' '.$grupo->turno?->name.' '.$grupo->conductor?->nombre_completo)) }}">
+                        <label class="t-grupo-opcion" data-grupo-opcion data-texto="{{ \Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii($grupo->name.' '.$grupo->zona?->name.' '.$grupo->turno?->name.' '.$grupo->vehiculo?->plate.' '.$grupo->conductor?->nombre_completo)) }}">
                             <input type="checkbox" name="grupos[]" value="{{ $grupo->id }}">
                             <span class="t-grupo-nombre"><strong>{{ $grupo->name }}</strong><small>{{ $grupo->zona?->name }} · {{ $grupo->turno?->name }}</small></span>
                             <span class="t-grupo-dato"><small>Vehículo</small>{{ $grupo->vehiculo?->plate }}</span>

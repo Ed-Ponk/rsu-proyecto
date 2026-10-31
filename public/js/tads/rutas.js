@@ -154,12 +154,12 @@
         }
 
         const sugerencias = resultado.sugerencias?.length
-            ? `<strong class="d-block mt-2"><i class="bi bi-lightbulb-fill me-1"></i> Sugerencias:</strong>${lista(resultado.sugerencias)}`
+            ? `<strong class="d-block mt-2"><i class="bi bi-lightbulb-fill me-1"></i> Qué puede hacer:</strong>${lista(resultado.sugerencias)}`
             : '';
 
         panel.innerHTML = `
             <div class="t-validacion t-validacion-error" role="alert">
-                <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Hay errores que corregir</strong>
+                <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Todavía no se puede guardar</strong>
                 ${lista(resultado.errores)}${sugerencias}
             </div>${avisos}`;
     }
@@ -299,13 +299,14 @@
         });
         formulario.addEventListener('change', (e) => { if (e.target.closest('[data-grupo-opcion]')) actualizar(); });
 
-        filtro.addEventListener('input', () => {
+        filtro.addEventListener('input', (e) => {
+            // Escribir en el filtro no debe contar como un cambio de datos. Se corta aquí y no con un listener de
+            // captura: en el propio campo, stopPropagation en captura también impide este listener (Chrome 89+).
+            e.stopPropagation();
             const texto = filtro.value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
             opciones.forEach((o) => { o.hidden = texto !== '' && !o.dataset.texto.includes(texto); });
             actualizar();
         });
-        // Escribir en el filtro no debe contar como un cambio de datos.
-        filtro.addEventListener('input', (e) => e.stopPropagation(), true);
         actualizar();
     }
 
@@ -318,6 +319,11 @@
             const urlRecurso = contenedor.dataset.urlRecurso;
             const campo = (id) => document.getElementById(id);
             const valoresIniciales = { desde: campo('filtroDesde').value, hasta: campo('filtroHasta').value };
+            const filtros = () => ({
+                desde: campo('filtroDesde').value, hasta: campo('filtroHasta').value,
+                zona_id: campo('filtroZona').value, turno_id: campo('filtroTurno').value,
+                grupo_id: campo('filtroGrupo').value, persona_id: campo('filtroPersona').value, estado: campo('filtroEstado').value,
+            });
 
             const gestor = new Tads.Gestor({
                 entidad: 'programación',
@@ -328,10 +334,7 @@
                 urlCrear: contenedor.dataset.urlCrear,
                 orden: [[0, 'asc']],
                 porPagina: 15,
-                filtros: () => ({
-                    desde: campo('filtroDesde').value, hasta: campo('filtroHasta').value,
-                    zona_id: campo('filtroZona').value, turno_id: campo('filtroTurno').value,
-                }),
+                filtros,
                 alCargarListado: (json) => {
                     campo('avisoTruncado').hidden = !json.truncado;
                     // El botón de quitar solo aparece si el listado muestra programaciones sobre un feriado.
@@ -445,14 +448,144 @@
                 Tads.aviso(json.mensaje);
             });
 
-            campo('botonFiltrar').addEventListener('click', () => gestor.recargar());
+            /* ---- Resumen por grupo: la vista de entrada, una tarjeta por grupo en lugar de una fila por día ---- */
+
+            const fecha = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const lista = (valores, vacio = '—') => Tads.escapar(valores.length ? valores.join(', ') : vacio);
+            // Uno solo: el nombre. Varios (hubo un reemplazo): uno por línea con sus días, para que no parezcan dos a la vez.
+            const conDias = (items) => (items.length === 1
+                ? Tads.escapar(items[0].nombre)
+                : items.map((i) => `<span class="d-block">${Tads.escapar(i.nombre)} <small class="text-muted">· ${i.dias} ${i.dias === 1 ? 'día' : 'días'}</small></span>`).join(''));
+            let vista = 'resumen';
+            // Grupo que puso «Ver días» (no el usuario): al volver al resumen se quita, para ver otra vez todos los grupos.
+            let grupoDeFicha = null;
+            try { vista = localStorage.getItem('programaciones.vista') === 'detalle' ? 'detalle' : 'resumen'; } catch (e) { /* sin almacenamiento */ }
+
+            async function cargarResumen() {
+                const destino = campo('resumenGrupos');
+                destino.innerHTML = '<div class="t-fichas-cargando"><span class="spinner-border spinner-border-sm me-2"></span>Cargando…</div>';
+
+                const { ok, estado, json } = await Tads.peticion(`${contenedor.dataset.urlListado}?${new URLSearchParams({ ...filtros(), vista: 'resumen' })}`);
+                if (!ok) return Tads.alertaDeError(estado, json, 'No se pudo cargar el resumen');
+
+                const grupos = json.data;
+                const total = grupos.reduce((suma, g) => suma + g.total, 0);
+                campo('textoVista').textContent = vista === 'resumen'
+                    ? `${grupos.length} ${grupos.length === 1 ? 'grupo' : 'grupos'} · ${total} ${total === 1 ? 'día programado' : 'días programados'} en el rango`
+                    : '';
+
+                if (!grupos.length) {
+                    destino.innerHTML = `
+                        <div class="t-tarjeta"><div class="t-vacio">
+                            <i class="bi bi-calendar-x"></i>
+                            <h6>No hay programaciones con estos filtros</h6>
+                            <p>Pruebe con «Próximos 3 meses», pulse «Limpiar» o cree una con «Nueva programación».</p>
+                        </div></div>`;
+                    return;
+                }
+
+                destino.innerHTML = grupos.map((g) => `
+                    <article class="t-ficha-grupo">
+                        <header>
+                            <div>
+                                <h3>${Tads.escapar(g.grupo)}</h3>
+                                <small>${lista(g.zonas)} · ${lista(g.turnos)}</small>
+                            </div>
+                            ${g.atrasadas ? Tads.insignia(`${g.atrasadas} por finalizar`, 'ambar') : ''}
+                        </header>
+                        <dl>
+                            <div><dt>Fechas</dt><dd>${Tads.escapar(g.desde)} → ${Tads.escapar(g.hasta)}</dd></div>
+                            <div><dt>Próximo día</dt><dd>${g.proxima ? Tads.escapar(g.proxima) : '<span class="text-muted">Ninguno pendiente</span>'}</dd></div>
+                            <div><dt>${g.conductores.length > 1 ? 'Conductor (por días)' : 'Conductor'}</dt><dd>${conDias(g.conductores)}</dd></div>
+                            <div><dt>${g.placas.length > 1 ? 'Vehículo (por días)' : 'Vehículo'}</dt><dd>${conDias(g.placas)}</dd></div>
+                        </dl>
+                        <footer>
+                            <span class="t-ficha-cuenta"><strong>${g.total}</strong> ${g.total === 1 ? 'día' : 'días'}
+                                <small>${g.programadas} programado${g.programadas === 1 ? '' : 's'} · ${g.finalizadas} finalizado${g.finalizadas === 1 ? '' : 's'}</small></span>
+                            <button type="button" class="btn t-boton btn-sm" data-ver-dias="${Tads.escapar(String(g.grupo_id))}"><i class="bi bi-list-ul me-1"></i> Ver días</button>
+                        </footer>
+                    </article>`).join('');
+            }
+
+            function mostrarVista(nueva) {
+                vista = nueva;
+                try { localStorage.setItem('programaciones.vista', vista); } catch (e) { /* sin almacenamiento */ }
+
+                contenedor.querySelectorAll('[data-vista]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.vista === vista)));
+                campo('panelResumen').hidden = vista !== 'resumen';
+                campo('panelDetalle').hidden = vista !== 'detalle';
+
+                if (vista === 'detalle') {
+                    campo('textoVista').innerHTML = grupoDeFicha
+                        ? `Mostrando solo los días de <strong>${Tads.escapar(grupoDeFicha)}</strong>. <button type="button" class="btn btn-link btn-sm p-0 align-baseline" data-volver-resumen><i class="bi bi-arrow-left me-1"></i>Volver a todos los grupos</button>`
+                        : 'Cada fila es un día. Use el buscador o los filtros para acotar.';
+                    gestor.tabla.columns.adjust();
+                    gestor.recargar();
+                } else {
+                    if (grupoDeFicha) {
+                        campo('filtroGrupo').value = '';
+                        grupoDeFicha = null;
+                    }
+                    cargarResumen();
+                }
+            }
+
+            const recargarTodo = () => (vista === 'resumen' ? cargarResumen() : gestor.recargar());
+
+            contenedor.querySelectorAll('[data-vista]').forEach((b) => b.addEventListener('click', () => mostrarVista(b.dataset.vista)));
+
+            // "Ver días" de una tarjeta: el detalle filtrado a ese grupo.
+            campo('resumenGrupos').addEventListener('click', (evento) => {
+                const boton = evento.target.closest('[data-ver-dias]');
+                if (!boton) return;
+                campo('filtroGrupo').value = boton.dataset.verDias;
+                grupoDeFicha = boton.closest('.t-ficha-grupo').querySelector('h3').textContent;
+                mostrarVista('detalle');
+            });
+            campo('textoVista').addEventListener('click', (evento) => {
+                if (evento.target.closest('[data-volver-resumen]')) mostrarVista('resumen');
+            });
+
+            // Atajos de fechas: un clic en vez de escribir dos fechas.
+            const atajos = {
+                hoy: () => { const h = new Date(); return [h, h]; },
+                semana: () => { const h = new Date(); const lunes = new Date(h); lunes.setDate(h.getDate() - ((h.getDay() + 6) % 7)); const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6); return [lunes, domingo]; },
+                mes: () => { const h = new Date(); return [new Date(h.getFullYear(), h.getMonth(), 1), new Date(h.getFullYear(), h.getMonth() + 1, 0)]; },
+                tres: () => { const h = new Date(); return [new Date(h.getFullYear(), h.getMonth(), 1), new Date(h.getFullYear(), h.getMonth() + 3, 0)]; },
+            };
+            const marcarAtajo = (clave) => contenedor.querySelectorAll('[data-atajo]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.atajo === clave)));
+
+            contenedor.querySelectorAll('[data-atajo]').forEach((b) => b.addEventListener('click', () => {
+                const [desde, hasta] = atajos[b.dataset.atajo]();
+                campo('filtroDesde').value = fecha(desde);
+                campo('filtroHasta').value = fecha(hasta);
+                marcarAtajo(b.dataset.atajo);
+                recargarTodo();
+            }));
+            ['filtroDesde', 'filtroHasta'].forEach((id) => campo(id).addEventListener('input', () => marcarAtajo(null)));
+
+            // Las listas desplegables filtran al momento; las fechas, con «Filtrar» (se escriben en varios pasos).
+            ['filtroGrupo', 'filtroPersona', 'filtroEstado', 'filtroZona', 'filtroTurno'].forEach((id) => campo(id).addEventListener('change', recargarTodo));
+            // Si el usuario elige el grupo a mano, el filtro pasa a ser suyo y se respeta al volver al resumen.
+            campo('filtroGrupo').addEventListener('change', () => {
+                grupoDeFicha = null;
+                if (vista === 'detalle') campo('textoVista').textContent = 'Cada fila es un día. Use el buscador o los filtros para acotar.';
+            });
+
+            campo('botonFiltrar').addEventListener('click', recargarTodo);
             campo('botonLimpiar').addEventListener('click', () => {
                 campo('filtroDesde').value = valoresIniciales.desde;
                 campo('filtroHasta').value = valoresIniciales.hasta;
-                campo('filtroZona').value = '';
-                campo('filtroTurno').value = '';
-                gestor.recargar();
+                ['filtroZona', 'filtroTurno', 'filtroGrupo', 'filtroPersona', 'filtroEstado'].forEach((id) => { campo(id).value = ''; });
+                marcarAtajo('tres');
+                recargarTodo();
             });
+
+            // Lo que cambia los datos (guardar, eliminar, finalizar, reemplazar) también debe refrescar el resumen.
+            const recargarTabla = gestor.recargar.bind(gestor);
+            gestor.recargar = () => { recargarTabla(); if (vista === 'resumen') cargarResumen(); };
+
+            mostrarVista(vista);
         },
     };
 

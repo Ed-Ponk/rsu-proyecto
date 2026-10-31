@@ -17,11 +17,13 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Reglas de la programación de rutas. Una "solicitud" es lo que se quiere generar para un grupo:
- *   inicio, fin, dias[1-7], turno_id, zona_id, vehiculo_id, conductor_id, ayudantes[ids], etiqueta?, ignorar_id?
+ *   inicio, fin, dias[1-7], turno_id, zona_id, vehiculo_id, conductor_id, ayudantes[ids], etiqueta?, ignorar_id?,
+ *   excluir?[ids] (personas que no se deben sugerir como reemplazo)
  *
  * `revisar` no escribe nada: devuelve los errores, las sugerencias de reemplazo y las fechas que se generarían.
  * `generar` repite la revisión con las personas bloqueadas y recién entonces guarda, así dos usuarios que
@@ -408,11 +410,38 @@ class ReglasProgramacion
             }
         }
 
+        // Lo más común al empezar: volver a programar días que el grupo ya tiene. Se dice primero y en claro, porque
+        // si no, cada persona y el vehículo aparecen "ocupados" sin que se entienda por qué.
+        if (filled($s['grupo_id'] ?? null)) {
+            $repetidas = Programacion::where('group_id', $s['grupo_id'])->whereIn('date', $fechas)
+                ->when($ignorarIds, fn ($q) => $q->whereNotIn('id', $ignorarIds))
+                ->orderBy('date')->pluck('date')->map(fn ($d) => Carbon::parse($d)->toDateString())->unique()->values()->all();
+
+            if ($repetidas) {
+                $nombre = $s['etiqueta'] ?? 'El grupo';
+                $mensaje = count($repetidas) === count($fechas)
+                    ? "{$nombre} ya está programado en todos esos días (".self::resumenDeFechas($repetidas).'). Ya aparecen en la lista de programaciones: no hace falta volver a generarlos.'
+                    : "{$nombre} ya está programado en ".count($repetidas).' de esos días ('.self::resumenDeFechas($repetidas).').';
+
+                if (count($repetidas) === count($fechas)) {
+                    return ['errores' => [...$errores, $mensaje], 'avisos' => $avisos, 'fechas' => $fechas, 'sugerencias' => [
+                        'Para ver esos días, filtre la lista de programaciones por esas fechas.',
+                        'Para cambiar al conductor, a un ayudante o el vehículo en esos días, use «Reemplazar».',
+                    ]];
+                }
+
+                $errores[] = $mensaje;
+                $sugerencias[] = 'Empiece el rango después del '.Carbon::parse(end($repetidas))->format('d/m/Y').' para programar solo los días que faltan, o use «Reemplazar» para cambiar personas en los días ya programados.';
+            }
+        }
+
         if ($turno && $personas->isNotEmpty()) {
             [$mensajes, $malas, $avisosPersonas] = $this->disponibilidad($personas, $fechas, $turno->id, $vehiculo, $ignorarIds, $ocupado);
             $errores = [...$errores, ...$mensajes];
             $avisos = [...$avisos, ...$avisosPersonas];
-            $reservados = $todos;   // un reemplazo sugerido se reserva: no se ofrece a la misma persona para dos ausentes
+            // Un reemplazo sugerido se reserva: no se ofrece a la misma persona para dos ausentes. Tampoco se sugiere a
+            // quien se está sacando de la programación (reemplazos).
+            $reservados = [...$todos, ...array_map('intval', (array) ($s['excluir'] ?? []))];
 
             foreach ($malas as $id => $fechasMalas) {
                 $persona = $personas[$id];
@@ -422,9 +451,11 @@ class ReglasProgramacion
                     $reservados[] = $reemplazo->id;
                 }
 
+                $funcion = Str::lower($persona->tipo?->name ?? 'persona');
+
                 $sugerencias[] = $reemplazo
-                    ? "Sugerencia: Reemplazar a {$persona->nombre_completo} con {$reemplazo->nombre_completo}"
-                    : "Sugerencia: no hay personal disponible de la misma función para reemplazar a {$persona->nombre_completo}; revise contratos y vacaciones.";
+                    ? "Cambie a {$persona->nombre_completo} por {$reemplazo->nombre_completo}: es {$funcion} y está libre en esos días."
+                    : "No hay otro {$funcion} libre para cubrir a {$persona->nombre_completo} en esos días: los demás ya están programados, de vacaciones o sin contrato vigente.";
             }
         }
 
@@ -515,6 +546,7 @@ class ReglasProgramacion
         $desde = $fechas[0];
         $hasta = end($fechas);
         $descanso = (int) config('proyecto.programacion.descanso_minimo_horas', 8);
+        $nombresDeTurnos = Turno::pluck('name', 'id')->all();
 
         $contratos = Contrato::where('is_active', true)->whereIn('user_id', $ids)
             ->where('start_date', '<=', $hasta)
@@ -535,6 +567,7 @@ class ReglasProgramacion
 
         foreach ($personas as $id => $persona) {
             $porContrato = $porVacaciones = $porOcupacion = $porLote = $porDia = $porDescanso = [];
+            $choque = [];   // primer turno con el que choca, para explicar el porqué: ['dia' => [fecha, turno], 'descanso' => ...]
 
             foreach ($fechas as $fecha) {
                 if (! ($contratos[$id] ?? collect())->contains(fn (Contrato $c) => $c->start_date->toDateString() <= $fecha
@@ -547,21 +580,29 @@ class ReglasProgramacion
                 }
 
                 foreach ($existentes[$id] ?? [] as [$otraFecha, $otroTurno]) {
-                    match ($this->choqueDeHorario($fecha, $turnoId, $otraFecha, $otroTurno)) {
+                    $tipo = $this->choqueDeHorario($fecha, $turnoId, $otraFecha, $otroTurno);
+                    match ($tipo) {
                         'igual' => $porOcupacion[] = $fecha,
                         'dia' => $porDia[] = $fecha,
                         'descanso' => $porDescanso[] = $fecha,
                         default => null,
                     };
+                    if ($tipo) {
+                        $choque[$tipo] ??= [$otraFecha, $otroTurno];
+                    }
                 }
 
                 foreach ($ocupado['int'][$id] ?? [] as [$otraFecha, $otroTurno]) {
-                    match ($this->choqueDeHorario($fecha, $turnoId, $otraFecha, $otroTurno)) {
+                    $tipo = $this->choqueDeHorario($fecha, $turnoId, $otraFecha, $otroTurno);
+                    match ($tipo) {
                         'igual' => $porLote[] = $fecha,
                         'dia' => $porDia[] = $fecha,
                         'descanso' => $porDescanso[] = $fecha,
                         default => null,
                     };
+                    if ($tipo && $tipo !== 'igual') {
+                        $choque[$tipo] ??= [$otraFecha, $otroTurno];
+                    }
                 }
 
                 $ocupado['int'][$id][] = [$fecha, $turnoId];
@@ -575,22 +616,26 @@ class ReglasProgramacion
             // Si el contrato existe pero termina dentro del rango, se dice cuándo vence en vez de un mensaje genérico.
             $vence = ($contratos[$id] ?? collect())->filter(fn (Contrato $c) => $c->end_date)->map(fn (Contrato $c) => $c->end_date->toDateString())->max();
             $textoContrato = $porContrato && $vence && $vence >= $desde && $vence < end($porContrato)
-                ? 'Su contrato vence el '.Carbon::parse($vence)->format('d/m/Y')
-                : 'Empleado no disponible por razones de contrato';
+                ? 'su contrato vence el '.Carbon::parse($vence)->format('d/m/Y').' y no cubre'
+                : 'no tiene contrato vigente para';
+
+            $turnoDe = fn (string $tipo) => isset($choque[$tipo])
+                ? ' (ya tiene turno '.($nombresDeTurnos[$choque[$tipo][1]] ?? '').' el '.Carbon::parse($choque[$tipo][0])->format('d/m/Y').')'
+                : '';
 
             $detalles = [
-                [$porVacaciones, 'Tiene vacaciones aprobadas'],
+                [$porVacaciones, 'está de vacaciones aprobadas en'],
                 [$porContrato, $textoContrato],
-                [array_values(array_unique($porOcupacion)), 'Ya está asignado a otra programación del mismo turno'],
-                [array_values(array_unique($porLote)), 'Está repetido en otro grupo de esta misma programación'],
-                [array_values(array_unique($porDia)), 'Ya trabaja otro turno ese mismo día'],
-                [array_values(array_unique($porDescanso)), "No tiene el descanso mínimo de {$descanso} h entre turnos"],
+                [array_values(array_unique($porOcupacion)), 'ya está programado en este mismo turno en'],
+                [array_values(array_unique($porLote)), 'está en dos de los grupos elegidos, en el mismo turno, en'],
+                [array_values(array_unique($porDia)), 'ya trabaja otro turno'.$turnoDe('dia').' en'],
+                [array_values(array_unique($porDescanso)), "no llega a descansar {$descanso} h entre turnos".$turnoDe('descanso').' en'],
             ];
 
             foreach ($detalles as [$afectadas, $texto]) {
                 if ($afectadas) {
                     sort($afectadas);
-                    $mensajes[] = "{$persona->nombre_completo}: {$texto} (afecta ".self::resumenDeFechas($afectadas).')';
+                    $mensajes[] = "{$persona->nombre_completo} {$texto} ".self::resumenDeFechas($afectadas).'.';
                     $malas[$id] = array_values(array_unique([...($malas[$id] ?? []), ...$afectadas]));
                 }
             }
@@ -621,7 +666,7 @@ class ReglasProgramacion
             sort($afectadas);
 
             if ($afectadas) {
-                $mensajes[] = "Vehículo {$vehiculo->name} ({$vehiculo->plate}): ya está asignado a otra programación del mismo turno (afecta ".self::resumenDeFechas($afectadas).')';
+                $mensajes[] = "El vehículo {$vehiculo->name} ({$vehiculo->plate}) ya sale en otra programación de este mismo turno en ".self::resumenDeFechas($afectadas).'.';
             }
         }
 
@@ -736,7 +781,8 @@ class ReglasProgramacion
             }
 
             $clave = implode('|', [$p->shift_id, $p->zone_id, $vehiculo, $conductor, implode(',', $ayudantes)]);
-            $grupos[$clave]['solicitud'] ??= ['turno_id' => $p->shift_id, 'zona_id' => $p->zone_id, 'vehiculo_id' => $vehiculo, 'conductor_id' => $conductor, 'ayudantes' => $ayudantes, 'fechas' => [], 'ignorar_ids' => []];
+            $grupos[$clave]['solicitud'] ??= ['turno_id' => $p->shift_id, 'zona_id' => $p->zone_id, 'vehiculo_id' => $vehiculo, 'conductor_id' => $conductor, 'ayudantes' => $ayudantes, 'fechas' => [], 'ignorar_ids' => [],
+                'excluir' => $d['rol'] === 'vehiculo' ? [] : [(int) $d['saliente_id']]];
             $grupos[$clave]['solicitud']['fechas'][] = $p->date->toDateString();
             $grupos[$clave]['solicitud']['ignorar_ids'][] = $p->id;
         }

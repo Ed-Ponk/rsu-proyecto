@@ -29,6 +29,13 @@ class CabecerasDeSeguridad
 
         $respuesta->headers->remove('X-Powered-By');
 
+        // Una misma URL (p. ej. /admin/turnos) devuelve la página o, pedida por la tabla con AJAX, sus datos en JSON.
+        // Sin esto, el botón «Atrás» del navegador puede mostrar el JSON guardado en caché en lugar de la página.
+        $respuesta->setVary(['X-Requested-With', 'Accept'], false);
+        if ($request->ajax() || $request->wantsJson()) {
+            $respuesta->headers->set('Cache-Control', 'no-store, private');
+        }
+
         return $respuesta;
     }
 }
