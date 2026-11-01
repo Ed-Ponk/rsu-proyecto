@@ -51,7 +51,7 @@ class DatabaseSeeder extends Seeder
 
     private function esEntornoDeDesarrollo(): bool
     {
-        return app()->environment(['local', 'testing']);
+        return app()->environment(['local', 'testing']) || config('proyecto.sembrar_demo');
     }
 
     /**

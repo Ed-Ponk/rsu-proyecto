@@ -7,6 +7,7 @@
 # Cualquier copia del .env (tiene APP_KEY y claves); solo se versiona la plantilla.
 /.env.*
 !/.env.example
+!/.env.docker.example
 .phpactor.json
 .phpunit.result.cache
 /.fleet

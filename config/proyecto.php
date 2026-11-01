@@ -28,6 +28,9 @@ return [
         'dias_por_anio' => 30,
     ],
 
+    // true = el seeder carga también los datos de ejemplo aunque el entorno no sea «local» (se usa en Docker: SEED_DEMO=true).
+    'sembrar_demo' => (bool) env('SEED_DEMO', false),
+
     // Administrador inicial. En desarrollo se usa admin@rsu.test; en producción son obligatorios.
     'admin' => [
         'correo' => env('ADMIN_EMAIL'),

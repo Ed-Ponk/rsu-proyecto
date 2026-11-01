@@ -235,6 +235,44 @@ Después de `git pull` ejecute `php artisan migrate` (crea `change_reasons` y `p
 - **Seguridad → Usuarios del sistema / Bitácora**: alta, edición y baja de administradores (siempre queda uno activo) y consulta de quién cambió qué.
 - **Pruebas y estilo**: `php artisan test` y `vendor/bin/pint`; el flujo de GitHub Actions (`.github/workflows/pruebas.yml`) ejecuta ambos.
 
+## Docker: ejecutar el sistema en otra computadora
+
+El sistema corre en **4 contenedores** (4 imágenes distintas) definidos en `docker-compose.yml`:
+
+| Servicio | Imagen | Función |
+|---|---|---|
+| `web` | `nginx:1.27-alpine` (oficial) | Proxy inverso, recibe las visitas en el puerto 8080 |
+| `app` | `pieroramirezusat/rsu-municipal` (propia, Docker Hub) | Laravel 12 + PHP 8.3 + Apache, construida con el `Dockerfile` |
+| `db` | `mysql:8.0` (oficial) | Base de datos con volumen persistente |
+| `phpmyadmin` | `phpmyadmin:5` (oficial) | Administración de la base, solo en `127.0.0.1:8081` |
+
+Imagen en Docker Hub: https://hub.docker.com/r/pieroramirezusat/rsu-municipal (etiquetas `1.0` y `latest`).
+
+### Requisitos
+- Docker Desktop (Windows/Mac) o Docker Engine (Linux) con **Docker Compose 2.23 o superior**.
+- Conexión a internet (descarga las imágenes y algunas librerías de interfaz desde CDN).
+- Puertos libres: 8080 y 8081 (se pueden cambiar con `WEB_PORT` y `PMA_PORT`).
+
+### Pasos (no hace falta instalar PHP, MySQL ni Composer)
+1. Descargue el proyecto (`git clone` o ZIP) y abra una terminal en su carpeta.
+2. Cree el archivo de variables con claves aleatorias:
+   - Windows (PowerShell): `powershell -ExecutionPolicy Bypass -File docker\crear-env.ps1`
+   - Linux / macOS / Git Bash: `sh docker/crear-env.sh`
+
+   Muestra una sola vez la contraseña del administrador; también queda en el archivo `.env`.
+   (Alternativa manual: copie `.env.docker.example` a `.env` y cambie todos los valores `CAMBIAR_...`; el sistema no arranca con ellos sin cambiar.)
+3. Levante el sistema: `docker compose up -d` (la primera vez descarga la imagen desde Docker Hub; la base se crea y se llena sola).
+4. Abra http://localhost:8080 e ingrese con `admin@rsu.local` y la contraseña del paso 2. phpMyAdmin: http://localhost:8081.
+
+Si ya tiene un `.env` de desarrollo en la carpeta, use otro archivo: `docker\crear-env.ps1 -Destino .env.docker` y luego `docker compose --env-file .env.docker up -d`.
+
+### Comandos útiles
+- Estado: `docker compose ps` · Registros: `docker compose logs -f app`
+- Detener: `docker compose down` (conserva los datos) · Borrar todo, datos incluidos: `docker compose down -v`
+- Construir la imagen en vez de descargarla: `docker compose build app`
+
+Seguridad: la imagen no contiene `.env` ni contraseñas; las claves se reciben por variables de entorno y el archivo `.env` está fuera de Git.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
