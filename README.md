@@ -271,7 +271,7 @@ Si ya tiene un `.env` de desarrollo en la carpeta, use otro archivo: `docker\cre
 - Detener: `docker compose down` (conserva los datos) · Borrar todo, datos incluidos: `docker compose down -v`
 - Construir la imagen en vez de descargarla: `docker compose build app`
 
-Seguridad: la imagen no contiene `.env` ni contraseñas; las claves se reciben por variables de entorno y el archivo `.env` está fuera de Git.
+Seguridad: la imagen no contiene `.env` ni contraseñas; se reciben por variables de entorno y el archivo `.env` está fuera de Git. Las cookies de sesión no son `Secure` por defecto (`SESSION_SECURE_COOKIE=false`) para que el login funcione por http desde cualquier dirección; si se publica el sitio con HTTPS, definir `SESSION_SECURE_COOKIE=true` en el `.env`.
 
 ## About Laravel
 
