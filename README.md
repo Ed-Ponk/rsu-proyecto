@@ -250,7 +250,7 @@ Imagen en Docker Hub: https://hub.docker.com/r/pieroramirezusat/rsu-municipal (e
 
 ### Requisitos
 - Docker Desktop (Windows/Mac) o Docker Engine (Linux) con **Docker Compose 2.23 o superior**.
-- Conexión a internet (descarga las imágenes y algunas librerías de interfaz desde CDN).
+- Conexión a internet para descargar las imágenes. Una vez descargadas, el sistema funciona sin conexión (AdminLTE, Bootstrap y Leaflet vienen dentro de la imagen); solo el fondo del mapa de Zonas y el buscador de direcciones consultan OpenStreetMap.
 - Puertos libres: 8080 y 8081 (se pueden cambiar con `WEB_PORT` y `PMA_PORT`).
 
 ### Pasos (no hace falta instalar PHP, MySQL ni Composer)
