@@ -159,6 +159,13 @@ return [
         'grupo_id' => 'grupo',
         'grupos' => 'grupos',
         'grupos.*' => 'grupo',
+        // Ajustes por grupo de la programación masiva (detalle[ID del grupo][...]): sin nombres técnicos en los mensajes.
+        'detalle' => 'ajuste del grupo',
+        'detalle.*' => 'ajuste del grupo',
+        'detalle.*.vehiculo_id' => 'vehículo',
+        'detalle.*.conductor_id' => 'conductor',
+        'detalle.*.ayudantes' => 'ayudantes',
+        'detalle.*.ayudantes.*' => 'ayudante',
         'vehiculo_id' => 'vehículo',
         'vehicle_id' => 'vehículo',
         'zone_id' => 'zona',

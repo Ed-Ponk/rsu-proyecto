@@ -60,8 +60,8 @@
                 <div class="t-nota mb-3"><small class="text-muted d-block">Motivo</small>${Tads.escapar(r.motivo)}</div>
                 <div class="t-nota t-nota-ambar">
                     <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Revise antes de continuar:</strong>
-                    se ${total === 1 ? 'cambiará 1 programación' : `cambiarán ${total} programaciones`} y quedarán como «Reprogramado».
-                    Podrá deshacerlo eliminando el cambio desde la lista de cambios.
+                    esta operación afectará a ${total === 1 ? '1 programación registrada' : `${total} programaciones registradas`} en el periodo seleccionado y ${total === 1 ? 'quedará' : 'quedarán'} como «Reprogramado».
+                    Solo podrá deshacerla (eliminando el cambio desde la lista de cambios) mientras las programaciones sigan pendientes y no tengan un cambio posterior.
                 </div>
             </div>`;
     }

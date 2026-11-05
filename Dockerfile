@@ -32,7 +32,7 @@ FROM php:8.3-apache AS app
 LABEL org.opencontainers.image.title="RSU - Sistema de Residuos Sólidos Urbanos" \
       org.opencontainers.image.description="Laravel 12 + PHP 8.3 + Apache. Municipalidad Distrital de José Leonardo Ortiz." \
       org.opencontainers.image.source="https://github.com/Ed-Ponk/rsu-proyecto" \
-      org.opencontainers.image.version="1.0"
+      org.opencontainers.image.version="1.1"
 
 ENV TZ=America/Lima \
     APP_ENV=production \

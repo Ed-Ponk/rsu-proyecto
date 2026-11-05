@@ -444,9 +444,9 @@ class ReglasProgramacion
             $llevan = count($idsAyudantes);
             $errores[] = "El vehículo {$vehiculo->name} ({$vehiculo->plate}) solo tiene lugar para {$cabe} ".($cabe === 1 ? 'persona' : 'personas')
                 .": 1 conductor y {$ayudantesQueCaben} ".($ayudantesQueCaben === 1 ? 'ayudante' : 'ayudantes').". Aquí van 1 conductor y {$llevan} "
-                .($llevan === 1 ? 'ayudante' : 'ayudantes').': quite ayudantes o elija otro vehículo.';
+                .($llevan === 1 ? 'ayudante' : 'ayudantes').': quite ayudantes o cambie el vehículo del grupo.';
             $this->problema('capacidad', "Vehículo {$vehiculo->plate}", "solo lleva {$cabe} ".($cabe === 1 ? 'persona' : 'personas')." (1 conductor y {$ayudantesQueCaben} ".($ayudantesQueCaben === 1 ? 'ayudante' : 'ayudantes').") y aquí van {$llevan}", [],
-                'Quite ayudantes o elija otro vehículo.');
+                'Quite ayudantes o cambie el vehículo del grupo.');
         }
 
         $personas = Personal::with('tipo')->whereIn('users.id', $todos)->get()->keyBy('id');
@@ -515,7 +515,11 @@ class ReglasProgramacion
 
             foreach ($malas as $id => $fechasMalas) {
                 $persona = $personas[$id];
-                $reemplazo = $persona->status ? $this->buscarReemplazo($persona, $fechasMalas, $turno->id, $reservados, $ignorarIds, $ocupado) : null;
+                // El reemplazo se pone en TODOS los días de la programación, no solo en los que fallan: tiene que poder cubrirlos todos.
+                // Tampoco se descarta a la persona inactiva: también necesita que le ofrezcan reemplazo.
+                $reemplazo = $this->buscarReemplazo($persona, $fechasAComprobar, $turno->id, $reservados, $ignorarIds, $ocupado);
+                // Si nadie cubre todo el rango, se busca quien cubra al menos los días con problema (para usar «Reemplazar» solo en esos días).
+                $soloEsosDias = $reemplazo ? null : $this->buscarReemplazo($persona, $fechasMalas, $turno->id, $reservados, $ignorarIds, $ocupado);
 
                 if ($reemplazo) {
                     $reservados[] = $reemplazo->id;
@@ -525,12 +529,14 @@ class ReglasProgramacion
 
                 $sugerencias[] = $reemplazo
                     ? "Cambie a {$persona->nombre_completo} por {$reemplazo->nombre_completo}: es {$funcion} y está libre en esos días."
-                    : "No hay otro {$funcion} libre para cubrir a {$persona->nombre_completo} en esos días: los demás ya están programados, de vacaciones o sin contrato vigente.";
+                    : ($soloEsosDias
+                        ? "Ningún {$funcion} libre puede cubrir todo el rango. {$soloEsosDias->nombre_completo} sí puede cubrir a {$persona->nombre_completo} ".self::diasTexto($fechasMalas).': programe el grupo y luego use «Reemplazar» solo para esos días.'
+                        : "No hay otro {$funcion} libre para cubrir a {$persona->nombre_completo} en esos días: los demás ya están programados, de vacaciones o sin contrato vigente.");
 
                 // La misma sugerencia, pero colgada de los problemas de esa persona (con botón si hay reemplazo).
                 foreach ($this->problemas as &$problema) {
                     if (($problema['persona_id'] ?? null) === $id && $problema['grupo'] === $this->grupoActual && $problema['solucion'] === null) {
-                        $problema['solucion'] = $reemplazo ? "Cambiar por {$reemplazo->nombre_completo}" : "No hay otro {$funcion} libre: revise contratos y vacaciones";
+                        $problema['solucion'] = $reemplazo ? "Cambiar por {$reemplazo->nombre_completo}" : ($soloEsosDias ? "Nadie cubre todo el rango: use «Reemplazar» solo para esos días ({$soloEsosDias->nombre_completo})" : "No hay otro {$funcion} libre: revise contratos y vacaciones");
                         $problema['accion'] = $reemplazo ? ['tipo' => 'cambiar', 'persona_id' => $id, 'rol' => $problema['rol'], 'por' => $this->itemDePersona($reemplazo)] : null;
                     }
                 }
@@ -642,7 +648,7 @@ class ReglasProgramacion
             ->selectRaw('user_id, count(*) as total')->groupBy('user_id')->pluck('total', 'user_id');
 
         foreach ($personas as $id => $persona) {
-            $porContrato = $porVacaciones = $porOcupacion = $porLote = $porCruce = [];
+            $porContrato = $porVacaciones = $porOcupacion = $porLote = $porCruce = $propias = [];
             $choque = null;   // primer turno con el que se cruza, para explicar el porqué: [fecha, turno]
 
             foreach ($fechas as $fecha) {
@@ -679,12 +685,14 @@ class ReglasProgramacion
                     }
                 }
 
-                $ocupado['int'][$id][] = [$fecha, $turnoId];
+                // Las fechas de esta misma solicitud no chocan entre sí: se guardan aparte y se suman al terminar (evita revisar cada fecha contra todas las anteriores).
+                $propias[] = [$fecha, $turnoId];
             }
+            $ocupado['int'][$id] = [...($ocupado['int'][$id] ?? []), ...$propias];
 
             if (! $persona->status) {
                 $mensajes[] = "{$persona->nombre_completo} está inactivo y no se puede programar.";
-                $this->problema('inactivo', $persona->nombre_completo, 'está inactivo', [], 'Elija a otra persona.', $id);
+                $this->problema('inactivo', $persona->nombre_completo, 'está inactivo', [], null, $id);
                 $malas[$id] = $fechas;
             }
 
@@ -752,7 +760,7 @@ class ReglasProgramacion
 
             if ($afectadas) {
                 $mensajes[] = "El vehículo {$vehiculo->name} ({$vehiculo->plate}) ya está en otra programación del turno {$turnoActual} ".self::diasTexto($afectadas).'.';
-                $this->problema('vehiculo', "Vehículo {$vehiculo->plate}", 'ya está en otra programación de este turno', $afectadas, 'Elija otro vehículo o cambie el turno.');
+                $this->problema('vehiculo', "Vehículo {$vehiculo->plate}", 'ya está en otra programación de este turno', $afectadas, 'Cambie el vehículo o el turno del grupo.');
             }
         }
 
