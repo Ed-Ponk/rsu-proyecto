@@ -246,7 +246,7 @@ El sistema corre en **4 contenedores** (4 imágenes distintas) definidos en `doc
 | `db` | `mysql:8.0` (oficial) | Base de datos con volumen persistente |
 | `phpmyadmin` | `phpmyadmin:5` (oficial) | Administración de la base, solo en `127.0.0.1:8081` |
 
-Imagen en Docker Hub: https://hub.docker.com/r/pieroramirezusat/rsu-municipal (etiquetas `1.0` y `latest`).
+Imagen en Docker Hub: https://hub.docker.com/r/pieroramirezusat/rsu-municipal (etiquetas `1.0`, `1.1` y `latest`). La `1.1` todavía no incluye el dashboard medido por turno, las tarjetas como filtro ni la bitácora legible: se publicarán en la `1.2`.
 
 ### Requisitos
 - Docker Desktop (Windows/Mac) o Docker Engine (Linux) con **Docker Compose 2.23.1 o superior**.
@@ -254,17 +254,22 @@ Imagen en Docker Hub: https://hub.docker.com/r/pieroramirezusat/rsu-municipal (e
 - Puertos libres: 8080 y 8081 (se pueden cambiar con `WEB_PORT` y `PMA_PORT`).
 
 ### Pasos (no hace falta instalar PHP, MySQL ni Composer)
-1. Descargue el proyecto (`git clone` o ZIP) y abra una terminal en su carpeta.
+1. Descargue el proyecto (`git clone` o ZIP) y abra una terminal en su carpeta. El repositorio es privado: para clonarlo hay que tener acceso de colaborador. En Windows, ejecute antes `git config --global core.longpaths true`; si no, el clon falla con «Filename too long».
 2. Cree el archivo de variables con claves aleatorias:
    - Windows (PowerShell): `powershell -ExecutionPolicy Bypass -File docker\crear-env.ps1`
    - Linux / macOS / Git Bash: `sh docker/crear-env.sh`
 
    Muestra una sola vez la contraseña del administrador; también queda en el archivo `.env`.
-   (Alternativa manual: copie `.env.docker.example` a `.env` y cambie todos los valores `CAMBIAR_...`; el sistema no arranca con ellos sin cambiar.)
+   (Alternativa manual: copie `.env.docker.example` a `.env` y cambie todos los valores `CAMBIAR_...`; el sistema no arranca con ellos sin cambiar, ni con `ADMIN_PASSWORD` vacía.)
 3. Levante el sistema: `docker compose up -d` (la primera vez descarga la imagen desde Docker Hub; la base se crea y se llena sola).
-4. Abra http://localhost:8080 e ingrese con `admin@rsu.local` y la contraseña del paso 2. phpMyAdmin: http://localhost:8081.
+4. Abra http://localhost:8080 e ingrese con `admin@rsu.local` y la contraseña del paso 2. phpMyAdmin: http://localhost:8081 (usuario `rsu` y la contraseña `DB_PASSWORD` del `.env`).
 
-Si ya tiene un `.env` de desarrollo en la carpeta, use otro archivo: `docker\crear-env.ps1 -Destino .env.docker` y luego `docker compose --env-file .env.docker up -d`.
+Si ya tiene un `.env` de desarrollo en la carpeta, el script no lo sobrescribe: use otro archivo, `docker\crear-env.ps1 -Destino .env.docker`, y luego `docker compose --env-file .env.docker up -d`.
+
+### Si no puede iniciar sesión
+- Vea con qué datos se creó el administrador: `docker exec rsu-app printenv ADMIN_EMAIL ADMIN_PASSWORD`.
+- Ponga una contraseña nueva sin borrar datos: `docker exec -it rsu-app php artisan admin:cambiar-clave admin@rsu.local`.
+- Cambiar `ADMIN_PASSWORD` en el `.env` después del primer arranque no surte efecto: el administrador se crea una sola vez.
 
 ### Comandos útiles
 - Estado: `docker compose ps` · Registros: `docker compose logs -f app`

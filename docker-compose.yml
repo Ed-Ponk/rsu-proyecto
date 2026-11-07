@@ -76,8 +76,9 @@ services:
       FILESYSTEM_DISK: local
       BROADCAST_CONNECTION: log
       MAIL_MAILER: log
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Obligatoria: con SEED_DEMO=true y la clave vacía, el administrador quedaría con una clave por defecto conocida.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@rsu.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD en el archivo .env}
       SEED_DEMO: ${SEED_DEMO:-false}
     volumes:
       - rsu_storage:/var/www/html/storage
