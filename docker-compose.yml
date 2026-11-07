@@ -7,7 +7,7 @@
 #   phpmyadmin  phpmyadmin:5        Administración visual de la base de datos.
 #
 # Uso:   1) Cree su .env a partir de .env.docker.example   2) docker compose up -d
-# Requiere Docker Compose 2.23 o superior (la configuración de nginx va dentro de este archivo).
+# Requiere Docker Compose 2.23.1 o superior (la configuración de nginx va dentro de este archivo).
 # ============================================================================
 
 name: rsu
@@ -32,7 +32,9 @@ services:
     networks:
       - rsu_red
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      # Sin contraseña: ping responde 0 aunque se niegue el acceso, así la clave de root no aparece en la lista de procesos.
+      # Por TCP (127.0.0.1) y no por socket: el servidor temporal de la inicialización no escucha por red y no cuenta como listo.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -64,6 +66,8 @@ services:
       DB_DATABASE: ${DB_DATABASE:-rsu_proyecto}
       DB_USERNAME: ${DB_USERNAME:-rsu}
       DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en el archivo .env}
+      # Solo para que el arranque rechace el valor de ejemplo CAMBIAR_CLAVE_ROOT; la aplicación no lo usa para conectarse.
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD en el archivo .env}
       SESSION_DRIVER: database
       # false: el login funciona por http en cualquier dirección. Con HTTPS delante del proxy, poner true en el .env.
       SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
