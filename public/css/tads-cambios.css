@@ -1,0 +1,397 @@
+/* ==========================================================================
+   Avance 04 (cambios de programación, dashboard, masiva): solo la maquetación propia de estas pantallas.
+   Colores, botones, insignias, tarjetas y tablas son los de tads.css (paleta RSU: pizarra, esmeralda, ámbar, ladrillo).
+   ========================================================================== */
+
+/* ---------- Barra de las listas: buscador con lupa + «Mostrar N» (vale para todos los CRUD) ---------- */
+.dt-container > .row {
+    align-items: center;
+    row-gap: 8px;
+}
+
+/* El buscador ocupa el ancho disponible (hasta 30 rem) en vez de encogerse a su contenido. */
+.dt-container .dt-layout-start:has(.dt-search) {
+    flex: 1 1 22rem !important;
+    width: auto !important;
+    max-width: 30rem;
+}
+
+.dt-container .dt-search {
+    position: relative;
+    display: flex;
+    width: 100%;
+    margin: 0 !important;
+}
+
+.dt-container .dt-search label {
+    display: none;
+}
+
+.dt-container .dt-search::before {
+    content: "\f52a";
+    font-family: "bootstrap-icons";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--rsu-slate-500);
+    pointer-events: none;
+}
+
+.dt-container .dt-search input {
+    width: 100%;
+    min-height: 42px;
+    margin: 0 !important;
+    padding-left: 38px !important;
+    border-radius: var(--t-radio-pill) !important;
+    background: #ffffff;
+}
+
+.dt-container .dt-length {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    color: var(--rsu-slate-600);
+    font-size: 0.86rem;
+}
+
+.dt-container .dt-length::after {
+    content: "registros";
+}
+
+.dt-container .dt-length select {
+    width: auto;
+    min-width: 4.8rem;
+    padding-right: 2rem;
+    min-height: 38px;
+    border-radius: var(--t-radio);
+}
+
+@media (max-width: 575.98px) {
+    .dt-container .dt-layout-start:has(.dt-search) {
+        max-width: none;
+        flex-basis: 100% !important;
+    }
+
+    .dt-container .dt-layout-end {
+        margin-left: 0 !important;
+    }
+}
+
+/* ---------- Celdas de las listas ---------- */
+.av-valor {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.av-valor i {
+    margin-top: 5px;
+    font-size: 0.55rem;
+}
+
+.av-valor .av-antes { color: var(--rsu-amber-500); }
+.av-valor .av-despues { color: var(--rsu-emerald-600); }
+
+.av-valor small,
+.av-usuario small {
+    display: block;
+    color: var(--rsu-slate-500);
+}
+
+.av-usuario {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.av-usuario i {
+    margin-top: 3px;
+    color: var(--rsu-slate-500);
+}
+
+/* ---------- Dashboard: reutiliza las tarjetas de resumen (t-ficha-grupo) ---------- */
+.av-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.av-zonas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 14px;
+}
+
+.av-tarjeta-zona {
+    border-left: 4px solid var(--rsu-emerald-500);
+}
+
+.av-tarjeta-zona.incompleta {
+    border-left-color: var(--rsu-red-500);
+}
+
+.av-tarjeta-zona header h3 i {
+    margin-right: 6px;
+    color: var(--rsu-emerald-600);
+}
+
+.av-tarjeta-zona.incompleta header h3 i {
+    color: var(--rsu-red-500);
+}
+
+.av-asistencia {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.av-asistencia > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--t-radio);
+    border: 1px solid var(--rsu-slate-200);
+    background: var(--rsu-slate-50);
+    font-size: 0.78rem;
+    color: var(--rsu-slate-600);
+}
+
+.av-asistencia strong {
+    display: block;
+    font-size: 1.15rem;
+    line-height: 1.1;
+    color: var(--rsu-slate-900);
+}
+
+.av-asistencia .si i { color: var(--rsu-emerald-600); font-size: 1.1rem; }
+.av-asistencia .no i { color: var(--rsu-slate-400); font-size: 1.1rem; }
+.av-asistencia .no.hay { border-color: var(--rsu-red-100); background: var(--rsu-red-50); }
+.av-asistencia .no.hay i,
+.av-asistencia .no.hay strong { color: var(--rsu-red-700); }
+
+/* ---------- Editor de programación ---------- */
+.av-panel {
+    height: 100%;
+    padding: 14px 16px 16px;
+    background: #ffffff;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio-lg);
+    box-shadow: var(--t-sombra-sm);
+}
+
+.av-panel-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--rsu-slate-900);
+}
+
+.av-panel-titulo span {
+    width: 30px;
+    height: 30px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--t-radio);
+    font-size: 0.9rem;
+}
+
+.av-panel-titulo .turno { color: var(--rsu-steel-700); background: var(--rsu-steel-100); }
+.av-panel-titulo .vehiculo { color: var(--rsu-amber-700); background: var(--rsu-amber-100); }
+.av-panel-titulo .personal { color: var(--rsu-emerald-800); background: var(--rsu-emerald-100); }
+
+.av-panel label {
+    display: block;
+    margin: 10px 0 4px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--rsu-slate-800);
+}
+
+.av-panel label small { font-weight: 400; color: var(--rsu-slate-500); }
+
+.av-solo-lectura {
+    background: var(--rsu-slate-100) !important;
+    color: var(--rsu-slate-600);
+}
+
+.av-aviso[hidden] { display: none; }
+.av-aviso { margin-top: 10px; font-size: 0.82rem; }
+.av-aviso i { margin-right: 6px; }
+
+.av-tabla-seccion {
+    margin-top: 16px;
+    background: #ffffff;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio-lg);
+    overflow: hidden;
+}
+
+.av-tabla-seccion > .t-seccion-titulo {
+    margin: 0;
+    padding: 10px 14px;
+    background: var(--rsu-slate-50);
+    border-bottom: 1px solid var(--rsu-slate-200);
+}
+
+.av-tabla-seccion .table { margin: 0; }
+.av-vacio-tabla { padding: 18px; text-align: center; color: var(--rsu-slate-500); font-size: 0.88rem; }
+
+/* ---------- Programación masiva ---------- */
+.av-grupos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+}
+
+.av-grupo {
+    padding: 14px 16px;
+    background: #ffffff;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio-lg);
+    box-shadow: var(--t-sombra-sm);
+}
+
+.av-grupo[hidden] { display: none; }
+.av-grupo.sin-error { border-color: var(--rsu-emerald-200); background: var(--rsu-emerald-50); }
+.av-grupo.con-error { border-color: var(--rsu-red-100); background: var(--rsu-red-50); }
+
+.av-grupo > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.av-grupo > header strong {
+    font-size: 1rem;
+    color: var(--rsu-slate-900);
+}
+
+.av-grupo dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    margin: 0 0 8px;
+    font-size: 0.82rem;
+    align-items: center;
+}
+
+.av-grupo dt { font-weight: 600; color: var(--rsu-slate-500); }
+.av-grupo dd { margin: 0; color: var(--rsu-slate-800); }
+
+.av-grupo .form-label {
+    margin: 8px 0 3px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--rsu-slate-800);
+}
+
+.av-grupo select.is-invalid-av {
+    border-color: var(--rsu-red-500);
+    background-color: var(--rsu-red-50);
+}
+
+.av-campo-nota {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    margin-top: 4px;
+    padding: 4px 8px;
+    border-radius: var(--t-radio-sm);
+    background: var(--rsu-steel-50);
+    border: 1px solid var(--rsu-steel-100);
+    color: var(--rsu-steel-800);
+    font-size: 0.74rem;
+}
+
+.av-campo-nota.mal { background: var(--rsu-red-50); border-color: var(--rsu-red-100); color: var(--rsu-red-800); }
+.av-campo-nota.ok { background: var(--rsu-emerald-50); border-color: var(--rsu-emerald-200); color: var(--rsu-emerald-900); }
+
+.av-feriados-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.av-feriados-lista .t-dia:has(input:checked) {
+    border-color: var(--rsu-red-500);
+    background: var(--rsu-red-50);
+    color: var(--rsu-red-800);
+}
+
+.av-resultado-grupos {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.av-res-grupo {
+    background: #ffffff;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio-lg);
+    overflow: hidden;
+}
+
+.av-res-grupo > summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--rsu-slate-50);
+    cursor: pointer;
+    list-style: none;
+}
+
+.av-res-grupo > summary::-webkit-details-marker { display: none; }
+.av-res-grupo > summary strong { flex: 1 1 auto; }
+.av-res-grupo > div { padding: 12px 14px; }
+.av-res-grupo .t-problemas { margin-top: 8px; }
+
+/* ---------- Detalle de un cambio y confirmación ---------- */
+.av-cambio-valor {
+    height: 100%;
+    background: #ffffff;
+    border: 1px solid var(--rsu-slate-200);
+    border-radius: var(--t-radio-lg);
+    overflow: hidden;
+}
+
+.av-cambio-valor dl { margin: 0; padding: 4px 16px 12px; }
+.av-cambio-valor dl div { padding: 8px 0; border-bottom: 1px solid var(--rsu-slate-100); }
+.av-cambio-valor dl div:last-child { border-bottom: 0; }
+.av-cambio-valor dt { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--rsu-slate-500); }
+.av-cambio-valor dd { margin: 0; font-weight: 600; color: var(--rsu-slate-900); }
+
+.t-info-cabecera.neutra { background: var(--rsu-slate-600); }
+
+.av-resumen {
+    text-align: left;
+    font-size: 0.88rem;
+}
+
+.av-resumen .t-resumen-grupo { margin-bottom: 12px; }
+.av-resumen .antes { color: var(--rsu-red-700); font-weight: 600; }
+.av-resumen .despues { color: var(--rsu-emerald-800); font-weight: 600; }
+
+/* ---------- Detalles del grupo ---------- */
+.av-persona {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+@media (max-width: 575.98px) {
+    .av-zonas, .av-grupos { grid-template-columns: 1fr; }
+    .av-kpis { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+}

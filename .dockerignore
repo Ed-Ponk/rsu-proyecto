@@ -1,0 +1,55 @@
+# Lo que NO debe entrar en la imagen de Docker (más liviana y sin secretos).
+
+# Control de versiones y herramientas del editor
+.git
+.gitattributes
+.github
+.idea
+.vscode
+.fleet
+.nova
+.zed
+.atl
+
+# Secretos y configuración local: nunca dentro de la imagen
+.env
+.env.*
+!.env.example
+auth.json
+
+# Dependencias: se instalan dentro de la imagen (composer / npm)
+vendor
+node_modules
+
+# Pruebas y archivos de desarrollo
+tests
+phpunit.xml
+.phpunit.cache
+.phpunit.result.cache
+*.log
+.DS_Store
+
+# Cachés de Laravel de esta computadora (incluyen paquetes de desarrollo): dentro de la imagen se regeneran
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+
+# Datos generados en ejecución (viven en volúmenes, no en la imagen)
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/app/public/*
+public/uploads/*
+!public/uploads/.gitkeep
+!public/uploads/.htaccess
+public/storage
+public/hot
+public/build
+database/*.sqlite
+
+# Archivos de Docker y documentación que la imagen no necesita
+Dockerfile
+docker-compose*.yml
+compose*.yml
+.dockerignore
+README.md
