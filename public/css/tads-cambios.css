@@ -119,6 +119,36 @@
     margin-bottom: 16px;
 }
 
+/* Tarjetas de arriba como filtro */
+.av-kpi-filtro {
+    cursor: pointer;
+    border-radius: 8px;
+    outline: none;
+}
+
+.av-kpi-filtro .card {
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.av-kpi-filtro:hover .card,
+.av-kpi-filtro:focus-visible .card {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12) !important;
+}
+
+.av-kpi-filtro.activo .card {
+    box-shadow: 0 0 0 2px var(--rsu-emerald-600), 0 6px 16px rgba(15, 23, 42, 0.12) !important;
+}
+
+.av-filtro-aviso {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    color: var(--rsu-slate-600);
+}
+
 .av-zonas {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
@@ -142,22 +172,32 @@
     color: var(--rsu-red-500);
 }
 
+/* Tres contadores (presentes, faltantes, pendientes): icono, cifra y texto apilados para que quepan en la tarjeta. */
 .av-asistencia {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
 }
 
 .av-asistencia > div {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 4px;
     border-radius: var(--t-radio);
     border: 1px solid var(--rsu-slate-200);
     background: var(--rsu-slate-50);
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     color: var(--rsu-slate-600);
+    text-align: center;
+}
+
+.av-asistencia > div > span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .av-asistencia strong {
@@ -172,6 +212,10 @@
 .av-asistencia .no.hay { border-color: var(--rsu-red-100); background: var(--rsu-red-50); }
 .av-asistencia .no.hay i,
 .av-asistencia .no.hay strong { color: var(--rsu-red-700); }
+.av-asistencia .espera i { color: var(--rsu-slate-400); font-size: 1.1rem; }
+.av-asistencia .espera.hay { border-color: #fde68a; background: #fffbeb; }
+.av-asistencia .espera.hay i,
+.av-asistencia .espera.hay strong { color: #b45309; }
 
 /* ---------- Editor de programación ---------- */
 .av-panel {

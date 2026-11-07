@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Asistencia;
 use App\Models\Bitacora;
 use App\Models\Cambio;
 use App\Models\Personal;
 use App\Models\Programacion;
+use App\Models\Turno;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -74,19 +74,26 @@ class ServicioCambios
                 }
             }
 
-            // Quien ya registró asistencia ese día está trabajando: no se lo puede quitar de la programación.
-            $quitados = $programacion->personasConAsistencia()->reject(fn (Personal $p) => in_array($p->id, [$estado['conductor'], ...$estado['ayudantes']], true));
+            // Quien ya registró asistencia en el turno de la programación está trabajando: no se lo puede quitar.
+            $conAsistencia = $programacion->personasConAsistencia();
+            $quitados = $conAsistencia->reject(fn (Personal $p) => in_array($p->id, [$estado['conductor'], ...$estado['ayudantes']], true));
             if ($quitados->isNotEmpty()) {
-                throw ValidationException::withMessages(['programacion' => [$quitados->map->nombre_completo->implode(', ').' ya registró asistencia ese día y no se puede quitar de la programación.']]);
+                throw ValidationException::withMessages(['programacion' => [$quitados->map->nombre_completo->implode(', ').' ya registró asistencia en este turno y no se puede quitar de la programación.']]);
             }
 
-            // Si el turno de hoy ya empezó, quien entra tiene que haber marcado asistencia.
+            // Tampoco se cambia el turno si alguien ya marcó en el actual: su asistencia quedaría en otro turno.
+            if ($estado['turno'] !== (int) $programacion->shift_id && $conAsistencia->isNotEmpty()) {
+                throw ValidationException::withMessages(['programacion' => [$conAsistencia->map->nombre_completo->implode(', ').' ya registró asistencia en el turno '.$programacion->turno?->name.': no se puede cambiar el turno de esta programación.']]);
+            }
+
+            // Si el turno ya empezó, quien entra tiene que haber marcado asistencia EN ESE turno (el final, si también se cambia).
             $entran = array_values(array_diff([$estado['conductor'], ...$estado['ayudantes']], [$programacion->driver_id, ...$actuales]));
-            if ($entran && $this->reglas->exigeAsistencia($programacion)) {
-                $presentes = Asistencia::where('status', Asistencia::PRESENTE)->where('shift_date', $programacion->date->toDateString())->whereIn('user_id', $entran)->pluck('user_id')->all();
+            if ($entran && $this->reglas->exigeAsistencia($programacion, $estado['turno'])) {
+                $presentes = $this->reglas->presentesEnTurno($entran, $programacion->date->toDateString(), $estado['turno']);
                 $faltan = Personal::whereIn('users.id', array_diff($entran, $presentes))->get();
                 if ($faltan->isNotEmpty()) {
-                    throw ValidationException::withMessages(['programacion' => [$faltan->map->nombre_completo->implode(', ').' no registró asistencia hoy: el turno ya empezó y quien cubre tiene que estar presente.']]);
+                    $turno = Turno::find($estado['turno'])?->name;
+                    throw ValidationException::withMessages(['programacion' => [$faltan->map->nombre_completo->implode(', ')." no registró asistencia en el turno {$turno}: el turno ya empezó y quien cubre tiene que estar presente en ese mismo turno."]]);
                 }
             }
 

@@ -20,11 +20,12 @@
          data-url-listado="{{ route('admin.programaciones.dashboard') }}"
          data-url-programaciones="{{ url('admin/programaciones') }}">
 
+        {{-- Las tarjetas también son filtros: un clic muestra solo esas programaciones; otro clic (o «Total») las muestra todas. --}}
         <div class="av-kpis" id="kpisDashboard">
-            <div data-kpi="total"><x-admin.kpi-card titulo="Total de programaciones" valor="0" icono="bi-calendar2-check-fill" variante="azul" /></div>
-            <div data-kpi="completas"><x-admin.kpi-card titulo="Completas" valor="0" icono="bi-check-circle-fill" variante="verde" /></div>
-            <div data-kpi="incompletas"><x-admin.kpi-card titulo="Incompletas" valor="0" icono="bi-exclamation-triangle-fill" variante="ambar" /></div>
-            <div data-kpi="faltantes"><x-admin.kpi-card titulo="Personal faltante" valor="0" icono="bi-person-x-fill" variante="rojo" /></div>
+            <div class="av-kpi-filtro activo" data-kpi="total" role="button" tabindex="0" aria-pressed="true" title="Ver todas las programaciones"><x-admin.kpi-card titulo="Total de programaciones" valor="0" icono="bi-calendar2-check-fill" variante="azul" /></div>
+            <div class="av-kpi-filtro" data-kpi="completas" role="button" tabindex="0" aria-pressed="false" title="Ver solo las completas"><x-admin.kpi-card titulo="Completas" valor="0" icono="bi-check-circle-fill" variante="verde" /></div>
+            <div class="av-kpi-filtro" data-kpi="incompletas" role="button" tabindex="0" aria-pressed="false" title="Ver solo las incompletas"><x-admin.kpi-card titulo="Incompletas" valor="0" icono="bi-exclamation-triangle-fill" variante="ambar" /></div>
+            <div class="av-kpi-filtro" data-kpi="faltantes" role="button" tabindex="0" aria-pressed="false" title="Ver solo las que tienen personal faltante"><x-admin.kpi-card titulo="Personal faltante" valor="0" icono="bi-person-x-fill" variante="rojo" /></div>
         </div>
 
         <div class="t-tarjeta mb-3">
@@ -51,6 +52,7 @@
             </div>
         </div>
 
+        <div class="av-filtro-aviso" id="avisoFiltroKpi" hidden></div>
         <div class="av-zonas" id="zonasDashboard"></div>
     </div>
 

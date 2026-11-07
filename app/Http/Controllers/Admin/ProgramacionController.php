@@ -19,6 +19,7 @@ use App\Models\Zona;
 use App\Services\MonitorDeProgramacion;
 use App\Services\ReglasProgramacion;
 use App\Services\ServicioCambios;
+use App\Support\DescripcionDeBitacora;
 use App\Support\Requisitos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -379,6 +380,7 @@ class ProgramacionController extends Controller
     {
         $programacion = Programacion::with(['grupo', 'zona', 'turno', 'vehiculo', 'conductor', 'ayudantes'])->findOrFail($id);
 
+        $texto = new DescripcionDeBitacora;
         $cambios = Bitacora::with('usuario')
             ->where('model', 'Programacion')->where('model_id', $programacion->id)
             ->orderByDesc('id')->get()
@@ -386,7 +388,7 @@ class ProgramacionController extends Controller
                 'fecha' => $b->created_at?->format('d/m/Y H:i'),
                 'usuario' => $b->usuario?->name ?? 'Sistema',
                 'accion' => $b->action,
-                'detalle' => $this->describirCambio($b),
+                'detalle' => $this->describirCambio($b, $texto),
             ]);
 
         return view('admin.programaciones.historial', ['programacion' => $programacion, 'cambios' => $cambios]);
@@ -579,10 +581,11 @@ class ProgramacionController extends Controller
         $feriados = Feriado::activo()->entre($fechas->min(), $fechas->max())->get()
             ->mapWithKeys(fn (Feriado $f) => [$f->date->toDateString() => $f->description])->all();
 
+        // Clave «usuario|turno|jornada»: solo cuenta la asistencia marcada en el turno de la programación.
         $presentes = Asistencia::where('status', Asistencia::PRESENTE)
             ->where('shift_date', '>=', $fechas->min())->where('shift_date', '<=', min($fechas->max(), today()->toDateString()))
-            ->get(['user_id', 'shift_date'])
-            ->mapWithKeys(fn (Asistencia $a) => [$a->user_id.'|'.$a->shift_date->toDateString() => true])->all();
+            ->get(['user_id', 'schedule_id', 'shift_date'])
+            ->mapWithKeys(fn (Asistencia $a) => [$a->user_id.'|'.$a->schedule_id.'|'.$a->shift_date->toDateString() => true])->all();
 
         return ['feriados' => $feriados, 'presentes' => $presentes];
     }
@@ -607,7 +610,7 @@ class ProgramacionController extends Controller
         $dia = $p->date->toDateString();
 
         return collect([$p->conductor, ...$p->ayudantes->all()])->filter()
-            ->reject(fn (Personal $x) => isset($presentes[$x->id.'|'.$dia]))
+            ->reject(fn (Personal $x) => isset($presentes[$x->id.'|'.$p->shift_id.'|'.$dia]))
             ->map(fn (Personal $x) => $x->nombre_completo)->values()->all();
     }
 
@@ -634,39 +637,13 @@ class ProgramacionController extends Controller
         ];
     }
 
-    /** Resumen legible de un movimiento de la bitácora. */
-    private function describirCambio(Bitacora $b): string
+    /** Resumen legible de un movimiento de la bitácora (mismas palabras que la Bitácora general). */
+    private function describirCambio(Bitacora $b, DescripcionDeBitacora $texto): string
     {
-        if ($b->action === 'creado') {
-            return 'Programación creada';
-        }
-
-        if ($b->action === 'eliminado') {
-            return 'Programación eliminada';
-        }
-
-        $etiquetas = ['status' => 'Estado', 'driver_id' => 'Conductor', 'vehicle_id' => 'Vehículo', 'notes' => 'Observaciones', 'ayudantes' => 'Ayudantes', 'date' => 'Fecha'];
-        $partes = [];
-
-        foreach ($b->after ?? [] as $campo => $nuevo) {
-            $antes = $b->before[$campo] ?? null;
-            $partes[] = ($etiquetas[$campo] ?? $campo).': '.$this->valorLegible($campo, $antes).' → '.$this->valorLegible($campo, $nuevo);
-        }
-
-        return implode('; ', $partes) ?: 'Modificada';
-    }
-
-    private function valorLegible(string $campo, mixed $valor): string
-    {
-        if ($valor === null || $valor === '') {
-            return '—';
-        }
-
-        return match ($campo) {
-            'driver_id' => Personal::find($valor)?->nombre_completo ?? "#{$valor}",
-            'vehicle_id' => ($v = Vehiculo::find($valor)) ? "{$v->name} ({$v->plate})" : "#{$valor}",
-            'status' => Programacion::ESTADOS[$valor] ?? (string) $valor,
-            default => (string) $valor,
+        return match ($b->action) {
+            'creado' => 'Programación creada',
+            'eliminado' => 'Programación eliminada',
+            default => implode('; ', $texto->cambios($b)) ?: 'Modificada',
         };
     }
 }

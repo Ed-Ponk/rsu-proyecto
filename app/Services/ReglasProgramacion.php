@@ -809,10 +809,36 @@ class ReglasProgramacion
         });
     }
 
-    /** ¿Quien entra a cubrir tiene que haber marcado asistencia? Sí, si es hoy y el turno ya empezó. */
-    public function exigeAsistencia(Programacion $programacion): bool
+    /**
+     * ¿Quien entra a cubrir tiene que haber marcado asistencia? Sí, si es hoy y el turno ya empezó.
+     * Con `$turnoId` se mide el turno al que se está cambiando la programación (el editor puede cambiarlo a la vez).
+     */
+    public function exigeAsistencia(Programacion $programacion, ?int $turnoId = null): bool
     {
-        return $programacion->date->isToday() && now()->hour * 60 + now()->minute >= $programacion->minutoDeInicio();
+        if (! $programacion->date->isToday()) {
+            return false;
+        }
+
+        $inicio = $programacion->minutoDeInicio();
+
+        if ($turnoId && $turnoId !== (int) $programacion->shift_id && ($turno = Turno::find($turnoId))) {
+            $inicio = ((int) substr($turno->time_start, 0, 2)) * 60 + (int) substr($turno->time_start, 3, 2);
+        }
+
+        return now()->hour * 60 + now()->minute >= $inicio;
+    }
+
+    /**
+     * Ids de las personas que marcaron asistencia en ese turno y jornada: quien cubre tiene que estar trabajando en
+     * el MISMO turno de la programación; la asistencia de otro turno del día no sirve.
+     *
+     * @param  iterable<int>  $ids
+     * @return list<int>
+     */
+    public function presentesEnTurno(iterable $ids, string $fecha, int $turnoId): array
+    {
+        return Asistencia::presentesEnTurno($fecha, $turnoId)->whereIn('user_id', collect($ids)->all())
+            ->pluck('user_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
     }
 
     /**
@@ -842,22 +868,23 @@ class ReglasProgramacion
         }
 
         $fecha = $programacion->date->toDateString();
+        $turnoId ??= (int) $programacion->shift_id;
         $ocupado = [];
-        $this->disponibilidad($personas->keyBy('id'), [$fecha], $turnoId ?? (int) $programacion->shift_id, null, [$programacion->id], $ocupado);
+        // Mismo cargo (arriba), libre en ese turno: si ya está programado en otra zona a esa hora, no puede cubrir.
+        $this->disponibilidad($personas->keyBy('id'), [$fecha], $turnoId, null, [$programacion->id], $ocupado);
 
         $motivos = collect($this->problemas)->groupBy('persona_id')->map(fn (Collection $l) => $l->pluck('que')->unique()->implode('; '));
 
-        // Si el turno de hoy ya empezó, quien va a cubrir tiene que estar presente.
-        $exigeAsistencia = $this->exigeAsistencia($programacion);
-        $presentes = $exigeAsistencia
-            ? Asistencia::where('status', Asistencia::PRESENTE)->where('shift_date', $fecha)->whereIn('user_id', $personas->pluck('id'))->pluck('user_id')->all()
-            : [];
+        // Si el turno de hoy ya empezó, quien va a cubrir tiene que estar presente EN ESE TURNO.
+        $exigeAsistencia = $this->exigeAsistencia($programacion, $turnoId);
+        $presentes = $exigeAsistencia ? $this->presentesEnTurno($personas->pluck('id'), $fecha, $turnoId) : [];
+        $nombreTurno = Turno::find($turnoId)?->name;
 
-        $lista = $personas->map(function (Personal $p) use ($motivos, $exigeAsistencia, $presentes) {
+        $lista = $personas->map(function (Personal $p) use ($motivos, $exigeAsistencia, $presentes, $nombreTurno) {
             $motivo = $motivos[$p->id] ?? null;
 
-            if (! $motivo && $exigeAsistencia && ! in_array($p->id, $presentes, true)) {
-                $motivo = 'no registró asistencia hoy';
+            if (! $motivo && $exigeAsistencia && ! in_array((int) $p->id, $presentes, true)) {
+                $motivo = "no registró asistencia en el turno {$nombreTurno}";
             }
 
             return ['persona' => $this->itemDePersona($p), 'disponible' => $motivo === null, 'motivo' => $motivo];
@@ -927,18 +954,52 @@ class ReglasProgramacion
             return $fin(['ok' => false, 'errores' => ['No hay programaciones pendientes con esa persona o vehículo en el rango elegido.'], 'sugerencias' => [], 'avisos' => [], 'total' => 0, 'filas' => $filas]);
         }
 
-        // Quien ya registró asistencia ese día está trabajando: se reemplaza desde el día siguiente.
+        // Marcaciones «presente» de la jornada de cada programación afectada, por persona y TURNO («usuario|turno|fecha»).
+        $marcaron = Asistencia::where('status', Asistencia::PRESENTE)
+            ->whereIn('shift_date', $filas->map(fn (Programacion $p) => $p->date->toDateString())->unique()->values()->all())
+            ->get(['user_id', 'schedule_id', 'shift_date'])
+            ->mapWithKeys(fn (Asistencia $a) => [$a->user_id.'|'.$a->schedule_id.'|'.$a->shift_date->toDateString() => true]);
+        $marco = fn (int $persona, Programacion $p) => isset($marcaron[$persona.'|'.$p->shift_id.'|'.$p->date->toDateString()]);
+
         if (in_array($d['rol'], ['conductor', 'ayudante'], true)) {
-            $yaTrabajo = Asistencia::where('status', Asistencia::PRESENTE)->where('user_id', $d['saliente_id'])
-                ->whereIn('shift_date', $filas->map(fn (Programacion $p) => $p->date->toDateString())->all())
-                ->orderBy('shift_date')->get(['shift_date'])->map(fn (Asistencia $a) => $a->shift_date->toDateString())->all();
+            // Quien ya registró asistencia en el turno de la programación está trabajando: se reemplaza desde el día siguiente.
+            $yaTrabajo = $filas->filter(fn (Programacion $p) => $marco((int) $d['saliente_id'], $p))
+                ->map(fn (Programacion $p) => $p->date->toDateString())->unique()->sort()->values()->all();
 
             if ($yaTrabajo) {
                 $nombre = Personal::find($d['saliente_id'])?->nombre_completo ?? 'La persona';
 
-                $this->problema('asistencia', $nombre, 'ya registró asistencia', $yaTrabajo, 'Elija «Desde» a partir del día siguiente.');
+                $this->problema('asistencia', $nombre, 'ya registró asistencia en ese turno', $yaTrabajo, 'Elija «Desde» a partir del día siguiente.');
 
-                return $fin(['ok' => false, 'errores' => ["{$nombre} ya registró asistencia el ".self::resumenDeFechas($yaTrabajo).': no se la puede reemplazar ese día. Elija «Desde» a partir del día siguiente.'],
+                return $fin(['ok' => false, 'errores' => ["{$nombre} ya registró asistencia en el turno de la programación el ".self::resumenDeFechas($yaTrabajo).': no se la puede reemplazar ese día. Elija «Desde» a partir del día siguiente.'],
+                    'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas]);
+            }
+
+            // Si el turno de hoy ya empezó, quien entra a cubrir tiene que estar presente en ESE turno.
+            $sinMarcar = $filas->filter(fn (Programacion $p) => $this->exigeAsistencia($p) && ! $marco((int) $d['entrante_id'], $p));
+
+            if ($sinMarcar->isNotEmpty()) {
+                $nombre = Personal::find($d['entrante_id'])?->nombre_completo ?? 'La persona';
+                $turnos = $sinMarcar->map(fn (Programacion $p) => $p->turno?->name)->filter()->unique()->implode(', ');
+
+                $this->problema('asistencia', $nombre, "no registró asistencia en el turno {$turnos}", [], 'Elija a alguien que ya marcó asistencia en ese turno, o «Desde» a partir de mañana.');
+
+                return $fin(['ok' => false, 'errores' => ["{$nombre} no registró asistencia hoy en el turno {$turnos}: el turno ya empezó y quien cubre tiene que estar presente en ese mismo turno."],
+                    'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas]);
+            }
+        }
+
+        if ($d['rol'] === 'turno') {
+            // Si alguien ya marcó asistencia en el turno actual, cambiar el turno dejaría su asistencia en otro turno.
+            $conAsistencia = $filas->filter(fn (Programacion $p) => collect([$p->driver_id, ...$p->ayudantes->pluck('id')->all()])
+                ->contains(fn ($persona) => $marco((int) $persona, $p)));
+
+            if ($conAsistencia->isNotEmpty()) {
+                $fechas = $conAsistencia->map(fn (Programacion $p) => $p->date->toDateString())->unique()->sort()->values()->all();
+
+                $this->problema('asistencia', 'Cambio de turno', 'el personal ya registró asistencia en el turno actual', $fechas, 'Elija «Desde» a partir del día siguiente.');
+
+                return $fin(['ok' => false, 'errores' => ['El personal ya registró asistencia en el turno actual el '.self::resumenDeFechas($fechas).': ese día no se puede cambiar el turno. Elija «Desde» a partir del día siguiente.'],
                     'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas]);
             }
         }

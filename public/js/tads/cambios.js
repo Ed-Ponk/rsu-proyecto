@@ -174,6 +174,26 @@
             const tituloVentana = modal.querySelector('.modal-title');
             const filtros = () => new URLSearchParams({ fecha: campo('filtroFecha').value, turno_id: campo('filtroTurno').value });
 
+            // Las tarjetas de arriba filtran las programaciones ya cargadas (sin volver a pedirlas).
+            const filtrosKpi = {
+                total: { texto: 'todas', cumple: () => true },
+                completas: { texto: 'completas', cumple: (p) => p.completa },
+                incompletas: { texto: 'incompletas', cumple: (p) => !p.completa },
+                faltantes: { texto: 'con personal faltante', cumple: (p) => p.faltantes > 0 },
+            };
+            let filtroKpi = 'total';
+            let programaciones = [];
+
+            function elegirFiltro(clave) {
+                filtroKpi = clave === filtroKpi ? 'total' : clave;
+                contenedor.querySelectorAll('[data-kpi]').forEach((tarjeta) => {
+                    const activa = tarjeta.dataset.kpi === filtroKpi;
+                    tarjeta.classList.toggle('activo', activa);
+                    tarjeta.setAttribute('aria-pressed', String(activa));
+                });
+                pintar();
+            }
+
             async function cargar() {
                 const destino = campo('zonasDashboard');
                 destino.innerHTML = '<div class="t-fichas-cargando"><span class="spinner-border spinner-border-sm me-2"></span>Cargando…</div>';
@@ -186,7 +206,22 @@
                     if (cifra) cifra.textContent = String(valor);
                 });
 
-                if (!json.programaciones.length) {
+                programaciones = json.programaciones;
+                pintar();
+            }
+
+            function pintar() {
+                const destino = campo('zonasDashboard');
+                const aviso = campo('avisoFiltroKpi');
+                const visibles = programaciones.filter(filtrosKpi[filtroKpi].cumple);
+
+                aviso.hidden = filtroKpi === 'total';
+                aviso.innerHTML = filtroKpi === 'total' ? '' : `
+                    <i class="bi bi-funnel-fill"></i>
+                    <span>Mostrando ${visibles.length} de ${programaciones.length} programaciones: ${filtrosKpi[filtroKpi].texto}.</span>
+                    <button type="button" class="btn btn-link btn-sm p-0" data-quitar-filtro>Ver todas</button>`;
+
+                if (!programaciones.length) {
                     destino.innerHTML = `
                         <div class="t-tarjeta" style="grid-column: 1 / -1"><div class="t-vacio">
                             <i class="bi bi-calendar-x"></i>
@@ -196,9 +231,19 @@
                     return;
                 }
 
+                if (!visibles.length) {
+                    destino.innerHTML = `
+                        <div class="t-tarjeta" style="grid-column: 1 / -1"><div class="t-vacio">
+                            <i class="bi bi-funnel"></i>
+                            <h6>Ninguna programación ${Tads.escapar(filtrosKpi[filtroKpi].texto)}</h6>
+                            <p>Elija otra tarjeta o «Total de programaciones» para verlas todas.</p>
+                        </div></div>`;
+                    return;
+                }
+
                 const colorEstado = { reprogramado: 'ambar', finalizado: 'verde' };
 
-                destino.innerHTML = json.programaciones.map((p) => `
+                destino.innerHTML = visibles.map((p) => `
                     <article class="t-ficha-grupo av-tarjeta-zona ${p.completa ? 'completa' : 'incompleta'}">
                         <header>
                             <div>
@@ -214,8 +259,9 @@
                             <div><dt>Estado</dt><dd>${Tads.insignia(p.estado_texto, colorEstado[p.estado] ?? 'azul')}</dd></div>
                         </dl>
                         <div class="av-asistencia">
-                            <div class="si"><i class="bi bi-person-check-fill"></i><span><strong>${p.presentes}</strong>${p.futura ? 'Asignados' : 'Presentes'}</span></div>
-                            <div class="no ${p.faltantes ? 'hay' : ''}"><i class="bi bi-person-x-fill"></i><span><strong>${p.faltantes}</strong>Faltantes</span></div>
+                            <div class="si" title="Marcaron asistencia en este turno"><i class="bi bi-person-check-fill"></i><span><strong>${p.presentes}</strong>Presentes</span></div>
+                            <div class="no ${p.faltantes ? 'hay' : ''}" title="No vinieron o no pueden trabajar en este turno"><i class="bi bi-person-x-fill"></i><span><strong>${p.faltantes}</strong>Faltantes</span></div>
+                            <div class="espera ${p.pendientes ? 'hay' : ''}" title="Su turno aún no empieza: todavía no marcan"><i class="bi bi-hourglass-split"></i><span><strong>${p.pendientes}</strong>Pendientes</span></div>
                         </div>
                         <footer>
                             <span class="t-ficha-cuenta"><strong>${p.personas}</strong> ${p.personas === 1 ? 'persona' : 'personas'}<small>conductor y ayudantes</small></span>
@@ -268,6 +314,21 @@
             campo('zonasDashboard').addEventListener('click', (evento) => {
                 const boton = evento.target.closest('[data-ver-detalles]');
                 if (boton) abrirEditor(boton.dataset.verDetalles);
+            });
+
+            campo('kpisDashboard').addEventListener('click', (evento) => {
+                const tarjeta = evento.target.closest('[data-kpi]');
+                if (tarjeta) elegirFiltro(tarjeta.dataset.kpi);
+            });
+            campo('kpisDashboard').addEventListener('keydown', (evento) => {
+                const tarjeta = evento.target.closest('[data-kpi]');
+                if (tarjeta && (evento.key === 'Enter' || evento.key === ' ')) {
+                    evento.preventDefault();
+                    elegirFiltro(tarjeta.dataset.kpi);
+                }
+            });
+            campo('avisoFiltroKpi').addEventListener('click', (evento) => {
+                if (evento.target.closest('[data-quitar-filtro]')) elegirFiltro('total');
             });
 
             campo('botonActualizar').addEventListener('click', cargar);

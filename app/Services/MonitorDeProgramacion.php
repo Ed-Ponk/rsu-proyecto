@@ -10,13 +10,25 @@ use App\Models\Vacacion;
 use Illuminate\Support\Collection;
 
 /**
- * Estado de las programaciones de un día para el dashboard: quién está cumpliendo y quién falta.
- * Una programación está «completa» si todo su personal puede y debe estar trabajando ese día.
+ * Estado de las programaciones de un día para el dashboard: quién está trabajando y quién falta.
+ *
+ * Cada persona queda en uno de tres estados, medidos en el TURNO de la programación (la asistencia de otro turno no cuenta):
+ *  - «presente»: marcó asistencia en ese turno.
+ *  - «faltante»: no puede o no vino (inactiva, de vacaciones, sin contrato, marcada ausente, o el turno empezó y no marcó).
+ *  - «pendiente»: todavía no marca porque su turno no ha empezado.
+ *
+ * Una programación está «completa» solo cuando TODO su personal marcó asistencia; mientras tanto es «incompleta».
  */
 class MonitorDeProgramacion
 {
+    public const PRESENTE = 'presente';
+
+    public const FALTANTE = 'faltante';
+
+    public const PENDIENTE = 'pendiente';
+
     /**
-     * @return Collection<int, array{programacion: Programacion, personal: list<array{id: int, nombre: string, rol: string, estado: string, motivo: ?string}>, faltantes: int, completa: bool}>
+     * @return Collection<int, array{programacion: Programacion, personal: list<array{id: int, nombre: string, rol: string, estado: string, motivo: ?string, presente: bool}>, presentes: int, faltantes: int, pendientes: int, completa: bool}>
      */
     public function delDia(string $fecha, ?int $turnoId = null, ?int $zonaId = null): Collection
     {
@@ -29,7 +41,7 @@ class MonitorDeProgramacion
         return $this->evaluar($programaciones, $fecha);
     }
 
-    /** Estado de una sola programación (para el editor). @return array{programacion: Programacion, personal: list<array>, faltantes: int, completa: bool} */
+    /** Estado de una sola programación (para el editor). @return array{programacion: Programacion, personal: list<array>, presentes: int, faltantes: int, pendientes: int, completa: bool} */
     public function deProgramacion(Programacion $programacion): array
     {
         $programacion->loadMissing(['zona', 'turno', 'grupo', 'vehiculo', 'conductor.tipo', 'ayudantes.tipo']);
@@ -52,8 +64,10 @@ class MonitorDeProgramacion
             ->where('start_date', '<=', $fecha)->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $fecha))
             ->pluck('user_id')->flip();
 
-        $asistencias = Asistencia::where('shift_date', $fecha)->whereIn('user_id', $ids)->get(['user_id', 'status'])
-            ->groupBy('user_id')->map(fn (Collection $l) => $l->contains('status', Asistencia::PRESENTE) ? Asistencia::PRESENTE : Asistencia::AUSENTE);
+        // Marcaciones de la jornada agrupadas por persona y TURNO: «usuario|turno» => presente o ausente.
+        $asistencias = Asistencia::where('shift_date', $fecha)->whereIn('user_id', $ids)->get(['user_id', 'schedule_id', 'status'])
+            ->groupBy(fn (Asistencia $a) => $a->user_id.'|'.$a->schedule_id)
+            ->map(fn (Collection $l) => $l->contains('status', Asistencia::PRESENTE) ? Asistencia::PRESENTE : Asistencia::AUSENTE);
 
         return $programaciones->map(function (Programacion $p) use ($vacaciones, $conContrato, $asistencias) {
             $personal = collect([['persona' => $p->conductor, 'rol' => 'conductor'], ...$p->ayudantes->map(fn (Personal $a) => ['persona' => $a, 'rol' => 'ayudante'])->all()])
@@ -61,47 +75,56 @@ class MonitorDeProgramacion
                 ->map(function (array $x) use ($p, $vacaciones, $conContrato, $asistencias) {
                     /** @var Personal $persona */
                     $persona = $x['persona'];
-                    $motivo = $this->motivoDeFalta($p, $persona, $vacaciones, $conContrato, $asistencias);
+                    $marcada = $asistencias[$persona->id.'|'.$p->shift_id] ?? null;
+                    [$estado, $motivo] = $marcada === Asistencia::PRESENTE
+                        ? [self::PRESENTE, null]
+                        : $this->sinAsistencia($p, $persona, $marcada, $vacaciones, $conContrato);
 
-                    return ['id' => $persona->id, 'nombre' => $persona->nombre_completo, 'rol' => $x['rol'], 'estado' => $motivo ? 'faltante' : 'ok', 'motivo' => $motivo,
-                        'presente' => ($asistencias[$persona->id] ?? null) === Asistencia::PRESENTE];
+                    return ['id' => $persona->id, 'nombre' => $persona->nombre_completo, 'rol' => $x['rol'], 'estado' => $estado, 'motivo' => $motivo,
+                        'presente' => $estado === self::PRESENTE];
                 })->values()->all();
 
-            $faltantes = count(array_filter($personal, fn (array $x) => $x['estado'] === 'faltante'));
+            $cuenta = fn (string $estado) => count(array_filter($personal, fn (array $x) => $x['estado'] === $estado));
+            $presentes = $cuenta(self::PRESENTE);
 
-            return ['programacion' => $p, 'personal' => $personal, 'faltantes' => $faltantes, 'completa' => $faltantes === 0];
+            return [
+                'programacion' => $p,
+                'personal' => $personal,
+                'presentes' => $presentes,
+                'faltantes' => $cuenta(self::FALTANTE),
+                'pendientes' => $cuenta(self::PENDIENTE),
+                'completa' => $personal !== [] && $presentes === count($personal),
+            ];
         });
     }
 
-    private function motivoDeFalta(Programacion $p, Personal $persona, Collection $vacaciones, Collection $conContrato, Collection $asistencias): ?string
+    /**
+     * Estado de quien no marcó asistencia en el turno: faltante (con el motivo) o pendiente si su turno aún no empieza.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function sinAsistencia(Programacion $p, Personal $persona, ?string $marcada, Collection $vacaciones, Collection $conContrato): array
     {
-        if (! $persona->status) {
-            return 'Está inactivo';
+        $motivo = match (true) {
+            ! $persona->status => 'Está inactivo',
+            $vacaciones->has($persona->id) => 'Está de vacaciones',
+            ! $conContrato->has($persona->id) => 'No tiene contrato vigente',
+            $marcada === Asistencia::AUSENTE => "Faltó al turno {$p->turno?->name}",
+            default => null,
+        };
+
+        if ($motivo) {
+            return [self::FALTANTE, $motivo];
         }
 
-        if ($vacaciones->has($persona->id)) {
-            return 'Está de vacaciones';
-        }
-
-        if (! $conContrato->has($persona->id)) {
-            return 'No tiene contrato vigente';
-        }
-
-        $marcada = $asistencias[$persona->id] ?? null;
-
-        if ($marcada === Asistencia::AUSENTE) {
-            return 'Faltó al trabajo';
-        }
-
-        if ($marcada === Asistencia::PRESENTE || $p->status === Programacion::FINALIZADO) {
-            return null;
-        }
-
-        // Sin marcación: solo se considera falta cuando el turno ya empezó (hoy se espera una hora para no marcar a quien aún no llega).
+        // Sin marcación: es falta cuando el turno ya empezó (hoy se espera una hora para no marcar a quien aún no llega).
         $hoy = today();
-        $inicio = $p->minutoDeInicio();
-        $yaEmpezo = $p->date->lt($hoy) || ($p->date->eq($hoy) && now()->hour * 60 + now()->minute >= $inicio + 60);
+        $yaEmpezo = $p->status === Programacion::FINALIZADO
+            || $p->date->lt($hoy)
+            || ($p->date->eq($hoy) && now()->hour * 60 + now()->minute >= $p->minutoDeInicio() + 60);
 
-        return $yaEmpezo ? 'No registró asistencia' : null;
+        return $yaEmpezo
+            ? [self::FALTANTE, "No registró asistencia en el turno {$p->turno?->name}"]
+            : [self::PENDIENTE, "Aún no registra asistencia en el turno {$p->turno?->name}"];
     }
 }

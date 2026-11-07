@@ -84,14 +84,14 @@ class Programacion extends Model
     }
 
     /**
-     * Personas de la programación (conductor y ayudantes) que ya registraron asistencia ese día.
+     * Personas de la programación (conductor y ayudantes) que ya registraron asistencia en su turno ese día.
+     * La asistencia de otro turno del mismo día no cuenta.
      *
      * @return Collection<int, Personal>
      */
     public function personasConAsistencia()
     {
-        $dia = $this->date->toDateString();
-        $ids = Asistencia::where('status', Asistencia::PRESENTE)->where('shift_date', $dia)
+        $ids = Asistencia::presentesEnTurno($this->date->toDateString(), (int) $this->shift_id)
             ->whereIn('user_id', [$this->driver_id, ...$this->ayudantes()->pluck('users.id')->all()])
             ->pluck('user_id');
 

@@ -60,6 +60,17 @@ class Asistencia extends Model
             ->where('status', self::PRESENTE);
     }
 
+    /**
+     * Marcaciones «presente» de un turno concreto en una jornada (día en que empieza el turno).
+     * La asistencia de un turno no cuenta para otro: quien marcó en la noche no está presente en la mañana.
+     */
+    public function scopePresentesEnTurno(Builder $consulta, string $jornada, int $idTurno): Builder
+    {
+        return $consulta->where('status', self::PRESENTE)
+            ->where('schedule_id', $idTurno)
+            ->where('shift_date', $jornada);
+    }
+
     public function personal(): BelongsTo
     {
         return $this->belongsTo(Personal::class, 'user_id');

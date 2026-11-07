@@ -28,18 +28,17 @@ class DashboardProgramacionController extends Controller
         [$fecha, $turnoId] = $this->filtros($request);
         $filas = $this->monitor->delDia($fecha, $turnoId);
 
-        $hoy = today()->toDateString();
-
         return response()->json([
             'fecha' => $fecha,
+            // Las tarjetas de arriba también filtran: «Completas», «Incompletas» y «Personal faltante» (las que tienen a alguien faltante).
             'kpis' => [
                 'total' => $filas->count(),
                 'completas' => $filas->where('completa', true)->count(),
                 'incompletas' => $filas->where('completa', false)->count(),
                 'faltantes' => $filas->sum('faltantes'),
             ],
-            // Una tarjeta por programación (zona + grupo + turno + vehículo) con cuántos están presentes y cuántos faltan.
-            'programaciones' => $filas->map(function (array $f) use ($fecha, $hoy) {
+            // Una tarjeta por programación (zona + grupo + turno + vehículo) con cuántos marcaron asistencia en ese turno y cuántos faltan.
+            'programaciones' => $filas->map(function (array $f) {
                 $p = $f['programacion'];
                 $personas = count($f['personal']);
 
@@ -55,9 +54,9 @@ class DashboardProgramacionController extends Controller
                     'estado_texto' => Programacion::ESTADOS[$p->status] ?? $p->status,
                     'completa' => $f['completa'],
                     'personas' => $personas,
+                    'presentes' => $f['presentes'],
                     'faltantes' => $f['faltantes'],
-                    'presentes' => $personas - $f['faltantes'],
-                    'futura' => $fecha > $hoy,
+                    'pendientes' => $f['pendientes'],
                 ];
             })->sortBy([['zona', 'asc'], ['turno', 'asc']])->values(),
         ]);
