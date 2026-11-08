@@ -20,6 +20,8 @@
     <div class="t-tarjeta"
          id="moduloTurnos"
          data-tads-modulo="turnos"
+         data-permiso="shifts"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.turnos.index') }}"
          data-url-recurso="{{ url('admin/turnos') }}"
          data-url-crear="{{ route('admin.turnos.create') }}">

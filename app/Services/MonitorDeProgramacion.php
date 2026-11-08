@@ -32,13 +32,22 @@ class MonitorDeProgramacion
      */
     public function delDia(string $fecha, ?int $turnoId = null, ?int $zonaId = null): Collection
     {
-        $programaciones = Programacion::with(['zona', 'turno', 'grupo', 'vehiculo', 'conductor.tipo', 'ayudantes.tipo'])
-            ->where('date', $fecha)
+        $consulta = fn (string $dia) => Programacion::with(['zona', 'turno', 'grupo', 'vehiculo', 'conductor.tipo', 'ayudantes.tipo'])
+            ->where('date', $dia)
             ->when($turnoId, fn ($q) => $q->where('shift_id', $turnoId))
             ->when($zonaId, fn ($q) => $q->where('zone_id', $zonaId))
             ->orderBy('zone_id')->orderBy('shift_id')->get();
 
-        return $this->evaluar($programaciones, $fecha);
+        $resultado = $this->evaluar($consulta($fecha), $fecha);
+
+        // Hoy también se vigila el turno de noche de AYER que sigue en curso después de medianoche (hasta las 06:00).
+        if ($fecha === today()->toDateString()) {
+            $ayer = today()->subDay()->toDateString();
+            $enCurso = $consulta($ayer)->filter(fn (Programacion $p) => $p->turno?->cruzaMedianoche() && ! $p->haTerminado())->values();
+            $resultado = $resultado->concat($this->evaluar($enCurso, $ayer));
+        }
+
+        return $resultado->values();
     }
 
     /** Estado de una sola programación (para el editor). @return array{programacion: Programacion, personal: list<array>, presentes: int, faltantes: int, pendientes: int, completa: bool} */
@@ -118,10 +127,9 @@ class MonitorDeProgramacion
         }
 
         // Sin marcación: es falta cuando el turno ya empezó (hoy se espera una hora para no marcar a quien aún no llega).
-        $hoy = today();
+        // Una hora de gracia después del inicio real del turno (en su propia fecha: la noche de ayer ya empezó hace horas).
         $yaEmpezo = $p->status === Programacion::FINALIZADO
-            || $p->date->lt($hoy)
-            || ($p->date->eq($hoy) && now()->hour * 60 + now()->minute >= $p->minutoDeInicio() + 60);
+            || now()->gte($p->inicio()->addHour());
 
         return $yaEmpezo
             ? [self::FALTANTE, "No registró asistencia en el turno {$p->turno?->name}"]

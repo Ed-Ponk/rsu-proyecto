@@ -13,6 +13,8 @@
     <div class="t-tarjeta"
          id="moduloPersonal"
          data-tads-modulo="personal"
+         data-permiso="employees"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.personal.index') }}"
          data-url-recurso="{{ url('admin/personal') }}"
          data-url-crear="{{ route('admin.personal.create') }}">

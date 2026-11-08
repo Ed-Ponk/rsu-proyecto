@@ -189,7 +189,7 @@ class VehiculoController extends Controller
                     return $vehiculo->imagenes()->create(['image' => $ruta, 'profile' => false]);
                 })->all();
 
-                $this->definirPerfil($vehiculo, (string) $request->input('profile'), $creadas);
+                $this->definirPerfil($vehiculo, $request->texto('profile'), $creadas);
             });
         } catch (\Throwable $error) {
             array_map($this->borrarArchivo(...), $rutasNuevas);   // la base no cambió: no dejar archivos huérfanos
@@ -256,8 +256,8 @@ class VehiculoController extends Controller
         Numeros::enCampos($request, ['load_capacity', 'fuel_capacity', 'compact_capacity']);
 
         $request->merge([
-            'code' => strtoupper(trim((string) $request->input('code'))),
-            'plate' => strtoupper(trim((string) $request->input('plate'))),
+            'code' => strtoupper(trim($request->texto('code'))),
+            'plate' => strtoupper(trim($request->texto('plate'))),
             'status' => $request->boolean('status'),
         ]);
 

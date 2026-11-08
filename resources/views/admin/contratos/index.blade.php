@@ -13,6 +13,8 @@
     <div class="t-modulo"
          id="moduloContratos"
          data-tads-modulo="contratos"
+         data-permiso="contracts"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.contratos.index') }}"
          data-url-recurso="{{ url('admin/contratos') }}"
          data-url-crear="{{ route('admin.contratos.create') }}">

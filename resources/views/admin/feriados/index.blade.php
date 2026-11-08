@@ -20,6 +20,8 @@
     <div class="t-modulo"
          id="moduloFeriados"
          data-tads-modulo="feriados"
+         data-permiso="holidays"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.feriados.index') }}"
          data-url-recurso="{{ url('admin/feriados') }}"
          data-url-crear="{{ route('admin.feriados.create') }}"

@@ -13,6 +13,8 @@
     <div class="t-tarjeta"
          id="moduloGrupos"
          data-tads-modulo="grupos"
+         data-permiso="employeegroups"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.grupos.index') }}"
          data-url-recurso="{{ url('admin/grupos-personal') }}"
          data-url-crear="{{ route('admin.grupos.create') }}">

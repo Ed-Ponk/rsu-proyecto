@@ -97,7 +97,7 @@ class ColorController extends Controller
 
     private function validado(Request $request, ?int $ignorarId = null): array
     {
-        $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+        $request->merge(['code' => strtoupper(trim($request->texto('code')))]);
 
         return $request->validate([
             'name' => ['required', 'string', 'max:100', 'regex:/\p{L}/u', Rule::unique('vehiclecolors', 'name')->ignore($ignorarId)],

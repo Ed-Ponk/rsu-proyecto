@@ -21,10 +21,12 @@
                         <small><span data-reloj-fecha>&nbsp;</span> · <span data-reloj-turno>Consultando turno...</span></small>
                     </span>
                 </div>
-                <a href="{{ route('admin.asistencias.marcacion') }}" class="btn t-boton t-boton-marcacion">
-                    <i class="bi bi-fingerprint"></i>
-                    <span>Marcación DNI<small>Registrar entrada o salida</small></span>
-                </a>
+                @can('attendances.create')
+                    <a href="{{ route('admin.asistencias.marcacion') }}" class="btn t-boton t-boton-marcacion">
+                        <i class="bi bi-fingerprint"></i>
+                        <span>Marcación DNI<small>Registrar entrada o salida</small></span>
+                    </a>
+                @endcan
             </div>
         </section>
 
@@ -47,7 +49,7 @@
                     </p>
 
                     <nav class="t-funciones" aria-label="Accesos rápidos">
-                        @foreach ($funciones as $funcion)
+                        @forelse ($funciones as $funcion)
                             @if ($funcion['ruta'])
                                 <a href="{{ $funcion['ruta'] }}" class="t-funcion">
                                     <span class="t-funcion-icono t-{{ $funcion['color'] }}"><i class="bi {{ $funcion['icono'] }}"></i></span>
@@ -60,7 +62,9 @@
                                     <span class="t-funcion-texto">{{ $funcion['texto'] }}<small>Próximamente</small></span>
                                 </span>
                             @endif
-                        @endforeach
+                        @empty
+                            <p class="text-muted mb-0"><i class="bi bi-shield-lock me-1"></i> Todavía no tiene módulos asignados. Solicite sus permisos a un administrador del sistema.</p>
+                        @endforelse
                     </nav>
 
                     <div class="t-sellos">

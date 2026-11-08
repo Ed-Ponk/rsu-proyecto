@@ -13,6 +13,8 @@
     <div class="t-tarjeta"
          id="moduloVehiculos"
          data-tads-modulo="vehiculos"
+         data-permiso="vehicles"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.vehiculos.index') }}"
          data-url-recurso="{{ url('admin/vehiculos') }}"
          data-url-crear="{{ route('admin.vehiculos.create') }}"

@@ -237,10 +237,10 @@ class PersonalController extends Controller
     private function validado(Request $request, ?Personal $actual = null): array
     {
         $request->merge([
-            'dni' => trim((string) $request->input('dni')),
-            'email' => strtolower(trim((string) $request->input('email'))),
-            'license' => strtoupper(trim((string) $request->input('license'))) ?: null,
-            'phone' => preg_replace('/\s+/', '', (string) $request->input('phone')) ?: null,
+            'dni' => trim($request->texto('dni')),
+            'email' => strtolower(trim($request->texto('email'))),
+            'license' => strtoupper(trim($request->texto('license'))) ?: null,
+            'phone' => preg_replace('/\s+/', '', $request->texto('phone')) ?: null,
             'status' => $request->boolean('status'),
         ]);
 

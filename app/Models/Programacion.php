@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -104,6 +105,30 @@ class Programacion extends Model
         $inicio = $this->turno?->time_start ?? '00:00';
 
         return ((int) substr($inicio, 0, 2)) * 60 + (int) substr($inicio, 3, 2);
+    }
+
+    /** Momento en que empieza el turno de esta programación (en su fecha). */
+    public function inicio(?Turno $turno = null): Carbon
+    {
+        return ($turno ?? $this->turno)->inicioDe($this->date->toDateString());
+    }
+
+    /** Momento en que termina el turno (al día siguiente si es nocturno). */
+    public function fin(?Turno $turno = null): Carbon
+    {
+        return ($turno ?? $this->turno)->finDe($this->date->toDateString());
+    }
+
+    /** ¿Ya terminó el turno? Un nocturno de ayer sigue en curso hasta que acaba (por ejemplo, a las 06:00 de hoy). */
+    public function haTerminado(?Turno $turno = null): bool
+    {
+        return now()->gte($this->fin($turno));
+    }
+
+    /** ¿Ya empezó el turno (y puede seguir en curso o haber terminado)? */
+    public function haEmpezado(?Turno $turno = null): bool
+    {
+        return now()->gte($this->inicio($turno));
     }
 
     /** Programaciones que caen en un día feriado activo. */

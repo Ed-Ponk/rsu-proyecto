@@ -30,7 +30,7 @@
             @endif
         </div>
         <input type="file" name="logo" id="archivoLogo" class="d-none" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
-        <div class="form-text">JPG, PNG, WEBP, GIF o SVG. Máximo 2 MB.</div>
+        <div class="form-text">JPG, PNG, WEBP o GIF. Máximo 2 MB.</div>
     </div>
 </div>
 

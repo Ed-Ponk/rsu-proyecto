@@ -13,6 +13,8 @@
     <div class="t-tarjeta"
          id="moduloTiposPersonal"
          data-tads-modulo="tipospersonal"
+         data-permiso="employeetypes"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.tipospersonal.index') }}"
          data-url-recurso="{{ url('admin/tipos-personal') }}"
          data-url-crear="{{ route('admin.tipospersonal.create') }}">

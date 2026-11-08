@@ -138,29 +138,62 @@
         },
     };
 
-    /* ---------- USUARIOS DEL SISTEMA ---------- */
+    /* ---------- USUARIOS DEL SISTEMA (Avance 05) ---------- */
     Tads.Modulos.usuarios = {
         init: function (contenedor) {
+            const puede = (nombre) => contenedor.dataset[nombre] === '1';
+            const urlRecurso = contenedor.dataset.urlRecurso;
+
+            const botonPermisos = (fila) => fila.es_administrador
+                ? `<a class="btn t-boton-icono t-info" href="${urlRecurso}/${fila.id}/permisos" data-bs-toggle="tooltip" title="Ver permisos (acceso total)"><i class="bi bi-key-fill"></i></a>`
+                : `<a class="btn t-boton-icono t-info" href="${urlRecurso}/${fila.id}/permisos" data-bs-toggle="tooltip" title="Permisos (${fila.permisos} concedidos)"><i class="bi bi-key-fill"></i></a>`;
+
+            const acciones = (fila) => {
+                if (fila.bloqueado) return '<span class="text-muted small">Solo administradores</span>';
+
+                const botones = [];
+                if (puede('puedePermisos')) botones.push(botonPermisos(fila));
+                if (puede('puedeEditar')) botones.push(Tads.botonEditar(fila.id));
+                if (puede('puedeEliminar')) {
+                    botones.push(Tads.botonEliminar(fila.id, fila.nombre_completo || fila.correo, fila.actual ? 'No puede eliminar su propia cuenta desde aquí' : ''));
+                }
+
+                return botones.length ? Tads.acciones(...botones) : '';
+            };
+
             contenedor._gestor = new Tads.Gestor({
                 entidad: 'usuario',
-                icono: 'bi-person-gear',
+                icono: 'bi-people-fill',
                 urlListado: contenedor.dataset.urlListado,
-                urlRecurso: contenedor.dataset.urlRecurso,
+                urlRecurso: urlRecurso,
                 urlCrear: contenedor.dataset.urlCrear,
-                orden: [[0, 'asc']],
+                orden: [[1, 'asc']],
+                alCargarFormulario: (cuerpo) => {
+                    const cajaFoto = cuerpo.querySelector('#cajaFoto');
+                    const archivoFoto = cuerpo.querySelector('#archivoFoto');
+                    if (cajaFoto && archivoFoto) Tads.vistaPreviaArchivo(cajaFoto, archivoFoto);
+
+                    cuerpo.querySelectorAll('#usuarioDni, #usuarioTelefono').forEach((campo) => {
+                        campo.addEventListener('input', () => { campo.value = campo.value.replace(/\D/g, ''); });
+                    });
+                },
                 columnas: [
-                    { data: 'nombre', render: (v, t, fila) => `<strong>${Tads.escapar(v)}</strong>${fila.actual ? ` ${Tads.insignia('Usted', 'azul')}` : ''}` },
+                    { data: 'foto', orderable: false, searchable: false, render: (foto, tipo, fila) => foto
+                        ? `<img class="t-avatar" src="${Tads.escapar(foto)}" alt="Foto">`
+                        : `<span class="t-avatar">${Tads.escapar(fila.iniciales)}</span>` },
+                    { data: 'nombres', render: (v, t, fila) => `<strong>${Tads.escapar(v)}</strong>${fila.actual ? ` ${Tads.insignia('Usted', 'azul')}` : ''}` },
+                    { data: 'apellidos', render: (v) => Tads.escapar(v ?? '') },
+                    { data: 'dni', render: (v) => v ? `<span class="t-codigo">${Tads.escapar(v)}</span>` : '<span class="text-muted">N/A</span>' },
                     { data: 'correo' },
+                    { data: 'telefono', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">N/A</span>' },
+                    { data: 'tipo', render: (v, t, fila) => fila.es_administrador ? Tads.insignia('ADMINISTRADOR', 'verde') : Tads.insignia('OPERADOR', 'turquesa') },
                     { data: 'activo', render: (v) => v ? Tads.insignia('Activo', 'verde') : Tads.insignia('Inactivo', 'gris') },
-                    { data: 'dos_pasos', render: (v) => v ? Tads.insignia('Activada', 'verde') : Tads.insignia('No activada', 'gris') },
-                    { data: 'creado', render: Tads.celdaFecha },
-                    { data: null, orderable: false, searchable: false, className: 'text-center',
-                        render: (fila) => Tads.acciones(
-                            Tads.botonEditar(fila.id),
-                            Tads.botonEliminar(fila.id, fila.correo, fila.actual ? 'No puede eliminar su propia cuenta desde aquí' : ''),
-                        ) },
+                    { data: 'actualizado', render: Tads.celdaFecha },
+                    { data: null, orderable: false, searchable: false, className: 'text-center', render: acciones },
                 ],
             });
+
+            // Sin permiso para crear no hay botón «Nuevo usuario» (la vista ya lo omite); por si acaso no hace nada.
         },
     };
 

@@ -22,6 +22,8 @@
     <div class="t-tarjeta"
          id="moduloZonas"
          data-tads-modulo="zonas"
+         data-permiso="zones"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.zonas.index') }}"
          data-url-recurso="{{ url('admin/zonas') }}"
          data-url-crear="{{ route('admin.zonas.create') }}"

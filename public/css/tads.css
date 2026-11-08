@@ -306,6 +306,32 @@
     box-shadow: inset 0 0 0 9999px var(--rsu-emerald-50) !important;
 }
 
+/* La columna de acciones queda fija a la derecha cuando la tabla es más ancha que la pantalla (listas con muchas columnas, celulares):
+   así editar y eliminar nunca quedan escondidos detrás del desplazamiento horizontal. */
+.table-responsive .t-tabla > thead > tr > th:last-child,
+.table-responsive .t-tabla > tbody > tr > td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    box-shadow: -12px 0 10px -10px rgba(15, 23, 42, 0.16);
+}
+
+.table-responsive .t-tabla > thead > tr > th:last-child {
+    background: var(--rsu-slate-50);
+}
+
+.table-responsive .t-tabla > tbody > tr > td:last-child {
+    background: #ffffff;
+}
+
+.table-responsive .t-tabla > tbody > tr:nth-of-type(odd) > td:last-child {
+    background: var(--rsu-slate-50);
+}
+
+.table-responsive .t-tabla > tbody > tr:hover > td:last-child {
+    background: var(--rsu-emerald-50) !important;
+}
+
 /* Integración y estilizado de DataTables */
 .dt-container .dt-search input,
 .dataTables_filter input {

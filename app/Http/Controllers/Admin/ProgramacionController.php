@@ -292,8 +292,8 @@ class ProgramacionController extends Controller
             return $this->rechazo('Una programación finalizada ya no se puede modificar.', 'admin.programaciones.index');
         }
 
-        if ($programacion->date->lt(today())) {
-            return $this->rechazo('Esta programación ya pasó su fecha: solo se puede finalizar o eliminar.', 'admin.programaciones.index');
+        if ($programacion->haTerminado()) {
+            return $this->rechazo('El turno de esta programación ya terminó: solo se puede finalizar o eliminar.', 'admin.programaciones.index');
         }
 
         return view('admin.programaciones.edit', [
@@ -363,11 +363,16 @@ class ProgramacionController extends Controller
             return $this->rechazo('No se puede finalizar una programación que todavía no llegó a su fecha ('.$programacion->date->format('d/m/Y').').', 'admin.programaciones.index');
         }
 
-        // Hoy: no se da por cumplido un turno que todavía no empezó.
-        if ($programacion->date->isToday() && now()->hour * 60 + now()->minute < $programacion->minutoDeInicio()) {
-            $hora = substr($programacion->turno->time_start, 0, 5);
+        // Finalizar es dar por cumplido el turno: no se puede mientras no haya terminado (ni antes de empezar ni con el turno en curso).
+        if (! $programacion->haTerminado()) {
+            $inicio = $programacion->inicio();
+            $fin = $programacion->fin();
+            $cuando = fn ($momento) => ($momento->isToday() ? 'a las ' : 'el '.$momento->format('d/m').' a las ').$momento->format('H:i');
+            $texto = $programacion->haEmpezado()
+                ? 'El turno está en curso y termina '.$cuando($fin)
+                : 'El turno empieza '.$cuando($inicio).' y termina '.$cuando($fin);
 
-            return $this->rechazo("El turno empieza a las {$hora}: todavía no se puede finalizar.", 'admin.programaciones.index');
+            return $this->rechazo("{$texto}: todavía no se puede finalizar.", 'admin.programaciones.index');
         }
 
         $programacion->update(['status' => Programacion::FINALIZADO]);

@@ -13,6 +13,8 @@
     <div class="t-tarjeta"
          id="moduloVacaciones"
          data-tads-modulo="vacaciones"
+         data-permiso="vacations"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.vacaciones.index') }}"
          data-url-recurso="{{ url('admin/vacaciones') }}"
          data-url-personal="{{ url('admin/personal') }}"

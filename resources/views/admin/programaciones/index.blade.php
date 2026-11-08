@@ -25,6 +25,8 @@
     <div class="t-modulo"
          id="moduloProgramaciones"
          data-tads-modulo="programaciones"
+         data-permiso="scheduling"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.programaciones.index') }}"
          data-url-recurso="{{ url('admin/programaciones') }}"
          data-url-crear="{{ route('admin.programaciones.create') }}"

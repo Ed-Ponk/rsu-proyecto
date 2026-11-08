@@ -417,6 +417,26 @@ class ReglasProgramacion
             $this->problema('vehiculo_estado', "Vehículo {$vehiculo->plate}", 'está inactivo', [], 'Active el vehículo o cambie el del grupo.');
         }
 
+        // Una programación nueva no puede ser de un turno que ya terminó (por ejemplo, la mañana de hoy a las 15:00).
+        if ($turno && $ignorarIds === []) {
+            $terminadas = array_values(array_filter($fechas, fn (string $f) => now()->gte($turno->finDe($f))));
+
+            if ($terminadas) {
+                $errores[] = "El turno {$turno->name} ({$turno->rango}) ya terminó ".self::diasTexto($terminadas).': no se puede programar un turno que ya pasó. Programe desde mañana o elija otro turno.';
+                $this->problema('fechas', "Turno {$turno->name}", 'ya terminó '.self::diasTexto($terminadas), $terminadas, 'Programe desde mañana o elija otro turno.');
+            }
+        }
+
+        // Una programación nueva no puede ser de un turno que ya terminó (por ejemplo, la mañana de hoy a las 15:00).
+        if ($turno && $ignorarIds === []) {
+            $terminadas = array_values(array_filter($fechas, fn (string $f) => now()->gte($turno->finDe($f))));
+
+            if ($terminadas) {
+                $errores[] = "El turno {$turno->name} ({$turno->rango}) ya terminó ".self::diasTexto($terminadas).': no se puede programar un turno que ya pasó. Programe desde mañana o elija otro turno.';
+                $this->problema('fechas', "Turno {$turno->name}", 'ya terminó '.self::diasTexto($terminadas), $terminadas, 'Programe desde mañana o elija otro turno.');
+            }
+        }
+
         $idConductor = (int) ($s['conductor_id'] ?? 0);
         $idsAyudantes = array_values(array_filter(array_map('intval', (array) ($s['ayudantes'] ?? []))));
         $todos = array_values(array_filter([$idConductor, ...$idsAyudantes]));
@@ -565,10 +585,57 @@ class ReglasProgramacion
     /** Ventana de trabajo de un turno en una fecha: los nocturnos terminan al día siguiente. @return array{0: Carbon, 1: Carbon} */
     private function ventana(string $fecha, int $turnoId): array
     {
+        $clave = $fecha.'|'.$turnoId;
+
+        if (isset($this->ventanas[$clave])) {
+            return $this->ventanas[$clave];
+        }
+
         [$inicio, $fin] = $this->horasDelTurno($turnoId);
         $dia = Carbon::parse($fecha)->startOfDay();
 
-        return [$dia->copy()->addMinutes($inicio), $dia->copy()->addMinutes($fin <= $inicio ? $fin + 1440 : $fin)];
+        return $this->ventanas[$clave] = [$dia->copy()->addMinutes($inicio), $dia->copy()->addMinutes($fin <= $inicio ? $fin + 1440 : $fin)];
+    }
+
+    /** @var array<string, array{0: Carbon, 1: Carbon}> */
+    private array $ventanas = [];
+
+    /**
+     * Turnos de una persona como mapas «inicio → fines» y «fin → inicios» (en segundos), para encontrar en O(1) los turnos pegados.
+     *
+     * @param  list<array{0: string, 1: int}>  $turnos  [fecha, turno]
+     * @return array{0: array<int, list<int>>, 1: array<int, list<int>>}
+     */
+    private function mapasDeTurnos(array $turnos): array
+    {
+        $porInicio = $porFin = [];
+
+        foreach ($turnos as [$fecha, $turnoId]) {
+            [$a, $b] = $this->ventana($fecha, $turnoId);
+            $porInicio[$a->timestamp][] = $b->timestamp;
+            $porFin[$b->timestamp][] = $a->timestamp;
+        }
+
+        return [$porInicio, $porFin];
+    }
+
+    /** Horas de trabajo seguidas que sumaría un turno nuevo con los turnos pegados a él (uno termina justo cuando empieza el otro). */
+    private function horasSeguidas(array $mapas, string $fecha, int $turnoId): float
+    {
+        [$porInicio, $porFin] = $mapas;
+        [$a, $b] = $this->ventana($fecha, $turnoId);
+        $inicio = $a->timestamp;
+        $fin = $b->timestamp;
+
+        while (isset($porFin[$inicio])) {
+            $inicio = min($porFin[$inicio]);
+        }
+
+        while (isset($porInicio[$fin])) {
+            $fin = max($porInicio[$fin]);
+        }
+
+        return ($fin - $inicio) / 3600;
     }
 
     /**
@@ -648,8 +715,11 @@ class ReglasProgramacion
             ->selectRaw('user_id, count(*) as total')->groupBy('user_id')->pluck('total', 'user_id');
 
         foreach ($personas as $id => $persona) {
-            $porContrato = $porVacaciones = $porOcupacion = $porLote = $porCruce = $propias = [];
+            $porContrato = $porVacaciones = $porOcupacion = $porLote = $porCruce = $porCadena = $propias = [];
             $choque = null;   // primer turno con el que se cruza, para explicar el porqué: [fecha, turno]
+            $maxHoras = (float) config('proyecto.programacion.max_horas_seguidas', 16);
+            $mapas = $this->mapasDeTurnos([...($existentes[$id] ?? []), ...($ocupado['int'][$id] ?? [])]);
+            $mayorCadena = 0.0;
 
             foreach ($fechas as $fecha) {
                 if (! ($contratos[$id] ?? collect())->contains(fn (Contrato $c) => $c->start_date->toDateString() <= $fecha
@@ -685,6 +755,18 @@ class ReglasProgramacion
                     }
                 }
 
+                // Turnos pegados: dos seguidos (16 h) sí; tres (24 h sin parar) no.
+                if (($horas = $this->horasSeguidas($mapas, $fecha, $turnoId)) > $maxHoras) {
+                    $porCadena[] = $fecha;
+                    $mayorCadena = max($mayorCadena, $horas);
+                }
+
+                // Turnos pegados: dos seguidos (16 h) sí; tres (24 h sin parar) no.
+                if (($horas = $this->horasSeguidas($mapas, $fecha, $turnoId)) > $maxHoras) {
+                    $porCadena[] = $fecha;
+                    $mayorCadena = max($mayorCadena, $horas);
+                }
+
                 // Las fechas de esta misma solicitud no chocan entre sí: se guardan aparte y se suman al terminar (evita revisar cada fecha contra todas las anteriores).
                 $propias[] = [$fecha, $turnoId];
             }
@@ -711,6 +793,7 @@ class ReglasProgramacion
                 'contrato' => $porContrato && $vence && $vence >= $desde && $vence < end($porContrato) ? 'su contrato vence el '.Carbon::parse($vence)->format('d/m') : 'no tiene contrato vigente',
                 'ocupado' => "ya está programado en el turno {$turnoActual}",
                 'lote' => 'está en dos grupos a la vez (mismo turno)',
+                'cadena' => 'pasaría de '.rtrim(rtrim(number_format($maxHoras, 1), '0'), '.').' h de trabajo seguidas',
                 'cruce' => $choque ? 'ya tiene el turno '.($nombresDeTurnos[$choque[1]] ?? '').' el '.Carbon::parse($choque[0])->format('d/m').', que se cruza' : 'tiene otro turno que se cruza',
             ];
 
@@ -729,6 +812,15 @@ class ReglasProgramacion
                     $this->problema($tipoProblema, $persona->nombre_completo, $queCorto[$tipoProblema], $afectadas, null, $id);
                     $malas[$id] = array_values(array_unique([...($malas[$id] ?? []), ...$afectadas]));
                 }
+            }
+
+            // Doble y triple turno están permitidos, pero más de N horas sin parar se avisa (no bloquea).
+            if ($porCadena) {
+                $porCadena = array_values(array_unique($porCadena));
+                sort($porCadena);
+                $horas = rtrim(rtrim(number_format($mayorCadena, 1), '0'), '.');
+                $avisos[] = "{$persona->nombre_completo} trabajaría {$horas} h seguidas con el turno {$turnoActual} ".self::diasTexto($porCadena).': tiene turnos pegados antes o después (el aviso salta desde las '.rtrim(rtrim(number_format($maxHoras, 1), '0'), '.').' h).';
+                $this->nota('cadena', "{$persona->nombre_completo} trabajaría {$horas} h seguidas");
             }
 
             if (($faltas[$id] ?? 0) >= (int) config('proyecto.programacion.faltas_alerta', 3)) {
@@ -790,6 +882,7 @@ class ReglasProgramacion
 
         return $candidatos->first(function (Personal $c) use ($fechasMalas, $existentes, $ocupado, $turnoId) {
             foreach ($fechasMalas as $fecha) {
+
                 $conContrato = $c->contratos->contains(fn (Contrato $k) => $k->start_date->toDateString() <= $fecha
                     && ($k->end_date === null || $k->end_date->toDateString() >= $fecha));
                 $deVacaciones = $c->vacaciones->contains(fn (Vacacion $v) => $v->start_date->toDateString() <= $fecha && $v->end_date->toDateString() >= $fecha);
@@ -815,17 +908,49 @@ class ReglasProgramacion
      */
     public function exigeAsistencia(Programacion $programacion, ?int $turnoId = null): bool
     {
-        if (! $programacion->date->isToday()) {
-            return false;
+        $turno = $turnoId && $turnoId !== (int) $programacion->shift_id ? Turno::find($turnoId) : null;
+
+        // Se mide con la ventana real del turno (inicio y fin de ESA jornada): un nocturno de ayer sigue en curso hasta las 06:00.
+        return $programacion->haEmpezado($turno) && ! $programacion->haTerminado($turno);
+    }
+
+    /**
+     * Revisa lo que exige la asistencia cuando alguien entra a una programación o se la mueve de turno. Devuelve el mensaje de error o null.
+     *  - Mover la programación a un turno que ya terminó no se puede.
+     *  - Si el turno (el de destino, si se cambia) ya empezó, quien entra tiene que haber marcado EN ESE turno; si se cambia de turno,
+     *    todo el personal tiene que haber marcado en el turno de destino.
+     *
+     * @param  list<int>  $entran  personas que se agregan a la programación
+     * @param  list<int>  $todos  todo el personal que quedaría en la programación
+     */
+    public function problemaDeAsistenciaAlEntrar(Programacion $programacion, int $turnoId, array $entran, array $todos): ?string
+    {
+        $cambiaTurno = $turnoId !== (int) $programacion->shift_id;
+        $turno = $cambiaTurno ? Turno::find($turnoId) : $programacion->turno;
+
+        if (! $turno) {
+            return null;
         }
 
-        $inicio = $programacion->minutoDeInicio();
-
-        if ($turnoId && $turnoId !== (int) $programacion->shift_id && ($turno = Turno::find($turnoId))) {
-            $inicio = ((int) substr($turno->time_start, 0, 2)) * 60 + (int) substr($turno->time_start, 3, 2);
+        if ($cambiaTurno && $programacion->haTerminado($turno)) {
+            return "El turno {$turno->name} del {$programacion->date->format('d/m/Y')} ya terminó: no se puede mover la programación a ese turno.";
         }
 
-        return now()->hour * 60 + now()->minute >= $inicio;
+        if (! $programacion->haEmpezado($turno)) {
+            return null;
+        }
+
+        $requeridos = $cambiaTurno ? $todos : $entran;
+
+        if ($requeridos === []) {
+            return null;
+        }
+
+        $presentes = $this->presentesEnTurno($requeridos, $programacion->date->toDateString(), $turno->id);
+        $faltan = Personal::whereIn('users.id', array_diff($requeridos, $presentes))->get();
+
+        return $faltan->isEmpty() ? null
+            : $faltan->map->nombre_completo->implode(', ')." no registró asistencia en el turno {$turno->name}: el turno ya empezó y quien cubre tiene que estar presente en ese mismo turno.";
     }
 
     /**
@@ -878,10 +1003,13 @@ class ReglasProgramacion
         // Si el turno de hoy ya empezó, quien va a cubrir tiene que estar presente EN ESE TURNO.
         $exigeAsistencia = $this->exigeAsistencia($programacion, $turnoId);
         $presentes = $exigeAsistencia ? $this->presentesEnTurno($personas->pluck('id'), $fecha, $turnoId) : [];
-        $nombreTurno = Turno::find($turnoId)?->name;
+        $turnoDestino = Turno::find($turnoId);
+        $nombreTurno = $turnoDestino?->name;
+        // Si el turno de la programación (o el de destino) ya terminó, la programación ya no se puede modificar: nadie puede entrar.
+        $terminado = $programacion->haTerminado() || ($turnoDestino && $programacion->haTerminado($turnoDestino));
 
-        $lista = $personas->map(function (Personal $p) use ($motivos, $exigeAsistencia, $presentes, $nombreTurno) {
-            $motivo = $motivos[$p->id] ?? null;
+        $lista = $personas->map(function (Personal $p) use ($motivos, $exigeAsistencia, $presentes, $nombreTurno, $terminado) {
+            $motivo = $terminado ? 'el turno ya terminó: la programación ya no se puede modificar' : ($motivos[$p->id] ?? null);
 
             if (! $motivo && $exigeAsistencia && ! in_array((int) $p->id, $presentes, true)) {
                 $motivo = "no registró asistencia en el turno {$nombreTurno}";
@@ -904,18 +1032,20 @@ class ReglasProgramacion
     /** Programaciones pendientes (desde hoy) afectadas por un reemplazo. */
     private function afectadasPorReemplazo(array $d, bool $bloquear = false)
     {
-        $desde = max($d['desde'], today()->toDateString());
+        // Se parte de ayer: el turno nocturno de ayer puede seguir en curso. Los turnos que ya terminaron se descartan abajo.
+        $desde = max($d['desde'], today()->subDay()->toDateString());
 
         // Con $bloquear la lectura es con bloqueo (FOR UPDATE): ve lo último confirmado y frena a quien quiera cambiar las mismas
         // programaciones a la vez. Una lectura normal vería la «foto» anterior y dos cambios simultáneos se pisarían.
-        return Programacion::query()->when(! $bloquear, fn ($q) => $q->with('ayudantes'))->pendientes()
+        return Programacion::query()->with('turno')->when(! $bloquear, fn ($q) => $q->with('ayudantes'))->pendientes()
             ->entre($desde, $d['hasta'])
             ->when($this->zonasDe($d) !== [], fn ($q) => $q->whereIn('zone_id', $this->zonasDe($d)))
             ->when($d['rol'] === 'turno', fn ($q) => $q->where('shift_id', $d['saliente_id']))
             ->when($d['rol'] === 'conductor', fn ($q) => $q->where('driver_id', $d['saliente_id']))
             ->when($d['rol'] === 'vehiculo', fn ($q) => $q->where('vehicle_id', $d['saliente_id']))
             ->when($d['rol'] === 'ayudante', fn ($q) => $q->whereHas('ayudantes', fn ($a) => $a->where('users.id', $d['saliente_id'])))
-            ->when($bloquear, fn ($q) => $q->orderBy('id')->lockForUpdate(), fn ($q) => $q->orderBy('date'))->get();
+            ->when($bloquear, fn ($q) => $q->orderBy('id')->lockForUpdate(), fn ($q) => $q->orderBy('date'))->get()
+            ->reject(fn (Programacion $p) => $p->haTerminado())->values();
     }
 
     /**
@@ -986,6 +1116,68 @@ class ReglasProgramacion
 
                 return $fin(['ok' => false, 'errores' => ["{$nombre} no registró asistencia hoy en el turno {$turnos}: el turno ya empezó y quien cubre tiene que estar presente en ese mismo turno."],
                     'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas]);
+            }
+        }
+
+        if ($d['rol'] === 'turno' && ($destino = Turno::find($d['entrante_id']))) {
+            // No se mueve nada a un turno que ya terminó, y si el turno de destino ya empezó todo el personal tiene que haber marcado allí.
+            $terminadas = $filas->filter(fn (Programacion $p) => $p->haTerminado($destino));
+
+            if ($terminadas->isNotEmpty()) {
+                $fechas = $terminadas->map(fn (Programacion $p) => $p->date->toDateString())->unique()->sort()->values()->all();
+                $this->problema('asistencia', "Turno {$destino->name}", 'ya terminó', $fechas, 'Elija «Desde» a partir de mañana.');
+
+                return $fin(['ok' => false, 'errores' => ["El turno {$destino->name} ya terminó el ".self::resumenDeFechas($fechas).': no se puede mover programaciones a un turno que ya terminó. Elija «Desde» a partir de mañana.'],
+                    'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas]);
+            }
+
+            $empezadas = $filas->filter(fn (Programacion $p) => $p->haEmpezado($destino));
+
+            if ($empezadas->isNotEmpty()) {
+                $enDestino = Asistencia::where('status', Asistencia::PRESENTE)->where('schedule_id', $destino->id)
+                    ->whereIn('shift_date', $empezadas->map(fn (Programacion $p) => $p->date->toDateString())->unique()->values()->all())
+                    ->get(['user_id', 'shift_date'])->mapWithKeys(fn (Asistencia $a) => [$a->user_id.'|'.$a->shift_date->toDateString() => true]);
+                $sinMarcar = $empezadas->filter(fn (Programacion $p) => collect([$p->driver_id, ...$p->ayudantes->pluck('id')->all()])
+                    ->contains(fn ($persona) => ! isset($enDestino[$persona.'|'.$p->date->toDateString()])));
+
+                if ($sinMarcar->isNotEmpty()) {
+                    $fechas = $sinMarcar->map(fn (Programacion $p) => $p->date->toDateString())->unique()->sort()->values()->all();
+                    $this->problema('asistencia', "Turno {$destino->name}", 'ya empezó y el personal no marcó en él', $fechas, 'Elija «Desde» a partir de mañana.');
+
+                    return $fin(['ok' => false, 'errores' => ["El turno {$destino->name} ya empezó el ".self::resumenDeFechas($fechas).' y el personal de esas programaciones no registró asistencia en él: no se puede mover ahí. Elija «Desde» a partir de mañana.'],
+                        'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas]);
+                }
+            }
+        }
+
+        if ($d['rol'] === 'turno' && ($destino = Turno::find($d['entrante_id']))) {
+            // No se mueve nada a un turno que ya terminó, y si el turno de destino ya empezó todo el personal tiene que haber marcado allí.
+            $terminadas = $filas->filter(fn (Programacion $p) => $p->haTerminado($destino));
+
+            if ($terminadas->isNotEmpty()) {
+                $fechas = $terminadas->map(fn (Programacion $p) => $p->date->toDateString())->unique()->sort()->values()->all();
+                $this->problema('asistencia', "Turno {$destino->name}", 'ya terminó', $fechas, 'Elija «Desde» a partir de mañana.');
+
+                return $fin(['ok' => false, 'errores' => ["El turno {$destino->name} ya terminó el ".self::resumenDeFechas($fechas).': no se puede mover programaciones a un turno que ya terminó. Elija «Desde» a partir de mañana.'],
+                    'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas]);
+            }
+
+            $empezadas = $filas->filter(fn (Programacion $p) => $p->haEmpezado($destino));
+
+            if ($empezadas->isNotEmpty()) {
+                $enDestino = Asistencia::where('status', Asistencia::PRESENTE)->where('schedule_id', $destino->id)
+                    ->whereIn('shift_date', $empezadas->map(fn (Programacion $p) => $p->date->toDateString())->unique()->values()->all())
+                    ->get(['user_id', 'shift_date'])->mapWithKeys(fn (Asistencia $a) => [$a->user_id.'|'.$a->shift_date->toDateString() => true]);
+                $sinMarcar = $empezadas->filter(fn (Programacion $p) => collect([$p->driver_id, ...$p->ayudantes->pluck('id')->all()])
+                    ->contains(fn ($persona) => ! isset($enDestino[$persona.'|'.$p->date->toDateString()])));
+
+                if ($sinMarcar->isNotEmpty()) {
+                    $fechas = $sinMarcar->map(fn (Programacion $p) => $p->date->toDateString())->unique()->sort()->values()->all();
+                    $this->problema('asistencia', "Turno {$destino->name}", 'ya empezó y el personal no marcó en él', $fechas, 'Elija «Desde» a partir de mañana.');
+
+                    return $fin(['ok' => false, 'errores' => ["El turno {$destino->name} ya empezó el ".self::resumenDeFechas($fechas).' y el personal de esas programaciones no registró asistencia en él: no se puede mover ahí. Elija «Desde» a partir de mañana.'],
+                        'sugerencias' => [], 'avisos' => [], 'total' => $filas->count(), 'filas' => $filas]);
+                }
             }
         }
 

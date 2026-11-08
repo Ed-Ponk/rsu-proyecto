@@ -106,7 +106,7 @@ class TipoPersonalController extends Controller
 
     private function validado(Request $request, ?int $ignorarId = null): array
     {
-        $request->merge(['name' => preg_replace('/\s+/', ' ', trim((string) $request->input('name')))]);
+        $request->merge(['name' => preg_replace('/\s+/', ' ', trim($request->texto('name')))]);
 
         return $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:100', "regex:/^[\pL\s'.\-]+$/u", Rule::unique('usertypes', 'name')->ignore($ignorarId)],

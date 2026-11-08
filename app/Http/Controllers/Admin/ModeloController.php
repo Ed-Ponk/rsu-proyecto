@@ -137,8 +137,8 @@ class ModeloController extends Controller
     private function normalizar(Request $request): void
     {
         $request->merge([
-            'name' => preg_replace('/\s+/', ' ', trim((string) $request->input('name'))),
-            'code' => strtoupper(trim((string) $request->input('code'))),
+            'name' => preg_replace('/\s+/', ' ', trim($request->texto('name'))),
+            'code' => strtoupper(trim($request->texto('code'))),
         ]);
     }
 

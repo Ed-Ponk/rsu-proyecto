@@ -46,6 +46,7 @@ class DatabaseSeeder extends Seeder
             VacacionSeeder::class,
             GrupoPersonalSeeder::class,
             CambiosDemoSeeder::class,
+            UsuarioOperadorDemoSeeder::class,
         ]);
     }
 

@@ -86,15 +86,11 @@ class ServicioCambios
                 throw ValidationException::withMessages(['programacion' => [$conAsistencia->map->nombre_completo->implode(', ').' ya registró asistencia en el turno '.$programacion->turno?->name.': no se puede cambiar el turno de esta programación.']]);
             }
 
-            // Si el turno ya empezó, quien entra tiene que haber marcado asistencia EN ESE turno (el final, si también se cambia).
+            // Si el turno ya empezó, quien entra tiene que haber marcado asistencia EN ESE turno (el final, si también se cambia);
+            // y no se mueve la programación a un turno que ya terminó.
             $entran = array_values(array_diff([$estado['conductor'], ...$estado['ayudantes']], [$programacion->driver_id, ...$actuales]));
-            if ($entran && $this->reglas->exigeAsistencia($programacion, $estado['turno'])) {
-                $presentes = $this->reglas->presentesEnTurno($entran, $programacion->date->toDateString(), $estado['turno']);
-                $faltan = Personal::whereIn('users.id', array_diff($entran, $presentes))->get();
-                if ($faltan->isNotEmpty()) {
-                    $turno = Turno::find($estado['turno'])?->name;
-                    throw ValidationException::withMessages(['programacion' => [$faltan->map->nombre_completo->implode(', ')." no registró asistencia en el turno {$turno}: el turno ya empezó y quien cubre tiene que estar presente en ese mismo turno."]]);
-                }
+            if ($mensaje = $this->reglas->problemaDeAsistenciaAlEntrar($programacion, $estado['turno'], $entran, array_values(array_filter([$estado['conductor'], ...$estado['ayudantes']])))) {
+                throw ValidationException::withMessages(['programacion' => [$mensaje]]);
             }
 
             $revision = $this->reglas->revisar($this->solicitudes([$estado]));
@@ -194,7 +190,7 @@ class ServicioCambios
                     throw ValidationException::withMessages(['cambio' => ["La programación del {$dia} ya fue finalizada: su cambio no se puede deshacer."]]);
                 }
 
-                if ($programacion->date->lt(today())) {
+                if ($programacion->haTerminado()) {
                     throw ValidationException::withMessages(['cambio' => ["La programación del {$dia} ya pasó su fecha: su cambio no se puede deshacer."]]);
                 }
 
@@ -216,6 +212,12 @@ class ServicioCambios
                     }
 
                     $this->restablecer($estado, $c, $dia);
+                }
+
+                $actualesDeEsta = $programacion->ayudantes()->pluck('users.id')->map(fn ($i) => (int) $i)->all();
+                $entran = array_values(array_diff([$estado['conductor'], ...$estado['ayudantes']], [$programacion->driver_id, ...$actualesDeEsta]));
+                if ($mensaje = $this->reglas->problemaDeAsistenciaAlEntrar($programacion, (int) $estado['turno'], $entran, array_values(array_filter([$estado['conductor'], ...$estado['ayudantes']])))) {
+                    throw ValidationException::withMessages(['cambio' => ["No se puede restablecer el valor anterior en la programación del {$dia}: {$mensaje}"]]);
                 }
 
                 $estados[] = $estado;
@@ -364,8 +366,9 @@ class ServicioCambios
             throw ValidationException::withMessages(['programacion' => ['Esta programación ya fue finalizada y no se puede modificar.']]);
         }
 
-        if ($programacion->date->lt(today())) {
-            throw ValidationException::withMessages(['programacion' => ['Esta programación ya pasó su fecha: solo se puede finalizar o eliminar.']]);
+        // Se mide con el fin del turno (no solo con la fecha): un turno de noche de ayer sigue en curso hasta que termina.
+        if ($programacion->haTerminado()) {
+            throw ValidationException::withMessages(['programacion' => ['El turno de esta programación ya terminó: solo se puede finalizar o eliminar.']]);
         }
     }
 }

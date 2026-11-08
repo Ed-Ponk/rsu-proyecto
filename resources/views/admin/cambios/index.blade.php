@@ -13,6 +13,8 @@
     <div class="t-modulo"
          id="moduloCambios"
          data-tads-modulo="cambios"
+         data-permiso="scheduling-changes"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.cambios.index') }}"
          data-url-recurso="{{ url('admin/cambios') }}"
          data-url-detalle="{{ url('admin/cambios/detalle') }}"

@@ -20,6 +20,8 @@
     <div class="t-modulo"
          id="moduloAsistencias"
          data-tads-modulo="asistencias"
+         data-permiso="attendances"
+         data-permisos="{{ auth()->user()->permisosParaVista() }}"
          data-url-listado="{{ route('admin.asistencias.index') }}"
          data-url-recurso="{{ url('admin/asistencias') }}"
          data-url-crear="{{ route('admin.asistencias.create') }}"

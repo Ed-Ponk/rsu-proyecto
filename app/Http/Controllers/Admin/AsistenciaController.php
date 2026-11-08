@@ -63,8 +63,8 @@ class AsistenciaController extends Controller
             ->where('attendances.date', '>=', $desde->toDateString())
             ->where('attendances.date', '<=', $hasta->toDateString());
 
-        $texto = trim((string) $request->input('buscar'));
-        $buscador = trim((string) $request->input('search.value'));
+        $texto = trim($request->texto('buscar'));
+        $buscador = trim($request->texto('search.value'));
 
         $consulta = $enRango()->join('users', 'users.id', '=', 'attendances.user_id')->select('attendances.*');
 
@@ -297,7 +297,7 @@ class AsistenciaController extends Controller
     /** Registra la marcación: valida credenciales, limita intentos y aplica las mismas reglas que el registro manual. */
     public function marcar(Request $request)
     {
-        $request->merge(['dni' => preg_replace('/\D/', '', (string) $request->input('dni'))]);
+        $request->merge(['dni' => preg_replace('/\D/', '', $request->texto('dni'))]);
 
         $datos = $request->validate([
             'dni' => ['required', 'digits:8'],

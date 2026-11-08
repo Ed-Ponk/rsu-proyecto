@@ -139,7 +139,7 @@ class MarcaController extends Controller
         ], [
             'name.unique' => 'Ya existe una marca con ese nombre.',
             'name.regex' => 'El nombre debe contener letras (no puede ser solo números o símbolos).',
-            'logo.mimes' => 'El logo debe ser JPG, PNG, WEBP, GIF o SVG.',
+            'logo.mimes' => 'El logo debe ser JPG, PNG, WEBP o GIF.',
             'logo.max' => 'El logo no puede pesar más de 2 MB.',
         ]);
     }

@@ -103,6 +103,8 @@ El seeder crea un usuario administrador inicial:
 - Email: `admin@rsu.test`
 - Contraseña: `Admin12345`
 
+Y un operador de ejemplo con permisos limitados (Avance 05): `operador@rsu.test` / `Operador123`.
+
 **Es solo para entorno de desarrollo.** No usar en producción: cambia la contraseña apenas inicia sesión (o elimina el usuario) antes de desplegar.
 
 Para probar la **Marcación DNI** (menú *Gestión de personal → Marcación DNI*), todo el personal del seeder tiene la clave `secret123`:
@@ -196,6 +198,7 @@ Notas:
 - Los datos de demostración (`php artisan db:seed` en local) incluyen «Grupo A» y «Grupo B».
 - **Reglas para situaciones reales** (ajustables en `config/proyecto.php`, bloque `programacion`):
   - Una persona puede trabajar dos turnos el mismo día, incluso seguidos; lo único que se rechaza es el mismo turno dos veces o turnos cuyos horarios se cruzan.
+    Doble y triple turno se permiten, pero la validación **avisa** (no bloquea) cuando alguien quedaría con más de 16 h seguidas (`proyecto.programacion.max_horas_seguidas`).
   - Los mensajes de la validación dicen quién, qué turno y qué días («Carlos Guerrero tiene vacaciones aprobadas los días 02/12/2026, 04/12/2026 y 07/12/2026.») y proponen qué hacer. Cambiar o desactivar un contrato, o aprobar vacaciones, se bloquea si deja días programados sin cobertura (se resuelve con «Reemplazar»).
   - El resultado de «Validar disponibilidad» se muestra en tarjetas cortas (quién · qué pasa · qué días · solución en una línea) y, cuando hay un reemplazo libre, con un botón «Cambiar por…» que lo aplica al formulario y vuelve a validar solo. La API entrega `problemas` y `notas` estructurados además de los textos.
   - Pruebas combinatorias (lentas, aparte de la suite normal): `php artisan test tests/Combinatorias` cruza cientos de situaciones y compara el validador contra un cálculo independiente.
@@ -205,7 +208,7 @@ Notas:
   - El listado marca a quien no registró asistencia en un día que ya empezó (informativo) y la validación avisa de personas con muchas faltas recientes o con contrato que vence pronto.
   - Dos grupos activos del mismo turno y con días en común no pueden compartir conductor, ayudante ni vehículo; el listado de grupos marca a quien hoy no podría trabajar.
   - Cambiar un grupo no modifica lo ya programado (es una plantilla): se avisa y se usa «Reemplazar».
-  - Lógica del turno en curso: no se finaliza un turno que aún no empezó, no se elimina una programación si alguien ya marcó asistencia (se finaliza) y no se cambia a quien ya registró su entrada ese día.
+  - Lógica del turno en curso (se mide con el inicio y el fin reales del turno, también el nocturno que cruza la medianoche): no se finaliza un turno que no terminó, no se programa ni se modifica un turno que ya terminó, no se mueve una programación a un turno que ya empezó si el personal no marcó en él, quien entra a cubrir en un turno en curso tiene que haber marcado asistencia en ESE turno, no se elimina una programación si alguien ya marcó asistencia (se finaliza) y no se cambia a quien ya registró su entrada. El dashboard de hoy incluye el turno de noche de ayer mientras siga en curso.
   - Si dos usuarios guardan lo mismo a la vez (misma persona o mismo vehículo, fecha y turno), uno guarda y el otro recibe un mensaje claro para volver a validar.
   - **Primeros pasos**: los formularios que dependen de otros datos (grupos, programaciones, contratos, vacaciones, asistencia, vehículos) avisan qué hay que registrar antes y dónde. Las cantidades se pueden escribir con coma decimal (`1,5`, `1.500,50`); las placas deben combinar letras y números y se guardan en mayúsculas.
   - **Varias personas a la vez**: si dos usuarios guardan lo mismo en el mismo instante, uno guarda y el otro recibe un mensaje claro (no un error 500); las operaciones que se cruzan en la base de datos se reintentan solas, solo una persona puede resolver una solicitud de vacaciones y las zonas se guardan de una en una para que no queden superpuestas.
@@ -232,7 +235,7 @@ Después de `git pull` ejecute `php artisan migrate` (crea `change_reasons` y `p
 - **Administrador inicial**: en `local` se crea `admin@rsu.test` / `Admin12345` junto con datos de demostración. En producción el seeder exige `ADMIN_EMAIL` y `ADMIN_PASSWORD` (contraseña fuerte) y solo carga catálogos (funciones, turnos, ubigeo).
 - **Tareas programadas**: el cierre de contratos vencidos (`contratos:cerrar-vencidos`) corre cada día a las 00:05. Agregue al cron: `* * * * * php artisan schedule:run`.
 - **Recuperar acceso**: `php artisan admin:cambiar-clave correo@dominio` restablece la contraseña desde la consola. La recuperación por correo solo se ofrece si `MAIL_MAILER` no es `log`.
-- **Seguridad → Usuarios del sistema / Bitácora**: alta, edición y baja de administradores (siempre queda uno activo) y consulta de quién cambió qué.
+- **Gestión de usuarios (Avance 05)**: lista con foto, DNI, tipo y estado; alta y edición en ventana con todos los datos; tipo **Administrador** (acceso total, siempre queda uno activo) u **Operador** (solo lo que se le conceda). La pantalla **Permisos** (llave de cada fila) marca qué puede ver, crear, editar o eliminar en cada módulo (76 permisos `recurso.accion`); el menú y todas las rutas del panel respetan esos permisos. Un operador solo puede conceder permisos que él mismo tiene y no puede tocar cuentas de administradores.
 - **Pruebas y estilo**: `php artisan test` y `vendor/bin/pint`; el flujo de GitHub Actions (`.github/workflows/pruebas.yml`) ejecuta ambos.
 
 ## Docker: ejecutar el sistema en otra computadora

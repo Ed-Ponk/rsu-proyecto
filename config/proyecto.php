@@ -64,6 +64,9 @@ return [
         'faltas_dias' => 30,
         // Aviso cuando el contrato vence pocos días después del último día programado.
         'contrato_por_vencer_dias' => 15,
+        // Aviso (no bloquea) cuando alguien quedaría con más de N horas de trabajo seguidas (turnos pegados uno con otro):
+        // dos turnos (16 h) no avisan, tres (24 h) sí. Doble y triple turno están permitidos.
+        'max_horas_seguidas' => 16,
     ],
 
     'personal' => [

@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\Admin\VacacionController;
 use App\Http\Controllers\Admin\VehiculoController;
 use App\Http\Controllers\Admin\ZonaController;
+use App\Http\Middleware\VerificarPermiso;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/admin');
@@ -29,7 +30,7 @@ $protegidas = ['auth:sanctum', config('jetstream.auth_session'), 'verified'];
 
 Route::middleware($protegidas)->get('/dashboard', fn () => redirect('/admin'))->name('dashboard');
 
-Route::middleware($protegidas)->prefix('admin')->group(function () {
+Route::middleware([...$protegidas, VerificarPermiso::class])->prefix('admin')->group(function () {
     Route::get('/', [InicioController::class, 'index'])->name('admin.inicio');
 
     // ---- Gestión de vehículos
@@ -74,6 +75,9 @@ Route::middleware($protegidas)->prefix('admin')->group(function () {
     Route::resource('vacaciones', VacacionController::class)->names('admin.vacaciones')->parameters(['vacaciones' => 'vacacion']);
 
     // ---- Seguridad
+    // Las rutas de permisos van antes del resource para que no las capture {usuario}.
+    Route::get('usuarios/{usuario}/permisos', [UsuarioController::class, 'permisos'])->name('admin.usuarios.permisos');
+    Route::put('usuarios/{usuario}/permisos', [UsuarioController::class, 'guardarPermisos'])->name('admin.usuarios.permisos.guardar');
     Route::resource('usuarios', UsuarioController::class)->names('admin.usuarios')->parameters(['usuarios' => 'usuario']);
     Route::get('bitacora', [BitacoraController::class, 'index'])->name('admin.bitacora.index');
 

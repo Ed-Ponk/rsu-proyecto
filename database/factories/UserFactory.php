@@ -35,7 +35,14 @@ class UserFactory extends Factory
             'two_factor_recovery_codes' => null,
             'remember_token' => Str::random(10),
             'profile_photo_path' => null,
+            'role' => 'administrador',
         ];
+    }
+
+    /** Usuario operador: entra al panel solo a lo que se le conceda (ver user_permissions). */
+    public function operador(): static
+    {
+        return $this->state(fn (array $attributes) => ['role' => 'operador']);
     }
 
     /**
