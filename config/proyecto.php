@@ -69,6 +69,16 @@ return [
         'max_horas_seguidas' => 16,
     ],
 
+    'recorridos' => [
+        // App del conductor: cuántos minutos antes del inicio del turno se permite iniciar el recorrido.
+        'minutos_antes_de_iniciar' => 30,
+        // Cada cuántos segundos la app registra la posición GPS durante el recorrido.
+        'segundos_entre_puntos' => 5,
+        // Máximo de puntos que la app puede enviar en un solo lote (cuando estuvo sin señal y se pone al día).
+        'max_puntos_por_lote' => 500,
+        'observacion_max' => 500,
+    ],
+
     'personal' => [
         'edad_minima' => 18,
     ],

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,12 @@ class Programacion extends Model
     public function scopePendientes(Builder $consulta): Builder
     {
         return $consulta->whereIn('status', self::PENDIENTES);
+    }
+
+    /** Recorrido hecho desde la app del conductor (a lo más uno por programación). */
+    public function recorrido(): HasOne
+    {
+        return $this->hasOne(Recorrido::class, 'programming_id');
     }
 
     public function cambios(): HasMany

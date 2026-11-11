@@ -7,6 +7,7 @@ use App\Models\Bitacora;
 use App\Models\Contrato;
 use App\Models\GrupoPersonal;
 use App\Models\Programacion;
+use App\Models\Recorrido;
 use App\Models\Vacacion;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,7 @@ class DescripcionDeBitacora
         'Motivo' => ['Motivo de cambio', 'change_reasons'],
         'Personal' => ['Personal', 'users'],
         'Programacion' => ['Programación', 'programmings'],
+        'Recorrido' => ['Recorrido', 'trips'],
         'Turno' => ['Turno', 'schedules'],
         'Vacacion' => ['Vacaciones', 'vacations'],
         'Zona' => ['Zona', 'zones'],
@@ -44,6 +46,7 @@ class DescripcionDeBitacora
         'zone_id' => 'Zona', 'group_id' => 'Grupo', 'vehicle_id' => 'Vehículo', 'driver_id' => 'Conductor', 'ayudantes' => 'Ayudantes',
         'weekdays' => 'Días de trabajo', 'department' => 'Departamento', 'province' => 'Provincia', 'district' => 'Distrito',
         'average_waste' => 'Residuos promedio',
+        'programming_id' => 'Programación', 'started_at' => 'Inicio', 'ended_at' => 'Fin', 'observation' => 'Observación',
     ];
 
     /** Campos que resumen un registro al crearlo o eliminarlo (el resto queda en el detalle de cada módulo). */
@@ -55,6 +58,7 @@ class DescripcionDeBitacora
         'Motivo' => ['description'],
         'Personal' => ['dni', 'usertype_id', 'email', 'phone', 'status'],
         'Programacion' => ['date', 'shift_id', 'zone_id', 'vehicle_id', 'driver_id', 'status'],
+        'Recorrido' => ['driver_id', 'status', 'started_at', 'ended_at', 'observation'],
         'Turno' => ['time_start', 'time_end', 'description'],
         'Vacacion' => ['start_date', 'end_date', 'days', 'status'],
         'Zona' => ['district', 'average_waste', 'status'],
@@ -78,6 +82,7 @@ class DescripcionDeBitacora
             'Contrato', 'Vacacion' => $this->persona($datos['user_id'] ?? null),
             'Programacion' => collect([$this->fecha($datos['date'] ?? null), $this->zona($datos['zone_id'] ?? null), $this->turno($datos['shift_id'] ?? null, false)])
                 ->filter()->implode(' · '),
+            'Recorrido' => $this->persona($datos['driver_id'] ?? null),
             'Feriado' => ($datos['description'] ?? '').$this->entre($this->fecha($datos['date'] ?? null)),
             default => (string) ($datos['name'] ?? ''),
         };
@@ -161,6 +166,7 @@ class DescripcionDeBitacora
     {
         return match ($modelo) {
             'Programacion' => Programacion::ESTADOS[$valor] ?? (string) $valor,
+            'Recorrido' => Recorrido::ESTADOS[$valor] ?? (string) $valor,
             'Vacacion' => Vacacion::ESTADOS[$valor] ?? (string) $valor,
             'Asistencia' => ucfirst((string) $valor),
             default => in_array($valor, [true, 1, '1', 'true'], true) ? 'Activo' : 'Inactivo',

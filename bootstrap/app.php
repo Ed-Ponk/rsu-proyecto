@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\CabecerasDeSeguridad;
+use App\Http\Middleware\SinTokenEnElPanel;
+use App\Http\Middleware\SoloConductor;
 use App\Support\MensajesDeBase;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -12,6 +14,7 @@ use Illuminate\Http\Request;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -19,6 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/admin');
         $middleware->appendToGroup('web', CabecerasDeSeguridad::class);
+        $middleware->prependToGroup('web', SinTokenEnElPanel::class);
+        $middleware->alias(['conductor' => SoloConductor::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Dos personas guardan lo mismo en el mismo instante: la validación pasa en ambas y la base de datos rechaza la segunda.
