@@ -1,0 +1,17 @@
+# Lo que suben los usuarios son imágenes: nada de esta carpeta debe ejecutarse ni mostrarse como página.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phps .pht .phar
+<FilesMatch "\.(php\d?|phtml|phar|pht|phps|html?|xhtml|svg|js)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set Content-Security-Policy "default-src 'none'; img-src 'self'"
+</IfModule>

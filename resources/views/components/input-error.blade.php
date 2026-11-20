@@ -1,5 +1,5 @@
 @props(['for'])
 
 @error($for)
-    <p {{ $attributes->merge(['class' => 'text-sm text-red-600']) }}>{{ $message }}</p>
+    <div {{ $attributes->merge(['class' => 'invalid-feedback t-error d-block']) }}>{{ $message }}</div>
 @enderror

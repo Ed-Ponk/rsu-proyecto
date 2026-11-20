@@ -9,3 +9,8 @@
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
+
+# Scripts y archivos de Docker: siempre con saltos de línea de Linux (si no, el contenedor falla con "exec format error").
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker/** text eol=lf

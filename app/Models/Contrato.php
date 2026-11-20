@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Support\Carbon;
 
 class Contrato extends Model
 {
+    use Auditable;
+
     protected $table = 'contracts';
 
     public const NOMBRADO = 'nombrado';
@@ -31,8 +34,8 @@ class Contrato extends Model
     protected function casts(): array
     {
         return [
-            'start_date' => 'date',
-            'end_date' => 'date',
+            'start_date' => 'date:Y-m-d',
+            'end_date' => 'date:Y-m-d',
             'salary' => 'decimal:2',
             'probation_months' => 'integer',
             'is_active' => 'boolean',
@@ -55,10 +58,17 @@ class Contrato extends Model
         $dia = ($fecha ?? today())->toDateString();
 
         return $consulta->where('is_active', true)
-            ->whereDate('start_date', '<=', $dia)
+            ->where('start_date', '<=', $dia)
             ->where(function (Builder $c) use ($dia) {
-                $c->whereNull('end_date')->orWhereDate('end_date', '>=', $dia);
+                $c->whereNull('end_date')->orWhere('end_date', '>=', $dia);
             });
+    }
+
+    /** Contratos activos que todavía no vencieron (sin importar si ya empezaron): el que "ocupa" a la persona. */
+    public function scopeNoVencido(Builder $consulta): Builder
+    {
+        return $consulta->where('is_active', true)
+            ->where(fn (Builder $c) => $c->whereNull('end_date')->orWhere('end_date', '>=', today()->toDateString()));
     }
 
     /** Desactiva los temporales cuya fecha de término ya pasó y devuelve cuántos cerró. */
@@ -66,7 +76,7 @@ class Contrato extends Model
     {
         return static::where('is_active', true)
             ->whereNotNull('end_date')
-            ->whereDate('end_date', '<', today()->toDateString())
+            ->where('end_date', '<', today()->toDateString())
             ->update(['is_active' => false]);
     }
 

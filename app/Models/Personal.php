@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,8 @@ use Illuminate\Support\Carbon;
  */
 class Personal extends Model
 {
+    use Auditable;
+
     protected $table = 'users';
 
     /** Licencia de conducir: una letra y ocho dígitos (Q12345678). */
@@ -58,6 +61,11 @@ class Personal extends Model
         return $this->hasOne(Contrato::class, 'user_id')->vigente();
     }
 
+    public function vacaciones(): HasMany
+    {
+        return $this->hasMany(Vacacion::class, 'user_id')->latest('start_date');
+    }
+
     public function asistencias(): HasMany
     {
         return $this->hasMany(Asistencia::class, 'user_id');
@@ -84,12 +92,16 @@ class Personal extends Model
         return $consulta->where('users.status', true);
     }
 
-    /** Quién puede entrar en una programación: activo y con un contrato vigente en la fecha. */
+    /** Quién puede entrar en una programación: activo, con contrato vigente y sin vacaciones aprobadas en la fecha. */
     public function scopeDisponibles(Builder $consulta, ?Carbon $fecha = null): Builder
     {
         $fecha ??= today();
 
-        return $consulta->activos()->whereHas('contratos', fn (Builder $c) => $c->vigente($fecha));
+        return $consulta->activos()
+            ->whereHas('contratos', fn (Builder $c) => $c->vigente($fecha))
+            ->whereDoesntHave('vacaciones', fn (Builder $v) => $v
+                ->where('status', Vacacion::APROBADA)
+                ->queSeCruzaCon($fecha, $fecha));
     }
 
     public function scopeAsistioEl(Builder $consulta, Carbon|string $fecha): Builder
@@ -97,7 +109,7 @@ class Personal extends Model
         $dia = Carbon::parse($fecha)->toDateString();
 
         return $consulta->whereHas('asistencias', fn (Builder $c) => $c
-            ->whereDate('date', $dia)
+            ->where('date', $dia)
             ->where('status', Asistencia::PRESENTE));
     }
 

@@ -1,0 +1,236 @@
+/**
+ * Módulos de Catálogos Auxiliares (Tads)
+ *
+ * Administra los catálogos del panel:
+ *   - Marcas (con vista previa de logotipo y bloqueo de borrado si tiene vehículos o modelos)
+ *   - Tipos de Personal (con protección de funciones de sistema y bloqueo si tiene personal)
+ *   - Modelos (con insignia de marca y bloqueo si tiene vehículos)
+ *   - Tipos de Vehículo (clasificación de flota y bloqueo si tiene vehículos)
+ */
+(function (global) {
+    'use strict';
+
+    const Tads = (global.Tads = global.Tads || {});
+    Tads.Modulos = Tads.Modulos || {};
+
+    /* ---------- MARCAS ---------- */
+    function activarVistaPreviaDelLogo(cuerpo) {
+        const caja = cuerpo.querySelector('#cajaLogo');
+        const input = cuerpo.querySelector('#archivoLogo');
+        if (caja && input) Tads.vistaPreviaArchivo(caja, input);
+    }
+
+    function motivoBloqueoMarca(marca) {
+        if (marca.vehiculos > 0) return `No se puede eliminar: la marca tiene ${marca.vehiculos} vehículo(s) asignado(s)`;
+        if (marca.modelos > 0) return `No se puede eliminar: la marca tiene ${marca.modelos} modelo(s) registrado(s)`;
+        return '';
+    }
+
+    Tads.Modulos.marcas = {
+        init: function (contenedor) {
+            contenedor._gestor = new Tads.Gestor({
+                entidad: 'marca',
+                femenino: true,
+                icono: 'bi-tags',
+                urlListado: contenedor.dataset.urlListado,
+                urlRecurso: contenedor.dataset.urlRecurso,
+                urlCrear: contenedor.dataset.urlCrear,
+                orden: [[1, 'asc']],
+                alCargarFormulario: activarVistaPreviaDelLogo,
+                columnas: [
+                    { data: 'logo', orderable: false, searchable: false,
+                        render: (url) => `<img class="t-logo-mini" src="${Tads.escapar(url)}" alt="Logo">` },
+                    { data: 'nombre', render: (v) => `<strong>${Tads.escapar(v)}</strong>` },
+                    { data: 'descripcion', defaultContent: '', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">—</span>' },
+                    { data: 'modelos', render: (v) => Tads.insignia(v, v > 0 ? 'violeta' : 'gris') },
+                    { data: 'vehiculos', render: (v) => Tads.insignia(v, v > 0 ? 'azul' : 'gris') },
+                    { data: 'creado', render: Tads.celdaFecha },
+                    { data: 'actualizado', render: Tads.celdaFecha },
+                    { data: null, orderable: false, searchable: false, className: 'text-center',
+                        render: (fila) => Tads.acciones(Tads.botonEditar(fila.id), Tads.botonEliminar(fila.id, fila.nombre, motivoBloqueoMarca(fila))) },
+                ],
+            });
+        },
+    };
+
+    /* ---------- TIPOS DE PERSONAL ---------- */
+    function motivoBloqueoTipoPersonal(tipo) {
+        if (tipo.del_sistema) return 'No se puede eliminar: es una función predefinida del sistema';
+        if (tipo.personal > 0) return `No se puede eliminar: el tipo tiene ${tipo.personal} persona(s) asignada(s)`;
+        return '';
+    }
+
+    Tads.Modulos.tipospersonal = {
+        init: function (contenedor) {
+            contenedor._gestor = new Tads.Gestor({
+                entidad: 'tipo de personal',
+                icono: 'bi-person-badge',
+                urlListado: contenedor.dataset.urlListado,
+                urlRecurso: contenedor.dataset.urlRecurso,
+                urlCrear: contenedor.dataset.urlCrear,
+                orden: [],
+                columnas: [
+                    { data: 'nombre', render: (v, t, fila) => Tads.insignia(v, 'azul')
+                        + (fila.del_sistema ? ` ${Tads.insignia('Predefinido', 'gris')}` : '') },
+                    { data: 'descripcion', defaultContent: '', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">—</span>' },
+                    { data: 'personal', render: (v) => Tads.insignia(v, v > 0 ? 'verde' : 'gris') },
+                    { data: 'creado', render: Tads.celdaFecha },
+                    { data: 'actualizado', render: Tads.celdaFecha },
+                    { data: null, orderable: false, searchable: false, className: 'text-center',
+                        render: (fila) => Tads.acciones(Tads.botonEditar(fila.id), Tads.botonEliminar(fila.id, fila.nombre, motivoBloqueoTipoPersonal(fila))) },
+                ],
+            });
+        },
+    };
+
+    /* ---------- MODELOS ---------- */
+    Tads.Modulos.modelos = {
+        init: function (contenedor) {
+            contenedor._gestor = new Tads.Gestor({
+                entidad: 'modelo',
+                icono: 'bi-wrench-adjustable',
+                urlListado: contenedor.dataset.urlListado,
+                urlRecurso: contenedor.dataset.urlRecurso,
+                urlCrear: contenedor.dataset.urlCrear,
+                orden: [[0, 'asc']],
+                columnas: [
+                    { data: 'nombre', render: (v) => `<strong>${Tads.escapar(v)}</strong>` },
+                    { data: 'codigo', render: (v) => `<span class="t-codigo">${Tads.escapar(v)}</span>` },
+                    { data: 'marca', render: (marca, tipo, fila) =>
+                        `<span class="d-inline-flex align-items-center gap-2"><img class="t-logo-mini" style="width:34px;height:26px" src="${Tads.escapar(fila.logo)}" alt="">${Tads.escapar(marca)}</span>` },
+                    { data: 'descripcion', defaultContent: '', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">—</span>' },
+                    { data: 'vehiculos', render: (v) => Tads.insignia(v, v > 0 ? 'azul' : 'gris') },
+                    { data: 'creado', render: Tads.celdaFecha },
+                    { data: 'actualizado', render: Tads.celdaFecha },
+                    { data: null, orderable: false, searchable: false, className: 'text-center',
+                        render: (fila) => Tads.acciones(
+                            Tads.botonEditar(fila.id),
+                            Tads.botonEliminar(fila.id, fila.nombre, fila.vehiculos > 0 ? `No se puede eliminar: el modelo tiene ${fila.vehiculos} vehículo(s) asignado(s)` : ''),
+                        ) },
+                ],
+            });
+        },
+    };
+
+    /* ---------- TIPOS DE VEHÍCULO ---------- */
+    Tads.Modulos.tiposvehiculo = {
+        init: function (contenedor) {
+            contenedor._gestor = new Tads.Gestor({
+                entidad: 'tipo de vehículo',
+                icono: 'bi-truck-flatbed',
+                urlListado: contenedor.dataset.urlListado,
+                urlRecurso: contenedor.dataset.urlRecurso,
+                urlCrear: contenedor.dataset.urlCrear,
+                orden: [[0, 'asc']],
+                columnas: [
+                    { data: 'nombre', render: (v) => Tads.insignia(v, 'azul') },
+                    { data: 'descripcion', defaultContent: '', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">—</span>' },
+                    { data: 'vehiculos', render: (v) => Tads.insignia(v, v > 0 ? 'azul' : 'gris') },
+                    { data: 'creado', render: Tads.celdaFecha },
+                    { data: 'actualizado', render: Tads.celdaFecha },
+                    { data: null, orderable: false, searchable: false, className: 'text-center',
+                        render: (fila) => Tads.acciones(
+                            Tads.botonEditar(fila.id),
+                            Tads.botonEliminar(fila.id, fila.nombre, fila.vehiculos > 0 ? `No se puede eliminar: el tipo tiene ${fila.vehiculos} vehículo(s) asignado(s)` : ''),
+                        ) },
+                ],
+            });
+        },
+    };
+
+    /* ---------- USUARIOS DEL SISTEMA (Avance 05) ---------- */
+    Tads.Modulos.usuarios = {
+        init: function (contenedor) {
+            const puede = (nombre) => contenedor.dataset[nombre] === '1';
+            const urlRecurso = contenedor.dataset.urlRecurso;
+
+            const botonPermisos = (fila) => fila.es_administrador
+                ? `<a class="btn t-boton-icono t-info" href="${urlRecurso}/${fila.id}/permisos" data-bs-toggle="tooltip" title="Ver permisos (acceso total)"><i class="bi bi-key-fill"></i></a>`
+                : `<a class="btn t-boton-icono t-info" href="${urlRecurso}/${fila.id}/permisos" data-bs-toggle="tooltip" title="Permisos (${fila.permisos} concedidos)"><i class="bi bi-key-fill"></i></a>`;
+
+            const acciones = (fila) => {
+                if (fila.bloqueado) return '<span class="text-muted small">Solo administradores</span>';
+
+                const botones = [];
+                if (puede('puedePermisos')) botones.push(botonPermisos(fila));
+                if (puede('puedeEditar')) botones.push(Tads.botonEditar(fila.id));
+                if (puede('puedeEliminar')) {
+                    botones.push(Tads.botonEliminar(fila.id, fila.nombre_completo || fila.correo, fila.actual ? 'No puede eliminar su propia cuenta desde aquí' : ''));
+                }
+
+                return botones.length ? Tads.acciones(...botones) : '';
+            };
+
+            contenedor._gestor = new Tads.Gestor({
+                entidad: 'usuario',
+                icono: 'bi-people-fill',
+                urlListado: contenedor.dataset.urlListado,
+                urlRecurso: urlRecurso,
+                urlCrear: contenedor.dataset.urlCrear,
+                orden: [[1, 'asc']],
+                alCargarFormulario: (cuerpo) => {
+                    const cajaFoto = cuerpo.querySelector('#cajaFoto');
+                    const archivoFoto = cuerpo.querySelector('#archivoFoto');
+                    if (cajaFoto && archivoFoto) Tads.vistaPreviaArchivo(cajaFoto, archivoFoto);
+
+                    cuerpo.querySelectorAll('#usuarioDni, #usuarioTelefono').forEach((campo) => {
+                        campo.addEventListener('input', () => { campo.value = campo.value.replace(/\D/g, ''); });
+                    });
+                },
+                columnas: [
+                    { data: 'foto', orderable: false, searchable: false, render: (foto, tipo, fila) => foto
+                        ? `<img class="t-avatar" src="${Tads.escapar(foto)}" alt="Foto">`
+                        : `<span class="t-avatar">${Tads.escapar(fila.iniciales)}</span>` },
+                    { data: 'nombres', render: (v, t, fila) => `<strong>${Tads.escapar(v)}</strong>${fila.actual ? ` ${Tads.insignia('Usted', 'azul')}` : ''}` },
+                    { data: 'apellidos', render: (v) => Tads.escapar(v ?? '') },
+                    { data: 'dni', render: (v) => v ? `<span class="t-codigo">${Tads.escapar(v)}</span>` : '<span class="text-muted">N/A</span>' },
+                    { data: 'correo' },
+                    { data: 'telefono', render: (v) => v ? Tads.escapar(v) : '<span class="text-muted">N/A</span>' },
+                    { data: 'tipo', render: (v, t, fila) => fila.es_administrador ? Tads.insignia('ADMINISTRADOR', 'verde') : Tads.insignia('OPERADOR', 'turquesa') },
+                    { data: 'activo', render: (v) => v ? Tads.insignia('Activo', 'verde') : Tads.insignia('Inactivo', 'gris') },
+                    { data: 'actualizado', render: Tads.celdaFecha },
+                    { data: null, orderable: false, searchable: false, className: 'text-center', render: acciones },
+                ],
+            });
+
+            // Sin permiso para crear no hay botón «Nuevo usuario» (la vista ya lo omite); por si acaso no hace nada.
+        },
+    };
+
+    /* ---------- BITÁCORA (solo lectura) ---------- */
+    Tads.Modulos.bitacora = {
+        init: function (contenedor) {
+            const campo = (id) => document.getElementById(id);
+            const colores = { creado: 'verde', modificado: 'ambar', eliminado: 'rojo' };
+
+            const tabla = $('#tabla').DataTable({
+                ajax: async (_parametros, devolver) => {
+                    const filtros = new URLSearchParams({ modelo: campo('filtroModelo').value, accion: campo('filtroAccion').value });
+                    const { ok, estado, json } = await Tads.peticion(`${contenedor.dataset.urlListado}?${filtros}`);
+                    if (!ok) { Tads.alertaDeError(estado, json, 'No se pudo cargar la bitácora'); return devolver({ data: [] }); }
+                    devolver({ data: json.data });
+                },
+                columns: [
+                    { data: 'fecha', render: Tads.celdaFecha },
+                    { data: 'usuario' },
+                    { data: 'accion', render: (v) => Tads.insignia(v.charAt(0).toUpperCase() + v.slice(1), colores[v] ?? 'gris') },
+                    { data: 'registro', render: (v) => `<strong>${Tads.escapar(v)}</strong>` },
+                    { data: 'detalle', render: (v) => `<small class="text-muted">${Tads.escapar(v)}</small>` },
+                ],
+                order: [[0, 'desc']],
+                pageLength: 10,
+                lengthChange: false,
+                autoWidth: false,
+                processing: true,
+                language: Tads.idioma,
+            });
+
+            campo('botonFiltrar').addEventListener('click', () => tabla.ajax.reload());
+            contenedor._tabla = tabla;
+        },
+    };
+
+    if (typeof Tads.iniciarModulos === 'function') {
+        Tads.iniciarModulos();
+    }
+})(window);

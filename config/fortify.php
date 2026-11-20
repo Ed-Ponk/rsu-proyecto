@@ -163,7 +163,9 @@ return [
 
     'features' => [
         // Features::registration(), // El alta de usuarios la hace el administrador (no hay registro público).
-        Features::resetPasswords(),
+        // La recuperación por correo solo se ofrece si hay un servicio de correo real: con MAIL_MAILER=log el enlace
+        // se escribiría en el archivo de log y nadie lo recibiría.
+        ...(env('MAIL_MAILER', 'log') === 'log' ? [] : [Features::resetPasswords()]),
         // Features::emailVerification(),
         Features::updateProfileInformation(),
         Features::updatePasswords(),

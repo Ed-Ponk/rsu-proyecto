@@ -29,23 +29,4 @@
 
         <button type="submit" class="boton-acceso">Verificar</button>
     </form>
-
-    @push('scripts')
-        <script>
-            (function () {
-                let usandoRecuperacion = false;
-                const enlace = document.getElementById('cambiarMetodo');
-
-                enlace.addEventListener('click', (evento) => {
-                    evento.preventDefault();
-                    usandoRecuperacion = !usandoRecuperacion;
-
-                    document.getElementById('bloqueCodigo').style.display = usandoRecuperacion ? 'none' : '';
-                    document.getElementById('bloqueRecuperacion').style.display = usandoRecuperacion ? '' : 'none';
-                    enlace.textContent = usandoRecuperacion ? 'Usar un código de autenticación' : 'Usar un código de recuperación';
-                    document.getElementById(usandoRecuperacion ? 'codigoRecuperacion' : 'codigo').focus();
-                });
-            })();
-        </script>
-    @endpush
 </x-acceso>

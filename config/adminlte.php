@@ -1,5 +1,13 @@
 <?php
 
+use JeroenNoten\LaravelAdminLte\Menu\Filters\ActiveFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\ClassesFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\DataFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\GateFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\HrefFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\LangFilter;
+use JeroenNoten\LaravelAdminLte\Menu\Filters\SearchFilter;
+
 /*
 |--------------------------------------------------------------------------
 | Laravel AdminLTE Configuration
@@ -78,10 +86,11 @@ return [
     */
 
     'logo' => '',   // el logo de la Municipalidad ya incluye el nombre
-    'logo_img' => 'images/logo-municipalidad.svg',
+    // Con el menú colapsado se ve el isotipo cuadrado; abierto, el logo completo de la Municipalidad.
+    'logo_img' => 'images/logo-sistema.svg',
     'logo_img_class' => 'brand-image',
-    'logo_img_xl' => null,
-    'logo_img_xl_class' => 'brand-image-xs opacity-75',
+    'logo_img_xl' => 'images/logo-municipalidad.svg',
+    'logo_img_xl_class' => 'brand-image-xs',
     'logo_img_alt' => 'Logo RSU',
 
     /*
@@ -778,24 +787,54 @@ return [
         ['text' => 'Inicio', 'route' => 'admin.inicio', 'icon' => 'bi bi-house-door'],
         ['header' => 'OPERACIÓN'],
         [
-            'text' => 'Gestión de vehículos',
+            'text' => 'Gestión de vehículos', 'can' => ['colors.view', 'brands.view', 'brandmodels.view', 'vehicletypes.view', 'vehicles.view'],
             'icon' => 'bi bi-truck',
             'submenu' => [
-                ['text' => 'Colores', 'route' => 'admin.colores.index', 'icon' => 'bi bi-palette'],
-                ['text' => 'Marcas', 'route' => 'admin.marcas.index', 'icon' => 'bi bi-tags'],
-                ['text' => 'Modelos', 'route' => 'admin.modelos.index', 'icon' => 'bi bi-wrench-adjustable'],
-                ['text' => 'Tipos de vehículo', 'route' => 'admin.tiposvehiculo.index', 'icon' => 'bi bi-truck-flatbed'],
-                ['text' => 'Vehículos', 'route' => 'admin.vehiculos.index', 'icon' => 'bi bi-truck-front'],
+                ['text' => 'Colores', 'route' => 'admin.colores.index', 'can' => 'colors.view', 'icon' => 'bi bi-palette'],
+                ['text' => 'Marcas', 'route' => 'admin.marcas.index', 'can' => 'brands.view', 'icon' => 'bi bi-tags'],
+                ['text' => 'Modelos', 'route' => 'admin.modelos.index', 'can' => 'brandmodels.view', 'icon' => 'bi bi-wrench-adjustable'],
+                ['text' => 'Tipos de vehículo', 'route' => 'admin.tiposvehiculo.index', 'can' => 'vehicletypes.view', 'icon' => 'bi bi-truck-flatbed'],
+                ['text' => 'Vehículos', 'route' => 'admin.vehiculos.index', 'can' => 'vehicles.view', 'icon' => 'bi bi-truck-front'],
             ],
         ],
         [
-            'text' => 'Gestión de personal',
+            'text' => 'Gestión de personal', 'can' => ['employeetypes.view', 'employees.view', 'contracts.view', 'attendances.view', 'vacations.view', 'attendances.create'],
             'icon' => 'bi bi-people',
             'submenu' => [
-                ['text' => 'Tipos de personal', 'route' => 'admin.tipospersonal.index', 'icon' => 'bi bi-person-badge'],
-                ['text' => 'Personal', 'route' => 'admin.personal.index', 'icon' => 'bi bi-person-lines-fill'],
-                ['text' => 'Contratos', 'route' => 'admin.contratos.index', 'icon' => 'bi bi-file-earmark-text'],
-                ['text' => 'Asistencias', 'route' => 'admin.asistencias.index', 'icon' => 'bi bi-calendar-check'],
+                ['text' => 'Tipos de personal', 'route' => 'admin.tipospersonal.index', 'can' => 'employeetypes.view', 'icon' => 'bi bi-person-badge'],
+                ['text' => 'Personal', 'route' => 'admin.personal.index', 'can' => 'employees.view', 'icon' => 'bi bi-person-lines-fill'],
+                ['text' => 'Contratos', 'route' => 'admin.contratos.index', 'can' => 'contracts.view', 'icon' => 'bi bi-file-earmark-text'],
+                ['text' => 'Asistencias', 'route' => 'admin.asistencias.index', 'can' => 'attendances.view', 'icon' => 'bi bi-calendar-check'],
+                ['text' => 'Vacaciones', 'route' => 'admin.vacaciones.index', 'can' => 'vacations.view', 'icon' => 'bi bi-airplane-fill'],
+                ['text' => 'Marcación DNI', 'route' => 'admin.asistencias.marcacion', 'can' => 'attendances.create', 'icon' => 'bi bi-fingerprint'],
+            ],
+        ],
+        [
+            'text' => 'Programación', 'can' => ['shifts.view', 'zones.view', 'holidays.view', 'employeegroups.view', 'scheduling.view', 'dashboard.view'],
+            'icon' => 'bi bi-calendar3',
+            'submenu' => [
+                ['text' => 'Turnos', 'route' => 'admin.turnos.index', 'can' => 'shifts.view', 'icon' => 'bi bi-clock-fill'],
+                ['text' => 'Zonas', 'route' => 'admin.zonas.index', 'can' => 'zones.view', 'icon' => 'bi bi-geo-alt-fill'],
+                ['text' => 'Feriados', 'route' => 'admin.feriados.index', 'can' => 'holidays.view', 'icon' => 'bi bi-flag-fill'],
+                ['text' => 'Grupos de personal', 'route' => 'admin.grupos.index', 'can' => 'employeegroups.view', 'icon' => 'bi bi-people-fill'],
+                ['text' => 'Programación', 'route' => 'admin.programaciones.index', 'can' => 'scheduling.view', 'icon' => 'bi bi-clock-history'],
+                ['text' => 'Dashboard', 'route' => 'admin.programaciones.dashboard', 'can' => 'dashboard.view', 'icon' => 'bi bi-speedometer2'],
+            ],
+        ],
+        [
+            'text' => 'Gestión de cambios', 'can' => ['reasons.view', 'scheduling-changes.view'],
+            'icon' => 'bi bi-arrow-left-right',
+            'submenu' => [
+                ['text' => 'Motivos', 'route' => 'admin.motivos.index', 'can' => 'reasons.view', 'icon' => 'bi bi-chat-left-text-fill'],
+                ['text' => 'Cambios', 'route' => 'admin.cambios.index', 'can' => 'scheduling-changes.view', 'icon' => 'bi bi-arrow-left-right'],
+            ],
+        ],
+        [
+            'text' => 'Gestión de usuarios',
+            'icon' => 'bi bi-person-gear',
+            'can' => ['users.view'],
+            'submenu' => [
+                ['text' => 'Lista de Usuarios', 'route' => 'admin.usuarios.index', 'icon' => 'bi bi-list-ul', 'can' => 'users.view'],
             ],
         ],
         ['header' => 'CUENTA'],
@@ -804,16 +843,22 @@ return [
             'url' => 'user/profile',
             'icon' => 'bi bi-person-circle',
         ],
+        // El clic lo intercepta app-admin.js y envía el formulario de cierre de sesión (POST con CSRF).
+        [
+            'text' => 'Cerrar sesión',
+            'url' => '#cerrar-sesion',
+            'icon' => 'bi bi-box-arrow-right',
+        ],
     ],
 
     'filters' => [
-        JeroenNoten\LaravelAdminLte\Menu\Filters\GateFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\HrefFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\SearchFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\ActiveFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\ClassesFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\LangFilter::class,
-        JeroenNoten\LaravelAdminLte\Menu\Filters\DataFilter::class,
+        GateFilter::class,
+        HrefFilter::class,
+        SearchFilter::class,
+        ActiveFilter::class,
+        ClassesFilter::class,
+        LangFilter::class,
+        DataFilter::class,
     ],
 
     /*
@@ -830,12 +875,38 @@ return [
 
     'plugins' => [
         // Estilos y script propios del proyecto (carpeta public/).
+        'Leaflet' => [
+            'active' => false,   // solo se carga en las pantallas que lo piden con @section('plugins.Leaflet', true)
+            'files' => [
+                ['type' => 'css', 'asset' => true, 'location' => 'vendor/leaflet/leaflet.css'],
+                ['type' => 'css', 'asset' => true, 'location' => 'vendor/leaflet-draw/leaflet.draw.css'],
+                ['type' => 'js', 'asset' => true, 'location' => 'vendor/leaflet/leaflet.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'vendor/leaflet-draw/leaflet.draw.js'],
+            ],
+        ],
         'EstilosTads' => [
             'active' => true,
             'files' => [
                 ['type' => 'css', 'asset' => true, 'location' => 'css/tads-menu.css'],
                 ['type' => 'css', 'asset' => true, 'location' => 'css/tads.css'],
+                ['type' => 'css', 'asset' => true, 'location' => 'css/tads-cambios.css'],
+                ['type' => 'css', 'asset' => true, 'location' => 'css/tads-permisos.css'],
                 ['type' => 'js', 'asset' => true, 'location' => 'js/gestor.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/vehiculos.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/asistencias.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/marcacion.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/inicio.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/contratos.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/personal.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/colores.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/catalogos.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/permisos.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/programacion.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/vacaciones.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/zonas.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/cambios.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/rutas.js'],
+                ['type' => 'js', 'asset' => true, 'location' => 'js/tads/app-admin.js'],
             ],
         ],
         'Jquery' => [
@@ -878,22 +949,27 @@ return [
                 [
                     'type' => 'js',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/js/dataTables.buttons.min.js',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/dataTables.buttons.min.js',
                 ],
                 [
                     'type' => 'js',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/js/buttons.bootstrap5.min.js',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/buttons.bootstrap5.min.js',
                 ],
                 [
                     'type' => 'js',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/js/buttons.html5.min.js',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/buttons.html5.min.js',
                 ],
                 [
                     'type' => 'js',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/js/buttons.print.min.js',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/buttons.colVis.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => false,
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/js/buttons.print.min.js',
                 ],
                 [
                     'type' => 'js',
@@ -913,7 +989,7 @@ return [
                 [
                     'type' => 'css',
                     'asset' => false,
-                    'location' => '//cdn.datatables.net/buttons/4.0.2/css/buttons.bootstrap5.min.css',
+                    'location' => '//cdn.datatables.net/buttons/3.2.0/css/buttons.bootstrap5.min.css',
                 ],
             ],
         ],

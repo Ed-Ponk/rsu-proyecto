@@ -4,6 +4,10 @@
 .env
 .env.backup
 .env.production
+# Cualquier copia del .env (tiene APP_KEY y claves); solo se versiona la plantilla.
+/.env.*
+!/.env.example
+!/.env.docker.example
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -20,6 +24,7 @@
 /public/storage
 /public/uploads/*
 !/public/uploads/.gitkeep
+!/public/uploads/.htaccess
 /storage/*.key
 /storage/framework/cache/*
 /storage/framework/sessions/*
@@ -31,3 +36,15 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 *:Zone.Identifier
+
+# Internal tools & agent artifacts
+/.agents/
+/PROJECT.md
+/TEST_INFRA.md
+/TEST_READY.md
+/mobile/node_modules/
+/mobile/.expo/
+/mobile/.env.*
+/mobile/android/
+/mobile/ios/
+/mobile/dist/

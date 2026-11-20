@@ -1,51 +1,49 @@
-<x-action-section>
-    <x-slot name="title">
-        {{ __('Delete Account') }}
-    </x-slot>
+<x-action-section icono="bi-person-x-fill" :peligro="true">
+    <x-slot name="title">Eliminar cuenta</x-slot>
 
-    <x-slot name="description">
-        {{ __('Permanently delete your account.') }}
-    </x-slot>
+    <x-slot name="description">Elimine su cuenta de forma permanente.</x-slot>
 
     <x-slot name="content">
-        <div class="max-w-xl text-sm text-gray-600">
-            {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.') }}
+        <div class="t-nota t-nota-roja">
+            <i class="bi bi-exclamation-octagon-fill me-1"></i>
+            Al eliminar su cuenta se borrarán de forma permanente todos sus datos. Antes de hacerlo, descargue la información que desee conservar.
         </div>
 
-        <div class="mt-5">
+        <div class="mt-3">
             <x-danger-button wire:click="confirmUserDeletion" wire:loading.attr="disabled">
-                {{ __('Delete Account') }}
+                <i class="bi bi-trash3-fill me-1"></i> Eliminar cuenta
             </x-danger-button>
         </div>
 
-        <!-- Delete User Confirmation Modal -->
+        <!-- Confirmación -->
         <x-dialog-modal wire:model.live="confirmingUserDeletion">
-            <x-slot name="title">
-                {{ __('Delete Account') }}
-            </x-slot>
+            <x-slot name="title"><i class="bi bi-person-x-fill me-2"></i>Eliminar cuenta</x-slot>
 
             <x-slot name="content">
-                {{ __('Are you sure you want to delete your account? Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
+                <p class="mb-3">
+                    ¿Está seguro de que desea eliminar su cuenta? Todos sus datos se borrarán de forma permanente.
+                    Ingrese su contraseña para confirmar.
+                </p>
 
-                <div class="mt-4" x-data="{}" x-on:confirming-delete-user.window="setTimeout(() => $refs.password.focus(), 250)">
-                    <x-input type="password" class="mt-1 block w-3/4"
+                <div x-data="{}" x-on:confirming-delete-user.window="setTimeout(() => $refs.password.focus(), 250)">
+                    <x-input type="password"
                                 autocomplete="current-password"
-                                placeholder="{{ __('Password') }}"
+                                placeholder="Contraseña"
                                 x-ref="password"
                                 wire:model="password"
                                 wire:keydown.enter="deleteUser" />
 
-                    <x-input-error for="password" class="mt-2" />
+                    <x-input-error for="password" />
                 </div>
             </x-slot>
 
             <x-slot name="footer">
                 <x-secondary-button wire:click="$toggle('confirmingUserDeletion')" wire:loading.attr="disabled">
-                    {{ __('Cancel') }}
+                    <i class="bi bi-x-lg me-1"></i> Cancelar
                 </x-secondary-button>
 
-                <x-danger-button class="ms-3" wire:click="deleteUser" wire:loading.attr="disabled">
-                    {{ __('Delete Account') }}
+                <x-danger-button class="ms-2" wire:click="deleteUser" wire:loading.attr="disabled">
+                    <i class="bi bi-trash3-fill me-1"></i> Eliminar cuenta
                 </x-danger-button>
             </x-slot>
         </x-dialog-modal>

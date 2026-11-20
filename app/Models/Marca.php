@@ -20,4 +20,16 @@ class Marca extends Model
     {
         return $this->hasMany(Vehiculo::class, 'brand_id');
     }
+
+    /** URL pública del logo, o null si no tiene (o si quedó guardada una ruta local de Windows). */
+    public function getUrlLogoAttribute(): ?string
+    {
+        $ruta = $this->logo;
+
+        if (blank($ruta) || preg_match('/^[A-Za-z]:[\\\\\/]/', $ruta)) {
+            return null;
+        }
+
+        return preg_match('#^(https?://|/)#', $ruta) ? $ruta : asset($ruta);
+    }
 }

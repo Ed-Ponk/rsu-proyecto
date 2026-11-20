@@ -1,4 +1,5 @@
 <form method="POST" action="{{ route('admin.contratos.store') }}" class="t-formulario">
     @csrf
-    @include('admin.contratos.plantilla.formulario')
+    <x-admin.requisitos :faltan="$faltan ?? []" />
+    @include('admin.contratos._form')
 </form>
